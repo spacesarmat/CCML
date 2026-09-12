@@ -14,6 +14,7 @@ type Props = {
 
 const editableFields = [
   'title', 'artist', 'album', 'albumArtist', 'genre', 'composer', 'comment',
+  'label', 'catalogNumber', 'isrc', 'releaseDate',
   'year', 'trackNumber', 'trackTotal', 'discNumber', 'discTotal',
 ] as const
 
@@ -28,6 +29,10 @@ const emptyPatch: TagPatch = {
   genre: '',
   composer: '',
   comment: '',
+  label: '',
+  catalogNumber: '',
+  isrc: '',
+  releaseDate: '',
   year: 0,
   trackNumber: 0,
   trackTotal: 0,
@@ -214,6 +219,10 @@ export default function TagEditor({
         <TagTextField field="albumArtist" label={t('tags.field.albumArtist')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
         <TagTextField field="genre" label={t('tags.field.genre')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
         <TagTextField field="composer" label={t('tags.field.composer')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+        <TagTextField field="label" label={t('tags.field.label')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+        <TagTextField field="catalogNumber" label={t('tags.field.catalogNumber')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+        <TagTextField field="isrc" label={t('tags.field.isrc')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+        <TagTextField field="releaseDate" label={t('tags.field.releaseDate')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
         <TagNumberField field="year" label={t('tags.field.year')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
         <TagNumberField field="trackNumber" label={t('tags.field.track')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
         <TagNumberField field="trackTotal" label={t('tags.field.trackTotal')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
@@ -314,6 +323,10 @@ function snapshotToPatch(snapshot: TagSnapshot): TagPatch {
     genre: snapshot.genre,
     composer: snapshot.composer,
     comment: snapshot.comment,
+    label: snapshot.label,
+    catalogNumber: snapshot.catalogNumber,
+    isrc: snapshot.isrc,
+    releaseDate: snapshot.releaseDate,
     year: snapshot.year,
     trackNumber: snapshot.trackNumber,
     trackTotal: snapshot.trackTotal,
@@ -341,6 +354,10 @@ function buildInitialPatch(tracks: Track[]): TagPatch {
     genre: commonString((track) => track.genre),
     composer: commonString((track) => track.composer),
     comment: commonString((track) => track.comment),
+    label: commonString((track) => track.label),
+    catalogNumber: commonString((track) => track.catalogNumber),
+    isrc: commonString((track) => track.isrc),
+    releaseDate: commonString((track) => track.releaseDate),
     year: commonNumber((track) => track.year),
     trackNumber: commonNumber((track) => track.trackNumber),
     trackTotal: commonNumber((track) => track.trackTotal),
@@ -352,7 +369,8 @@ function buildInitialPatch(tracks: Track[]): TagPatch {
 function describeChanges(item: TagPreview, language: AppLanguage): string {
   const labels: Record<EditableField, TranslationKey> = {
     title: 'tags.field.title', artist: 'tags.field.artist', album: 'tags.field.album', albumArtist: 'tags.field.albumArtist',
-    genre: 'tags.field.genre', composer: 'tags.field.composer', comment: 'tags.field.comment', year: 'tags.field.year',
+    genre: 'tags.field.genre', composer: 'tags.field.composer', comment: 'tags.field.comment',
+    label: 'tags.field.label', catalogNumber: 'tags.field.catalogNumber', isrc: 'tags.field.isrc', releaseDate: 'tags.field.releaseDate', year: 'tags.field.year',
     trackNumber: 'tags.field.track', trackTotal: 'tags.field.trackTotal', discNumber: 'tags.field.disc', discTotal: 'tags.field.discTotal',
   }
   const changes: string[] = []

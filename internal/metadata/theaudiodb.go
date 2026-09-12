@@ -90,36 +90,10 @@ func (p *TheAudioDBProvider) Search(ctx context.Context, query model.MetadataQue
 			externalID = track.MusicBrainz
 		}
 		items = append(items, model.MetadataCandidate{
-			Source:     p.Name(),
-			ExternalID: externalID,
-			Title:      track.Title,
-			Artist:     track.Artist,
-			Album:      track.Album,
-			Genre:      track.Genre,
-			ArtworkURL: track.Artwork,
-			DurationMS: duration,
-			Confidence: metadataSimilarity(query, track.Artist, track.Title, duration),
+			Source: p.Name(), ExternalID: externalID,
+			Title: track.Title, Artist: track.Artist, Album: track.Album, Genre: track.Genre,
+			ArtworkURL: track.Artwork, ArtworkEmbeddable: strings.TrimSpace(track.Artwork) != "", DurationMS: duration,
 		})
 	}
 	return items, nil
-}
-
-func metadataSimilarity(query model.MetadataQuery, artist, title string, duration int64) float64 {
-	score := 0.0
-	if strings.EqualFold(strings.TrimSpace(query.Artist), strings.TrimSpace(artist)) {
-		score += 0.45
-	}
-	if strings.EqualFold(strings.TrimSpace(query.Title), strings.TrimSpace(title)) {
-		score += 0.45
-	}
-	if query.DurationMS > 0 && duration > 0 {
-		delta := query.DurationMS - duration
-		if delta < 0 {
-			delta = -delta
-		}
-		if delta <= 2_000 {
-			score += 0.10
-		}
-	}
-	return score
 }

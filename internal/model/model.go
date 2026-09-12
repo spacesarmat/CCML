@@ -5,37 +5,41 @@ import "time"
 
 // Track represents one indexed audio file.
 type Track struct {
-	ID           int64   `json:"id"`
-	Path         string  `json:"path"`
-	FileName     string  `json:"fileName"`
-	Extension    string  `json:"extension"`
-	Size         int64   `json:"size"`
-	ModifiedUnix int64   `json:"modifiedUnix"`
-	Title        string  `json:"title"`
-	Artist       string  `json:"artist"`
-	Album        string  `json:"album"`
-	AlbumArtist  string  `json:"albumArtist"`
-	Genre        string  `json:"genre"`
-	Year         int     `json:"year"`
-	TrackNumber  int     `json:"trackNumber"`
-	TrackTotal   int     `json:"trackTotal"`
-	DiscNumber   int     `json:"discNumber"`
-	DiscTotal    int     `json:"discTotal"`
-	Composer     string  `json:"composer"`
-	Comment      string  `json:"comment"`
-	DurationMS   int64   `json:"durationMs"`
-	Codec        string  `json:"codec"`
-	SampleRate   int     `json:"sampleRate"`
-	Channels     int     `json:"channels"`
-	BitRate      int64   `json:"bitRate"`
-	BPM          float64 `json:"bpm"`
-	Key          string  `json:"key"`
-	KeyScale     string  `json:"keyScale"`
-	LoudnessI    float64 `json:"loudnessI"`
-	TruePeak     float64 `json:"truePeak"`
-	LRA          float64 `json:"lra"`
-	Threshold    float64 `json:"threshold"`
-	ScanError    string  `json:"scanError"`
+	ID            int64   `json:"id"`
+	Path          string  `json:"path"`
+	FileName      string  `json:"fileName"`
+	Extension     string  `json:"extension"`
+	Size          int64   `json:"size"`
+	ModifiedUnix  int64   `json:"modifiedUnix"`
+	Title         string  `json:"title"`
+	Artist        string  `json:"artist"`
+	Album         string  `json:"album"`
+	AlbumArtist   string  `json:"albumArtist"`
+	Genre         string  `json:"genre"`
+	Year          int     `json:"year"`
+	TrackNumber   int     `json:"trackNumber"`
+	TrackTotal    int     `json:"trackTotal"`
+	DiscNumber    int     `json:"discNumber"`
+	DiscTotal     int     `json:"discTotal"`
+	Composer      string  `json:"composer"`
+	Comment       string  `json:"comment"`
+	Label         string  `json:"label"`
+	CatalogNumber string  `json:"catalogNumber"`
+	ISRC          string  `json:"isrc"`
+	ReleaseDate   string  `json:"releaseDate"`
+	DurationMS    int64   `json:"durationMs"`
+	Codec         string  `json:"codec"`
+	SampleRate    int     `json:"sampleRate"`
+	Channels      int     `json:"channels"`
+	BitRate       int64   `json:"bitRate"`
+	BPM           float64 `json:"bpm"`
+	Key           string  `json:"key"`
+	KeyScale      string  `json:"keyScale"`
+	LoudnessI     float64 `json:"loudnessI"`
+	TruePeak      float64 `json:"truePeak"`
+	LRA           float64 `json:"lra"`
+	Threshold     float64 `json:"threshold"`
+	ScanError     string  `json:"scanError"`
 }
 
 // ScanResult summarizes a completed or cancelled folder scan.
@@ -87,38 +91,46 @@ type LibraryStats struct {
 
 // TagSnapshot is the editable metadata state for one audio file.
 type TagSnapshot struct {
-	Title       string `json:"title"`
-	Artist      string `json:"artist"`
-	Album       string `json:"album"`
-	AlbumArtist string `json:"albumArtist"`
-	Genre       string `json:"genre"`
-	Composer    string `json:"composer"`
-	Comment     string `json:"comment"`
-	Year        int    `json:"year"`
-	TrackNumber int    `json:"trackNumber"`
-	TrackTotal  int    `json:"trackTotal"`
-	DiscNumber  int    `json:"discNumber"`
-	DiscTotal   int    `json:"discTotal"`
-	CoverMIME   string `json:"coverMime"`
-	CoverSize   int    `json:"coverSize"`
+	Title         string `json:"title"`
+	Artist        string `json:"artist"`
+	Album         string `json:"album"`
+	AlbumArtist   string `json:"albumArtist"`
+	Genre         string `json:"genre"`
+	Composer      string `json:"composer"`
+	Comment       string `json:"comment"`
+	Label         string `json:"label"`
+	CatalogNumber string `json:"catalogNumber"`
+	ISRC          string `json:"isrc"`
+	ReleaseDate   string `json:"releaseDate"`
+	Year          int    `json:"year"`
+	TrackNumber   int    `json:"trackNumber"`
+	TrackTotal    int    `json:"trackTotal"`
+	DiscNumber    int    `json:"discNumber"`
+	DiscTotal     int    `json:"discTotal"`
+	CoverMIME     string `json:"coverMime"`
+	CoverSize     int    `json:"coverSize"`
 }
 
 // TagPatch describes a partial metadata edit. Fields lists the values that
 // should actually be changed, which makes empty-string clearing and batch edits unambiguous.
 type TagPatch struct {
-	Fields      []string `json:"fields"`
-	Title       string   `json:"title"`
-	Artist      string   `json:"artist"`
-	Album       string   `json:"album"`
-	AlbumArtist string   `json:"albumArtist"`
-	Genre       string   `json:"genre"`
-	Composer    string   `json:"composer"`
-	Comment     string   `json:"comment"`
-	Year        int      `json:"year"`
-	TrackNumber int      `json:"trackNumber"`
-	TrackTotal  int      `json:"trackTotal"`
-	DiscNumber  int      `json:"discNumber"`
-	DiscTotal   int      `json:"discTotal"`
+	Fields        []string `json:"fields"`
+	Title         string   `json:"title"`
+	Artist        string   `json:"artist"`
+	Album         string   `json:"album"`
+	AlbumArtist   string   `json:"albumArtist"`
+	Genre         string   `json:"genre"`
+	Composer      string   `json:"composer"`
+	Comment       string   `json:"comment"`
+	Label         string   `json:"label"`
+	CatalogNumber string   `json:"catalogNumber"`
+	ISRC          string   `json:"isrc"`
+	ReleaseDate   string   `json:"releaseDate"`
+	Year          int      `json:"year"`
+	TrackNumber   int      `json:"trackNumber"`
+	TrackTotal    int      `json:"trackTotal"`
+	DiscNumber    int      `json:"discNumber"`
+	DiscTotal     int      `json:"discTotal"`
 }
 
 // TagPreview shows the before/after state of a proposed edit.
@@ -200,26 +212,91 @@ type MetadataQuery struct {
 	Artist     string `json:"artist"`
 	Album      string `json:"album"`
 	DurationMS int64  `json:"durationMs"`
+	ISRC       string `json:"isrc"`
+}
+
+// MetadataScore explains how a metadata candidate matched the local track.
+type MetadataScore struct {
+	Title        float64 `json:"title"`
+	Artist       float64 `json:"artist"`
+	Album        float64 `json:"album"`
+	Duration     float64 `json:"duration"`
+	Identifier   float64 `json:"identifier"`
+	Completeness float64 `json:"completeness"`
+	Total        float64 `json:"total"`
 }
 
 // MetadataCandidate is a normalized result from an external metadata provider.
 type MetadataCandidate struct {
+	Source            string        `json:"source"`
+	ExternalID        string        `json:"externalId"`
+	SourceURL         string        `json:"sourceUrl"`
+	Title             string        `json:"title"`
+	Artist            string        `json:"artist"`
+	Album             string        `json:"album"`
+	AlbumArtist       string        `json:"albumArtist"`
+	ReleaseDate       string        `json:"releaseDate"`
+	Year              int           `json:"year"`
+	Genre             string        `json:"genre"`
+	Label             string        `json:"label"`
+	CatalogNumber     string        `json:"catalogNumber"`
+	ISRC              string        `json:"isrc"`
+	TrackNumber       int           `json:"trackNumber"`
+	TrackTotal        int           `json:"trackTotal"`
+	DiscNumber        int           `json:"discNumber"`
+	DiscTotal         int           `json:"discTotal"`
+	ArtworkURL        string        `json:"artworkUrl"`
+	ArtworkWidth      int           `json:"artworkWidth"`
+	ArtworkHeight     int           `json:"artworkHeight"`
+	ArtworkEmbeddable bool          `json:"artworkEmbeddable"`
+	DurationMS        int64         `json:"durationMs"`
+	Confidence        float64       `json:"confidence"`
+	Score             MetadataScore `json:"score"`
+}
+
+// MetadataFieldOption is one source/value choice for the merge editor.
+type MetadataFieldOption struct {
+	Field      string  `json:"field"`
+	Value      string  `json:"value"`
+	Number     int     `json:"number"`
 	Source     string  `json:"source"`
 	ExternalID string  `json:"externalId"`
-	Title      string  `json:"title"`
-	Artist     string  `json:"artist"`
-	Album      string  `json:"album"`
-	Year       int     `json:"year"`
-	Genre      string  `json:"genre"`
-	ArtworkURL string  `json:"artworkUrl"`
-	DurationMS int64   `json:"durationMs"`
 	Confidence float64 `json:"confidence"`
 }
 
-// MetadataLookupResult contains provider results plus non-fatal provider warnings.
+// MetadataLookupResult contains ranked provider results and a cross-provider suggestion.
 type MetadataLookupResult struct {
-	Candidates []MetadataCandidate `json:"candidates"`
-	Warnings   []string            `json:"warnings"`
+	Candidates   []MetadataCandidate   `json:"candidates"`
+	Suggested    MetadataCandidate     `json:"suggested"`
+	FieldOptions []MetadataFieldOption `json:"fieldOptions"`
+	Warnings     []string              `json:"warnings"`
+}
+
+// MetadataEnrichmentOptions controls automatic enrichment for selected tracks.
+type MetadataEnrichmentOptions struct {
+	MinimumConfidence float64 `json:"minimumConfidence"`
+	IncludeArtwork    bool    `json:"includeArtwork"`
+	OnlyMissing       bool    `json:"onlyMissing"`
+}
+
+// MetadataEnrichmentItem reports the enrichment outcome for one track.
+type MetadataEnrichmentItem struct {
+	TrackID    int64   `json:"trackId"`
+	Path       string  `json:"path"`
+	Source     string  `json:"source"`
+	Confidence float64 `json:"confidence"`
+	Applied    bool    `json:"applied"`
+	Skipped    bool    `json:"skipped"`
+	Error      string  `json:"error"`
+}
+
+// MetadataEnrichmentResult summarizes a batch metadata enrichment operation.
+type MetadataEnrichmentResult struct {
+	Processed int                      `json:"processed"`
+	Applied   int                      `json:"applied"`
+	Skipped   int                      `json:"skipped"`
+	Failed    int                      `json:"failed"`
+	Items     []MetadataEnrichmentItem `json:"items"`
 }
 
 // OrganizeRequest controls mp3tag-style template and regex-based renaming.

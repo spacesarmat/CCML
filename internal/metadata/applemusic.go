@@ -68,6 +68,10 @@ func (p *AppleMusicProvider) Search(ctx context.Context, query model.MetadataQue
 						ReleaseDate      string   `json:"releaseDate"`
 						DurationInMillis int64    `json:"durationInMillis"`
 						GenreNames       []string `json:"genreNames"`
+						TrackNumber      int      `json:"trackNumber"`
+						DiscNumber       int      `json:"discNumber"`
+						ISRC             string   `json:"isrc"`
+						URL              string   `json:"url"`
 						Artwork          struct {
 							URL string `json:"url"`
 						} `json:"artwork"`
@@ -89,16 +93,10 @@ func (p *AppleMusicProvider) Search(ctx context.Context, query model.MetadataQue
 			genre = attr.GenreNames[0]
 		}
 		items = append(items, model.MetadataCandidate{
-			Source:     p.Name(),
-			ExternalID: song.ID,
-			Title:      attr.Name,
-			Artist:     attr.ArtistName,
-			Album:      attr.AlbumName,
-			Year:       yearFromDate(attr.ReleaseDate),
-			Genre:      genre,
-			ArtworkURL: artwork,
-			DurationMS: attr.DurationInMillis,
-			Confidence: metadataSimilarity(query, attr.ArtistName, attr.Name, attr.DurationInMillis),
+			Source: p.Name(), ExternalID: song.ID, SourceURL: attr.URL,
+			Title: attr.Name, Artist: attr.ArtistName, Album: attr.AlbumName, ReleaseDate: attr.ReleaseDate,
+			Year: yearFromDate(attr.ReleaseDate), Genre: genre, ISRC: attr.ISRC, TrackNumber: attr.TrackNumber, DiscNumber: attr.DiscNumber,
+			ArtworkURL: artwork, ArtworkWidth: 600, ArtworkHeight: 600, ArtworkEmbeddable: false, DurationMS: attr.DurationInMillis,
 		})
 	}
 	return items, nil

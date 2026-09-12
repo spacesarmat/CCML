@@ -37,6 +37,10 @@ export namespace model {
 	    discTotal: number;
 	    composer: string;
 	    comment: string;
+	    label: string;
+	    catalogNumber: string;
+	    isrc: string;
+	    releaseDate: string;
 	    durationMs: number;
 	    codec: string;
 	    sampleRate: number;
@@ -75,6 +79,10 @@ export namespace model {
 	        this.discTotal = source["discTotal"];
 	        this.composer = source["composer"];
 	        this.comment = source["comment"];
+	        this.label = source["label"];
+	        this.catalogNumber = source["catalogNumber"];
+	        this.isrc = source["isrc"];
+	        this.releaseDate = source["releaseDate"];
 	        this.durationMs = source["durationMs"];
 	        this.codec = source["codec"];
 	        this.sampleRate = source["sampleRate"];
@@ -204,17 +212,55 @@ export namespace model {
 	        this.targetOffset = source["targetOffset"];
 	    }
 	}
+	export class MetadataScore {
+	    title: number;
+	    artist: number;
+	    album: number;
+	    duration: number;
+	    identifier: number;
+	    completeness: number;
+	    total: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetadataScore(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.album = source["album"];
+	        this.duration = source["duration"];
+	        this.identifier = source["identifier"];
+	        this.completeness = source["completeness"];
+	        this.total = source["total"];
+	    }
+	}
 	export class MetadataCandidate {
 	    source: string;
 	    externalId: string;
+	    sourceUrl: string;
 	    title: string;
 	    artist: string;
 	    album: string;
+	    albumArtist: string;
+	    releaseDate: string;
 	    year: number;
 	    genre: string;
+	    label: string;
+	    catalogNumber: string;
+	    isrc: string;
+	    trackNumber: number;
+	    trackTotal: number;
+	    discNumber: number;
+	    discTotal: number;
 	    artworkUrl: string;
+	    artworkWidth: number;
+	    artworkHeight: number;
+	    artworkEmbeddable: boolean;
 	    durationMs: number;
 	    confidence: number;
+	    score: MetadataScore;
 	
 	    static createFrom(source: any = {}) {
 	        return new MetadataCandidate(source);
@@ -224,18 +270,152 @@ export namespace model {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.source = source["source"];
 	        this.externalId = source["externalId"];
+	        this.sourceUrl = source["sourceUrl"];
 	        this.title = source["title"];
 	        this.artist = source["artist"];
 	        this.album = source["album"];
+	        this.albumArtist = source["albumArtist"];
+	        this.releaseDate = source["releaseDate"];
 	        this.year = source["year"];
 	        this.genre = source["genre"];
+	        this.label = source["label"];
+	        this.catalogNumber = source["catalogNumber"];
+	        this.isrc = source["isrc"];
+	        this.trackNumber = source["trackNumber"];
+	        this.trackTotal = source["trackTotal"];
+	        this.discNumber = source["discNumber"];
+	        this.discTotal = source["discTotal"];
 	        this.artworkUrl = source["artworkUrl"];
+	        this.artworkWidth = source["artworkWidth"];
+	        this.artworkHeight = source["artworkHeight"];
+	        this.artworkEmbeddable = source["artworkEmbeddable"];
 	        this.durationMs = source["durationMs"];
+	        this.confidence = source["confidence"];
+	        this.score = this.convertValues(source["score"], MetadataScore);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MetadataEnrichmentItem {
+	    trackId: number;
+	    path: string;
+	    source: string;
+	    confidence: number;
+	    applied: boolean;
+	    skipped: boolean;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetadataEnrichmentItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.trackId = source["trackId"];
+	        this.path = source["path"];
+	        this.source = source["source"];
+	        this.confidence = source["confidence"];
+	        this.applied = source["applied"];
+	        this.skipped = source["skipped"];
+	        this.error = source["error"];
+	    }
+	}
+	export class MetadataEnrichmentOptions {
+	    minimumConfidence: number;
+	    includeArtwork: boolean;
+	    onlyMissing: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetadataEnrichmentOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.minimumConfidence = source["minimumConfidence"];
+	        this.includeArtwork = source["includeArtwork"];
+	        this.onlyMissing = source["onlyMissing"];
+	    }
+	}
+	export class MetadataEnrichmentResult {
+	    processed: number;
+	    applied: number;
+	    skipped: number;
+	    failed: number;
+	    items: MetadataEnrichmentItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MetadataEnrichmentResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.processed = source["processed"];
+	        this.applied = source["applied"];
+	        this.skipped = source["skipped"];
+	        this.failed = source["failed"];
+	        this.items = this.convertValues(source["items"], MetadataEnrichmentItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MetadataFieldOption {
+	    field: string;
+	    value: string;
+	    number: number;
+	    source: string;
+	    externalId: string;
+	    confidence: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetadataFieldOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.field = source["field"];
+	        this.value = source["value"];
+	        this.number = source["number"];
+	        this.source = source["source"];
+	        this.externalId = source["externalId"];
 	        this.confidence = source["confidence"];
 	    }
 	}
 	export class MetadataLookupResult {
 	    candidates: MetadataCandidate[];
+	    suggested: MetadataCandidate;
+	    fieldOptions: MetadataFieldOption[];
 	    warnings: string[];
 	
 	    static createFrom(source: any = {}) {
@@ -245,6 +425,8 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.candidates = this.convertValues(source["candidates"], MetadataCandidate);
+	        this.suggested = this.convertValues(source["suggested"], MetadataCandidate);
+	        this.fieldOptions = this.convertValues(source["fieldOptions"], MetadataFieldOption);
 	        this.warnings = source["warnings"];
 	    }
 	
@@ -266,6 +448,7 @@ export namespace model {
 		    return a;
 		}
 	}
+	
 	export class OrganizeRequest {
 	    rootDir: string;
 	    template: string;
@@ -463,6 +646,10 @@ export namespace model {
 	    genre: string;
 	    composer: string;
 	    comment: string;
+	    label: string;
+	    catalogNumber: string;
+	    isrc: string;
+	    releaseDate: string;
 	    year: number;
 	    trackNumber: number;
 	    trackTotal: number;
@@ -483,6 +670,10 @@ export namespace model {
 	        this.genre = source["genre"];
 	        this.composer = source["composer"];
 	        this.comment = source["comment"];
+	        this.label = source["label"];
+	        this.catalogNumber = source["catalogNumber"];
+	        this.isrc = source["isrc"];
+	        this.releaseDate = source["releaseDate"];
 	        this.year = source["year"];
 	        this.trackNumber = source["trackNumber"];
 	        this.trackTotal = source["trackTotal"];
@@ -498,6 +689,10 @@ export namespace model {
 	    genre: string;
 	    composer: string;
 	    comment: string;
+	    label: string;
+	    catalogNumber: string;
+	    isrc: string;
+	    releaseDate: string;
 	    year: number;
 	    trackNumber: number;
 	    trackTotal: number;
@@ -519,6 +714,10 @@ export namespace model {
 	        this.genre = source["genre"];
 	        this.composer = source["composer"];
 	        this.comment = source["comment"];
+	        this.label = source["label"];
+	        this.catalogNumber = source["catalogNumber"];
+	        this.isrc = source["isrc"];
+	        this.releaseDate = source["releaseDate"];
 	        this.year = source["year"];
 	        this.trackNumber = source["trackNumber"];
 	        this.trackTotal = source["trackTotal"];

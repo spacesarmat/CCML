@@ -45,10 +45,13 @@ func (p *DeezerProvider) Search(ctx context.Context, query model.MetadataQuery) 
 
 	var payload struct {
 		Data []struct {
-			ID       int64  `json:"id"`
-			Title    string `json:"title"`
-			Duration int64  `json:"duration"`
-			Artist   struct {
+			ID            int64  `json:"id"`
+			Title         string `json:"title"`
+			Duration      int64  `json:"duration"`
+			TrackPosition int    `json:"track_position"`
+			DiskNumber    int    `json:"disk_number"`
+			Link          string `json:"link"`
+			Artist        struct {
 				Name string `json:"name"`
 			} `json:"artist"`
 			Album struct {
@@ -64,14 +67,11 @@ func (p *DeezerProvider) Search(ctx context.Context, query model.MetadataQuery) 
 	for _, track := range payload.Data {
 		durationMS := track.Duration * 1000
 		items = append(items, model.MetadataCandidate{
-			Source:     p.Name(),
-			ExternalID: strconv.FormatInt(track.ID, 10),
-			Title:      track.Title,
-			Artist:     track.Artist.Name,
-			Album:      track.Album.Title,
-			ArtworkURL: track.Album.CoverXL,
+			Source: p.Name(), ExternalID: strconv.FormatInt(track.ID, 10), SourceURL: track.Link,
+			Title: track.Title, Artist: track.Artist.Name, Album: track.Album.Title,
+			TrackNumber: track.TrackPosition, DiscNumber: track.DiskNumber,
+			ArtworkURL: track.Album.CoverXL, ArtworkWidth: 1000, ArtworkHeight: 1000, ArtworkEmbeddable: strings.TrimSpace(track.Album.CoverXL) != "",
 			DurationMS: durationMS,
-			Confidence: metadataSimilarity(query, track.Artist.Name, track.Title, durationMS),
 		})
 	}
 	return items, nil

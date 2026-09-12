@@ -17,10 +17,12 @@ func (s *Store) UpdateTrackTags(ctx context.Context, id int64, tags model.TagSna
 UPDATE tracks SET
     title=?, artist=?, album=?, album_artist=?, genre=?, year=?,
     track_number=?, track_total=?, disc_number=?, disc_total=?, composer=?, comment=?,
+    label=?, catalog_number=?, isrc=?, release_date=?,
     size=?, modified_unix=?, updated_at=?
 WHERE id=?`,
 		tags.Title, tags.Artist, tags.Album, tags.AlbumArtist, tags.Genre, tags.Year,
 		tags.TrackNumber, tags.TrackTotal, tags.DiscNumber, tags.DiscTotal, tags.Composer, tags.Comment,
+		tags.Label, tags.CatalogNumber, tags.ISRC, tags.ReleaseDate,
 		size, modifiedUnix, time.Now().UTC().Format(time.RFC3339Nano), id,
 	)
 	if err != nil {

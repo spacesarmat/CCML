@@ -1,0 +1,12 @@
+CCML Stage 4 - Metadata Merge & Enrichment
+
+Apply this archive over your existing CCML project root.
+Then run:
+  go mod tidy
+  go test ./...
+  cd frontend
+  npm run build
+  cd ..
+  wails dev
+
+The archive does not contain .git, node_modules, FFmpeg binaries, or the user library database.

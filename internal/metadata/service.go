@@ -73,5 +73,8 @@ func (s *Service) Search(ctx context.Context, query model.MetadataQuery) (model.
 	if failed == len(s.providers) {
 		return result, fmt.Errorf("all metadata providers failed")
 	}
+	result.Candidates = rankCandidates(query, result.Candidates)
+	result.Suggested = buildSuggested(result.Candidates)
+	result.FieldOptions = buildFieldOptions(result.Candidates)
 	return result, nil
 }

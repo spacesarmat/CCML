@@ -454,12 +454,95 @@ func (a *App) LookupMetadata(trackID int64) (model.MetadataLookupResult, error) 
 	if err != nil {
 		return model.MetadataLookupResult{}, err
 	}
+	tags, tagErr := a.tagEditor.Read(a.context(), trackID)
+	isrc := track.ISRC
+	if tagErr == nil && strings.TrimSpace(tags.ISRC) != "" {
+		isrc = tags.ISRC
+	}
 	return a.metadata.Search(a.context(), model.MetadataQuery{
-		Title:      track.Title,
-		Artist:     track.Artist,
-		Album:      track.Album,
-		DurationMS: track.DurationMS,
+		Title: track.Title, Artist: track.Artist, Album: track.Album,
+		DurationMS: track.DurationMS, ISRC: isrc,
 	})
+}
+
+// EnrichMetadata automatically looks up and applies the best high-confidence
+// metadata match for each selected track. Failures are isolated per track.
+func (a *App) EnrichMetadata(trackIDs []int64, opts model.MetadataEnrichmentOptions) (model.MetadataEnrichmentResult, error) {
+	if len(trackIDs) == 0 {
+		return model.MetadataEnrichmentResult{}, errors.New("no tracks selected")
+	}
+	if len(trackIDs) > 100 {
+		return model.MetadataEnrichmentResult{}, fmt.Errorf("metadata enrichment is limited to 100 tracks per batch")
+	}
+	if opts.MinimumConfidence <= 0 {
+		opts.MinimumConfidence = 0.86
+	}
+	if opts.MinimumConfidence < 0.5 || opts.MinimumConfidence > 1 {
+		return model.MetadataEnrichmentResult{}, fmt.Errorf("minimum confidence must be between 0.5 and 1.0")
+	}
+
+	result := model.MetadataEnrichmentResult{Items: make([]model.MetadataEnrichmentItem, 0, len(trackIDs))}
+	for _, trackID := range trackIDs {
+		if err := a.context().Err(); err != nil {
+			return result, err
+		}
+		item := model.MetadataEnrichmentItem{TrackID: trackID}
+		track, err := a.store.TrackByID(a.context(), trackID)
+		if err != nil {
+			item.Error = err.Error()
+			result.Failed++
+			result.Processed++
+			result.Items = append(result.Items, item)
+			continue
+		}
+		item.Path = track.Path
+		tags, tagErr := a.tagEditor.Read(a.context(), trackID)
+		isrc := track.ISRC
+		if tagErr == nil && strings.TrimSpace(tags.ISRC) != "" {
+			isrc = tags.ISRC
+		}
+		lookup, err := a.metadata.Search(a.context(), model.MetadataQuery{
+			Title: track.Title, Artist: track.Artist, Album: track.Album, DurationMS: track.DurationMS, ISRC: isrc,
+		})
+		if err != nil || len(lookup.Candidates) == 0 {
+			if err != nil {
+				item.Error = err.Error()
+				result.Failed++
+			} else {
+				item.Skipped = true
+				result.Skipped++
+			}
+			result.Processed++
+			result.Items = append(result.Items, item)
+			continue
+		}
+		candidate := lookup.Suggested
+		if candidate.Confidence == 0 {
+			candidate = lookup.Candidates[0]
+		}
+		item.Source, item.Confidence = candidate.Source, candidate.Confidence
+		if candidate.Confidence < opts.MinimumConfidence {
+			item.Skipped = true
+			result.Skipped++
+			result.Processed++
+			result.Items = append(result.Items, item)
+			continue
+		}
+		applyResult, err := a.tagEditor.ApplyMetadataCandidateWithPolicy(a.context(), trackID, candidate, opts.IncludeArtwork, opts.OnlyMissing)
+		if err != nil {
+			item.Error = err.Error()
+			result.Failed++
+		} else if applyResult.Changed > 0 {
+			item.Applied = true
+			result.Applied++
+		} else {
+			item.Skipped = true
+			result.Skipped++
+		}
+		result.Processed++
+		result.Items = append(result.Items, item)
+	}
+	return result, nil
 }
 
 // PreviewRename renders a safe target path from track metadata and a template.

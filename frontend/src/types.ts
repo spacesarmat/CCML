@@ -17,6 +17,10 @@ export type Track = {
   discTotal: number
   composer: string
   comment: string
+  label: string
+  catalogNumber: string
+  isrc: string
+  releaseDate: string
   durationMs: number
   codec: string
   sampleRate: number
@@ -83,6 +87,10 @@ export type TagSnapshot = {
   genre: string
   composer: string
   comment: string
+  label: string
+  catalogNumber: string
+  isrc: string
+  releaseDate: string
   year: number
   trackNumber: number
   trackTotal: number
@@ -101,6 +109,10 @@ export type TagPatch = {
   genre: string
   composer: string
   comment: string
+  label: string
+  catalogNumber: string
+  isrc: string
+  releaseDate: string
   year: number
   trackNumber: number
   trackTotal: number
@@ -173,22 +185,81 @@ export type BPMKey = {
   strength: number
 }
 
+export type MetadataScore = {
+  title: number
+  artist: number
+  album: number
+  duration: number
+  identifier: number
+  completeness: number
+  total: number
+}
+
 export type MetadataCandidate = {
   source: string
   externalId: string
+  sourceUrl: string
   title: string
   artist: string
   album: string
+  albumArtist: string
+  releaseDate: string
   year: number
   genre: string
+  label: string
+  catalogNumber: string
+  isrc: string
+  trackNumber: number
+  trackTotal: number
+  discNumber: number
+  discTotal: number
   artworkUrl: string
+  artworkWidth: number
+  artworkHeight: number
+  artworkEmbeddable: boolean
   durationMs: number
+  confidence: number
+  score: MetadataScore
+}
+
+export type MetadataFieldOption = {
+  field: string
+  value: string
+  number: number
+  source: string
+  externalId: string
   confidence: number
 }
 
 export type MetadataLookupResult = {
   candidates: MetadataCandidate[] | null
+  suggested: MetadataCandidate
+  fieldOptions: MetadataFieldOption[] | null
   warnings: string[] | null
+}
+
+export type MetadataEnrichmentOptions = {
+  minimumConfidence: number
+  includeArtwork: boolean
+  onlyMissing: boolean
+}
+
+export type MetadataEnrichmentItem = {
+  trackId: number
+  path: string
+  source: string
+  confidence: number
+  applied: boolean
+  skipped: boolean
+  error: string
+}
+
+export type MetadataEnrichmentResult = {
+  processed: number
+  applied: number
+  skipped: number
+  failed: number
+  items: MetadataEnrichmentItem[] | null
 }
 
 export type OrganizeRequest = {

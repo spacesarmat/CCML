@@ -14,6 +14,8 @@ export function CancelScan():Promise<boolean>;
 
 export function Close():Promise<void>;
 
+export function EnrichMetadata(arg1:Array<number>,arg2:model.MetadataEnrichmentOptions):Promise<model.MetadataEnrichmentResult>;
+
 export function FindDuplicates():Promise<Array<model.DuplicateGroup>>;
 
 export function LibraryStatistics():Promise<model.LibraryStats>;

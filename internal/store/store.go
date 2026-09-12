@@ -79,6 +79,10 @@ CREATE TABLE IF NOT EXISTS tracks (
     disc_total INTEGER NOT NULL DEFAULT 0,
     composer TEXT NOT NULL DEFAULT '',
     comment TEXT NOT NULL DEFAULT '',
+    label TEXT NOT NULL DEFAULT '',
+    catalog_number TEXT NOT NULL DEFAULT '',
+    isrc TEXT NOT NULL DEFAULT '',
+    release_date TEXT NOT NULL DEFAULT '',
     duration_ms INTEGER NOT NULL DEFAULT 0,
     codec TEXT NOT NULL DEFAULT '',
     sample_rate INTEGER NOT NULL DEFAULT 0,
@@ -151,6 +155,10 @@ CREATE INDEX IF NOT EXISTS idx_tag_change_items_set ON tag_change_items(change_s
 		{table: "tracks", name: "disc_total", ddl: "INTEGER NOT NULL DEFAULT 0"},
 		{table: "tracks", name: "composer", ddl: "TEXT NOT NULL DEFAULT ''"},
 		{table: "tracks", name: "comment", ddl: "TEXT NOT NULL DEFAULT ''"},
+		{table: "tracks", name: "label", ddl: "TEXT NOT NULL DEFAULT ''"},
+		{table: "tracks", name: "catalog_number", ddl: "TEXT NOT NULL DEFAULT ''"},
+		{table: "tracks", name: "isrc", ddl: "TEXT NOT NULL DEFAULT ''"},
+		{table: "tracks", name: "release_date", ddl: "TEXT NOT NULL DEFAULT ''"},
 		{table: "tag_change_items", name: "cover_changed", ddl: "INTEGER NOT NULL DEFAULT 0"},
 	} {
 		if err := ensureColumn(db, column.table, column.name, column.ddl); err != nil {
@@ -159,7 +167,7 @@ CREATE INDEX IF NOT EXISTS idx_tag_change_items_set ON tag_change_items(change_s
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?)`, now, now, now); err != nil {
+	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?), (4, ?)`, now, now, now, now); err != nil {
 		return fmt.Errorf("record sqlite schema version: %w", err)
 	}
 	return nil
@@ -345,7 +353,7 @@ func ensureAffected(res sql.Result, id int64) error {
 }
 
 const trackColumns = `id, path, file_name, extension, size, modified_unix,
- title, artist, album, album_artist, genre, year, track_number, track_total, disc_number, disc_total, composer, comment,
+ title, artist, album, album_artist, genre, year, track_number, track_total, disc_number, disc_total, composer, comment, label, catalog_number, isrc, release_date,
  duration_ms, codec, sample_rate, channels, bit_rate,
  bpm, musical_key, key_scale, loudness_i, true_peak, lra, threshold, scan_error`
 
@@ -357,7 +365,7 @@ func scanTrack(row rowScanner) (model.Track, error) {
 	var t model.Track
 	err := row.Scan(
 		&t.ID, &t.Path, &t.FileName, &t.Extension, &t.Size, &t.ModifiedUnix,
-		&t.Title, &t.Artist, &t.Album, &t.AlbumArtist, &t.Genre, &t.Year, &t.TrackNumber, &t.TrackTotal, &t.DiscNumber, &t.DiscTotal, &t.Composer, &t.Comment,
+		&t.Title, &t.Artist, &t.Album, &t.AlbumArtist, &t.Genre, &t.Year, &t.TrackNumber, &t.TrackTotal, &t.DiscNumber, &t.DiscTotal, &t.Composer, &t.Comment, &t.Label, &t.CatalogNumber, &t.ISRC, &t.ReleaseDate,
 		&t.DurationMS, &t.Codec, &t.SampleRate, &t.Channels, &t.BitRate,
 		&t.BPM, &t.Key, &t.KeyScale, &t.LoudnessI, &t.TruePeak, &t.LRA, &t.Threshold, &t.ScanError,
 	)

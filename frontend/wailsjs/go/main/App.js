@@ -26,6 +26,10 @@ export function Close() {
   return window['go']['main']['App']['Close']();
 }
 
+export function EnrichMetadata(arg1, arg2) {
+  return window['go']['main']['App']['EnrichMetadata'](arg1, arg2);
+}
+
 export function FindDuplicates() {
   return window['go']['main']['App']['FindDuplicates']();
 }

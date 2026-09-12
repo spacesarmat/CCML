@@ -44,10 +44,15 @@ func TestTagHistoryLifecycle(t *testing.T) {
 	before := model.TagSnapshot{
 		Title: "Before", Artist: "Artist", TrackNumber: 1, TrackTotal: 10,
 		DiscNumber: 1, DiscTotal: 2, Composer: "Composer", Comment: "Before comment",
+		Label: "Label A", CatalogNumber: "CAT-001", ISRC: "USAAA2000001", ReleaseDate: "2020-01-02",
 	}
 	after := before
 	after.Title = "After"
 	after.Comment = "After comment"
+	after.Label = "Label B"
+	after.CatalogNumber = "CAT-002"
+	after.ISRC = "USAAA2000002"
+	after.ReleaseDate = "2021-02-03"
 
 	if err := db.UpdateTrackTags(ctx, trackID, after, 120, 20); err != nil {
 		t.Fatalf("UpdateTrackTags() error = %v", err)
@@ -56,7 +61,8 @@ func TestTagHistoryLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TrackByID() error = %v", err)
 	}
-	if track.Title != "After" || track.Comment != "After comment" || track.TrackTotal != 10 || track.DiscTotal != 2 {
+	if track.Title != "After" || track.Comment != "After comment" || track.TrackTotal != 10 || track.DiscTotal != 2 ||
+		track.Label != "Label B" || track.CatalogNumber != "CAT-002" || track.ISRC != "USAAA2000002" || track.ReleaseDate != "2021-02-03" {
 		t.Fatalf("TrackByID() = %+v, want updated tag fields", track)
 	}
 

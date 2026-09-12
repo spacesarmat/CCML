@@ -123,9 +123,25 @@ func (s *Service) RemoveCoverArt(ctx context.Context, trackIDs []int64) (model.T
 
 // ApplyMetadataCandidate writes a selected provider candidate and optionally its artwork.
 func (s *Service) ApplyMetadataCandidate(ctx context.Context, trackID int64, candidate model.MetadataCandidate, includeArtwork bool) (model.TagApplyResult, error) {
+	return s.ApplyMetadataCandidateWithPolicy(ctx, trackID, candidate, includeArtwork, false)
+}
+
+// ApplyMetadataCandidateWithPolicy applies provider metadata and can restrict writes to currently empty fields.
+func (s *Service) ApplyMetadataCandidateWithPolicy(ctx context.Context, trackID int64, candidate model.MetadataCandidate, includeArtwork, onlyMissing bool) (model.TagApplyResult, error) {
 	patch := patchFromCandidate(candidate)
+	if onlyMissing {
+		track, err := s.store.TrackByID(ctx, trackID)
+		if err != nil {
+			return model.TagApplyResult{}, err
+		}
+		before, _, err := readState(track.Path, false)
+		if err != nil {
+			return model.TagApplyResult{}, err
+		}
+		patch = filterMissingPatch(before, patch)
+	}
 	var cover coverMutation
-	if includeArtwork && strings.TrimSpace(candidate.ArtworkURL) != "" {
+	if includeArtwork && candidate.ArtworkEmbeddable && strings.TrimSpace(candidate.ArtworkURL) != "" {
 		data, mime, err := s.downloadCover(ctx, candidate.ArtworkURL)
 		if err != nil {
 			return model.TagApplyResult{}, err
@@ -333,18 +349,22 @@ func readState(path string, includeCover bool) (state model.TagSnapshot, cover c
 
 func snapshotFromFile(f *mtag.File) model.TagSnapshot {
 	state := model.TagSnapshot{
-		Title:       f.Title(),
-		Artist:      f.Artist(),
-		Album:       f.Album(),
-		AlbumArtist: f.AlbumArtist(),
-		Genre:       f.Genre(),
-		Composer:    f.Composer(),
-		Comment:     f.Comment(),
-		Year:        f.Year(),
-		TrackNumber: f.Track(),
-		TrackTotal:  f.TrackTotal(),
-		DiscNumber:  f.Disc(),
-		DiscTotal:   f.DiscTotal(),
+		Title:         f.Title(),
+		Artist:        f.Artist(),
+		Album:         f.Album(),
+		AlbumArtist:   f.AlbumArtist(),
+		Genre:         f.Genre(),
+		Composer:      f.Composer(),
+		Comment:       f.Comment(),
+		Label:         f.Publisher(),
+		CatalogNumber: f.CustomValue("CATALOGNUMBER"),
+		ISRC:          f.CustomValue("ISRC"),
+		ReleaseDate:   f.CustomValue("DATE"),
+		Year:          f.Year(),
+		TrackNumber:   f.Track(),
+		TrackTotal:    f.TrackTotal(),
+		DiscNumber:    f.Disc(),
+		DiscTotal:     f.DiscTotal(),
 	}
 	for _, image := range f.ImageSummaries() {
 		if image.Type == mtag.PictureCoverFront {
@@ -383,7 +403,14 @@ func writeState(ctx context.Context, path string, state model.TagSnapshot, cover
 	f.SetGenre(state.Genre)
 	f.SetComposer(state.Composer)
 	f.SetComment(state.Comment)
+	f.SetPublisher(state.Label)
+	f.SetCustomValues("CATALOGNUMBER", singleOrNoneString(state.CatalogNumber)...)
+	f.SetCustomValues("ISRC", singleOrNoneString(state.ISRC)...)
+	// Set the year before the full release date. On Vorbis-based formats
+	// (FLAC/OGG), SetYear writes DATE; writing DATE afterwards preserves
+	// the more precise YYYY-MM-DD value when one is available.
 	f.SetYear(state.Year)
+	f.SetCustomValues("DATE", singleOrNoneString(state.ReleaseDate)...)
 	f.SetTrack(state.TrackNumber, state.TrackTotal)
 	f.SetDisc(state.DiscNumber, state.DiscTotal)
 
@@ -435,26 +462,76 @@ func (s *Service) backupCover(changeSetID, trackID int64, data []byte) (string, 
 
 func patchFromCandidate(candidate model.MetadataCandidate) model.TagPatch {
 	patch := model.TagPatch{}
-	if value := strings.TrimSpace(candidate.Title); value != "" {
-		patch.Fields = append(patch.Fields, "title")
-		patch.Title = value
+	addString := func(field, value string, target *string) {
+		if value = strings.TrimSpace(value); value != "" {
+			patch.Fields = append(patch.Fields, field)
+			*target = value
+		}
 	}
-	if value := strings.TrimSpace(candidate.Artist); value != "" {
-		patch.Fields = append(patch.Fields, "artist")
-		patch.Artist = value
+	addInt := func(field string, value int, target *int) {
+		if value > 0 {
+			patch.Fields = append(patch.Fields, field)
+			*target = value
+		}
 	}
-	if value := strings.TrimSpace(candidate.Album); value != "" {
-		patch.Fields = append(patch.Fields, "album")
-		patch.Album = value
+	addString("title", candidate.Title, &patch.Title)
+	addString("artist", candidate.Artist, &patch.Artist)
+	addString("album", candidate.Album, &patch.Album)
+	addString("albumArtist", candidate.AlbumArtist, &patch.AlbumArtist)
+	addString("genre", candidate.Genre, &patch.Genre)
+	addString("label", candidate.Label, &patch.Label)
+	addString("catalogNumber", candidate.CatalogNumber, &patch.CatalogNumber)
+	addString("isrc", candidate.ISRC, &patch.ISRC)
+	addString("releaseDate", candidate.ReleaseDate, &patch.ReleaseDate)
+	addInt("year", candidate.Year, &patch.Year)
+	addInt("trackNumber", candidate.TrackNumber, &patch.TrackNumber)
+	addInt("trackTotal", candidate.TrackTotal, &patch.TrackTotal)
+	addInt("discNumber", candidate.DiscNumber, &patch.DiscNumber)
+	addInt("discTotal", candidate.DiscTotal, &patch.DiscTotal)
+	return patch
+}
+
+func filterMissingPatch(before model.TagSnapshot, patch model.TagPatch) model.TagPatch {
+	keep := make([]string, 0, len(patch.Fields))
+	for _, field := range patch.Fields {
+		empty := false
+		switch field {
+		case "title":
+			empty = strings.TrimSpace(before.Title) == ""
+		case "artist":
+			empty = strings.TrimSpace(before.Artist) == ""
+		case "album":
+			empty = strings.TrimSpace(before.Album) == ""
+		case "albumArtist":
+			empty = strings.TrimSpace(before.AlbumArtist) == ""
+		case "genre":
+			empty = strings.TrimSpace(before.Genre) == ""
+		case "label":
+			empty = strings.TrimSpace(before.Label) == ""
+		case "catalogNumber":
+			empty = strings.TrimSpace(before.CatalogNumber) == ""
+		case "isrc":
+			empty = strings.TrimSpace(before.ISRC) == ""
+		case "releaseDate":
+			empty = strings.TrimSpace(before.ReleaseDate) == ""
+		case "year":
+			empty = before.Year == 0
+		case "trackNumber":
+			empty = before.TrackNumber == 0
+		case "trackTotal":
+			empty = before.TrackTotal == 0
+		case "discNumber":
+			empty = before.DiscNumber == 0
+		case "discTotal":
+			empty = before.DiscTotal == 0
+		default:
+			empty = true
+		}
+		if empty {
+			keep = append(keep, field)
+		}
 	}
-	if value := strings.TrimSpace(candidate.Genre); value != "" {
-		patch.Fields = append(patch.Fields, "genre")
-		patch.Genre = value
-	}
-	if candidate.Year > 0 {
-		patch.Fields = append(patch.Fields, "year")
-		patch.Year = candidate.Year
-	}
+	patch.Fields = keep
 	return patch
 }
 
@@ -476,6 +553,14 @@ func applyPatch(before model.TagSnapshot, patch model.TagPatch) model.TagSnapsho
 			after.Composer = patch.Composer
 		case "comment":
 			after.Comment = patch.Comment
+		case "label":
+			after.Label = patch.Label
+		case "catalogNumber":
+			after.CatalogNumber = patch.CatalogNumber
+		case "isrc":
+			after.ISRC = patch.ISRC
+		case "releaseDate":
+			after.ReleaseDate = patch.ReleaseDate
 		case "year":
 			after.Year = patch.Year
 		case "trackNumber":
@@ -505,6 +590,7 @@ func validateRequest(trackIDs []int64, patch model.TagPatch) ([]int64, error) {
 	}
 	allowed := map[string]struct{}{
 		"title": {}, "artist": {}, "album": {}, "albumArtist": {}, "genre": {}, "composer": {}, "comment": {},
+		"label": {}, "catalogNumber": {}, "isrc": {}, "releaseDate": {},
 		"year": {}, "trackNumber": {}, "trackTotal": {}, "discNumber": {}, "discTotal": {},
 	}
 	seen := make(map[string]struct{}, len(patch.Fields))
@@ -646,6 +732,14 @@ func supportedImageMIME(data []byte) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported cover image type %q; use JPEG or PNG", mime)
 	}
+}
+
+func singleOrNoneString(value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return []string{value}
 }
 
 func appendLimited(values []string, value string) []string {

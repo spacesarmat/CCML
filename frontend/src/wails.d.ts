@@ -5,6 +5,8 @@ import type {
   LibraryRoot,
   LibraryStats,
   Loudness,
+  MetadataEnrichmentOptions,
+  MetadataEnrichmentResult,
   MetadataLookupResult,
   OrganizeRequest,
   ProcessingOptions,
@@ -48,6 +50,7 @@ declare global {
           WriteReplayGain(trackID: number, targetLUFS: number): Promise<Loudness>
           AnalyzeBPMKey(trackID: number): Promise<BPMKey>
           LookupMetadata(trackID: number): Promise<MetadataLookupResult>
+          EnrichMetadata(trackIDs: number[], opts: MetadataEnrichmentOptions): Promise<MetadataEnrichmentResult>
           PreviewRename(trackID: number, req: OrganizeRequest): Promise<string>
           OrganizeTrack(trackID: number, req: OrganizeRequest): Promise<string>
         }

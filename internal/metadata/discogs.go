@@ -58,12 +58,15 @@ func (p *DiscogsProvider) Search(ctx context.Context, query model.MetadataQuery)
 
 	var payload struct {
 		Results []struct {
-			ID         int64    `json:"id"`
-			Title      string   `json:"title"`
-			Year       int      `json:"year"`
-			Genre      []string `json:"genre"`
-			Style      []string `json:"style"`
-			CoverImage string   `json:"cover_image"`
+			ID          int64    `json:"id"`
+			Title       string   `json:"title"`
+			Year        int      `json:"year"`
+			Genre       []string `json:"genre"`
+			Style       []string `json:"style"`
+			Label       []string `json:"label"`
+			CatalogNum  string   `json:"catno"`
+			CoverImage  string   `json:"cover_image"`
+			ResourceURL string   `json:"resource_url"`
 		} `json:"results"`
 	}
 	if err := getJSON(ctx, p.client, req, p.Name(), &payload); err != nil {
@@ -79,16 +82,16 @@ func (p *DiscogsProvider) Search(ctx context.Context, query model.MetadataQuery)
 		} else if len(release.Style) > 0 {
 			genre = release.Style[0]
 		}
+		label := ""
+		if len(release.Label) > 0 {
+			label = release.Label[0]
+		}
 		items = append(items, model.MetadataCandidate{
-			Source:     p.Name(),
-			ExternalID: strconv.FormatInt(release.ID, 10),
-			Title:      query.Title,
-			Artist:     artist,
-			Album:      album,
-			Year:       release.Year,
-			Genre:      genre,
-			ArtworkURL: release.CoverImage,
-			Confidence: metadataSimilarity(query, artist, query.Title, 0),
+			Source: p.Name(), ExternalID: strconv.FormatInt(release.ID, 10),
+			SourceURL: "https://www.discogs.com/release/" + strconv.FormatInt(release.ID, 10),
+			Title:     query.Title, Artist: artist, Album: album, Year: release.Year, Genre: genre,
+			Label: label, CatalogNumber: release.CatalogNum, ArtworkURL: release.CoverImage,
+			ArtworkEmbeddable: strings.TrimSpace(release.CoverImage) != "",
 		})
 	}
 	return items, nil

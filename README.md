@@ -267,3 +267,20 @@ wails dev
 ```
 
 `wails dev` regenerates Wails bindings for `ReadTrackTags`, `PreviewTagEdits`, `ApplyTagEdits`, cover-art actions, metadata application and Undo/history methods.
+
+## Stage 4 — Ranked metadata merge and enrichment
+
+Stage 4 adds a provider-agnostic metadata decision layer instead of applying the first search result blindly.
+
+- candidates from configured providers are re-scored with one CCML algorithm;
+- title, artist, album, duration, ISRC and metadata completeness participate in the score;
+- duplicate provider results are collapsed and ranked;
+- the UI can merge individual fields from different providers;
+- supported extended fields now include label, catalog number, ISRC and release date;
+- MusicBrainz results can use Cover Art Archive artwork when available;
+- Spotify and Apple Music artwork is displayed for reference but is not automatically embedded by CCML;
+- selected tracks can be batch-enriched with a minimum-confidence threshold;
+- `Fill missing fields only` is enabled by default to protect existing curated tags;
+- metadata writes continue to use the Stage 3 Undo history.
+
+The default automatic-enrichment confidence threshold is `0.86`. Lower it only when reviewing the library carefully.

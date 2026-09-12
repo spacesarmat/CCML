@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { EventsOn } from '../wailsjs/runtime/runtime'
 import TagEditor from './TagEditor'
+import MetadataMerge from './MetadataMerge'
 import {
   detectInitialLanguage,
   localeFor,
@@ -15,6 +16,8 @@ import type {
   LibraryRoot,
   LibraryStats,
   MetadataCandidate,
+  MetadataEnrichmentOptions,
+  MetadataLookupResult,
   OrganizeRequest,
   ProcessingOptions,
   ScanProgress,
@@ -58,6 +61,8 @@ function App() {
   const [previewPath, setPreviewPath] = useState('')
   const [metadata, setMetadata] = useState<MetadataCandidate[]>([])
   const [metadataWarnings, setMetadataWarnings] = useState<string[]>([])
+  const [metadataLookup, setMetadataLookup] = useState<MetadataLookupResult | null>(null)
+  const [enrichment, setEnrichment] = useState<MetadataEnrichmentOptions>({minimumConfidence: 0.86, includeArtwork: true, onlyMissing: true})
   const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([])
   const [roots, setRoots] = useState<LibraryRoot[]>([])
   const [stats, setStats] = useState<LibraryStats | null>(null)
@@ -85,6 +90,12 @@ function App() {
     document.documentElement.lang = language
     saveLanguage(language)
   }, [language])
+
+  useEffect(() => {
+    setMetadata([])
+    setMetadataWarnings([])
+    setMetadataLookup(null)
+  }, [selected?.id])
 
   useEffect(() => {
     const offProgress = EventsOn('library:scan:progress', (progress: ScanProgress) => {
@@ -345,9 +356,20 @@ function App() {
     if (!selected) return
     const result = await run(t('message.searchingMetadata'), () => backend().LookupMetadata(selected.id))
     if (result) {
+      setMetadataLookup(result)
       setMetadata(result.candidates ?? [])
       setMetadataWarnings(result.warnings ?? [])
       setMessage(t('message.metadataCandidatesFound', {count: result.candidates?.length ?? 0}))
+    }
+  }
+
+  async function enrichSelected() {
+    if (selectedIDs.length === 0) return
+    if (selectedIDs.length > 1 && !window.confirm(t('metadata.enrichConfirm', {count: selectedIDs.length}))) return
+    const result = await run(t('message.enrichingMetadata'), () => backend().EnrichMetadata(selectedIDs, enrichment))
+    if (result) {
+      await tagDataChanged()
+      setMessage(t('message.enrichmentComplete', {applied: result.applied, skipped: result.skipped, failed: result.failed}))
     }
   }
 
@@ -485,6 +507,18 @@ function App() {
             <span>{t('scan.failed')} <strong>{formatNumber(scanProgress.failed, locale)}</strong></span>
           </div>
           {scanProgress.currentFile && <p className="scan-current" title={scanProgress.currentFile}>{scanProgress.currentFile}</p>}
+        </section>
+      )}
+
+      {selectedIDs.length > 0 && (
+        <section className="panel enrichment-panel">
+          <div className="panel-title"><h2>{t('metadata.enrichmentTitle')}</h2><span>{t('metadata.enrichmentSelected', {count: selectedIDs.length})}</span></div>
+          <div className="enrichment-controls">
+            <label>{t('metadata.minimumConfidence')}<input type="number" min="0.5" max="1" step="0.01" value={enrichment.minimumConfidence} onChange={(e) => setEnrichment({...enrichment, minimumConfidence: Number(e.target.value)})} /></label>
+            <label><input type="checkbox" checked={enrichment.onlyMissing} onChange={(e) => setEnrichment({...enrichment, onlyMissing: e.target.checked})} /> {t('metadata.onlyMissing')}</label>
+            <label><input type="checkbox" checked={enrichment.includeArtwork} onChange={(e) => setEnrichment({...enrichment, includeArtwork: e.target.checked})} /> {t('metadata.includeArtwork')}</label>
+            <button className="primary" onClick={() => void enrichSelected()} disabled={busy || scanning}>{t('metadata.enrichSelected')}</button>
+          </div>
         </section>
       )}
 
@@ -626,6 +660,9 @@ function App() {
         <section className="panel lower-panel">
           <div className="panel-title"><h2>{t('metadata.title')}</h2></div>
           {metadataWarnings.map((warning) => <p className="warning" key={warning}>{warning}</p>)}
+          {metadataLookup && selected && (
+            <MetadataMerge language={language} lookup={metadataLookup} disabled={busy} onApply={applyMetadataCandidate} />
+          )}
           <div className="cards">
             {metadata.map((item, index) => (
               <article className="meta-card" key={`${item.source}-${item.externalId}-${index}`}>
@@ -634,10 +671,11 @@ function App() {
                   <strong>{item.artist} — {item.title}</strong>
                   <span>{item.album || t('metadata.unknownAlbum')}</span>
                   <small>{item.source} · {t('metadata.match', {percent: Math.round(item.confidence * 100)})}</small>
+                  {(item.label || item.catalogNumber || item.isrc) && <small>{[item.label, item.catalogNumber, item.isrc].filter(Boolean).join(' · ')}</small>}
                   {selected && (
                     <div className="metadata-actions">
                       <button onClick={() => void applyMetadataCandidate(item, false)} disabled={busy}>{t('metadata.applyTags')}</button>
-                      {item.artworkUrl && <button onClick={() => void applyMetadataCandidate(item, true)} disabled={busy}>{t('metadata.applyWithArtwork')}</button>}
+                      {item.artworkUrl && item.artworkEmbeddable && <button onClick={() => void applyMetadataCandidate(item, true)} disabled={busy}>{t('metadata.applyWithArtwork')}</button>}
                     </div>
                   )}
                 </div>
