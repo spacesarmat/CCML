@@ -10,12 +10,12 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"github.com/your-github/ccml/internal/audio"
-	"github.com/your-github/ccml/internal/library"
-	"github.com/your-github/ccml/internal/metadata"
-	"github.com/your-github/ccml/internal/model"
-	"github.com/your-github/ccml/internal/organize"
-	"github.com/your-github/ccml/internal/store"
+	"github.com/spacesarmat/CCML/internal/audio"
+	"github.com/spacesarmat/CCML/internal/library"
+	"github.com/spacesarmat/CCML/internal/metadata"
+	"github.com/spacesarmat/CCML/internal/model"
+	"github.com/spacesarmat/CCML/internal/organize"
+	"github.com/spacesarmat/CCML/internal/store"
 )
 
 // App is the Wails binding exposed to the React frontend.
@@ -50,7 +50,7 @@ func NewApp() (*App, error) {
 	tools := audio.DiscoverToolchain()
 	probe := audio.NewProbe(tools)
 	processor := audio.NewProcessor(tools)
-	const metadataUserAgent = "CCML/0.1 (https://github.com/your-github/ccml)"
+	const metadataUserAgent = "CCML/0.1 (https://github.com/spacesarmat/CCML)"
 	providers := []metadata.Provider{
 		metadata.NewMusicBrainzProvider(metadataUserAgent),
 		metadata.NewTheAudioDBProvider(os.Getenv("THEAUDIODB_API_KEY")),

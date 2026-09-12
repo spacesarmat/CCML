@@ -1,0 +1,27 @@
+# Go
+/bin/
+*.test
+coverage.out
+
+# Wails
+/build/bin/
+/frontend/dist/*
+!/frontend/dist/.gitkeep
+/frontend/node_modules/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local data and secrets
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.example
+
+# Audio backups / generated copies
+*.ccml-backup

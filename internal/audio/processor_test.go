@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 func TestValidateProcessingOptionsDefaults(t *testing.T) {

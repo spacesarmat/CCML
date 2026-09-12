@@ -45,13 +45,13 @@ CCML_ESSENTIA=/path/to/essentia_streaming_extractor_music
 - Go 1.27+
 - Node.js 22+
 - React 19.3 / TypeScript 7 / Vite 8 (pinned in `frontend/package.json`)
-- Wails v2.14.x (stable v2 line used by this project)
+- Wails v2.15.x (stable v2 line used by this project)
 - FFmpeg
 
 Install Wails:
 
 ```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.14.0
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
 wails doctor
 ```
 
@@ -70,27 +70,40 @@ Production build:
 wails build -clean
 ```
 
+### TypeScript / CSS imports
+
+`frontend/src/vite-env.d.ts` includes `vite/client` types. Keep this file in the project: Vite uses those declarations for CSS and other static asset imports, including `import './styles.css'`.
+
 ## Go module / GitHub repository
 
-The sample module path is `github.com/your-github/ccml`. Before publishing, replace that string in `go.mod` and all Go imports with your real GitHub owner/repository path.
+This project is configured for the repository `github.com/spacesarmat/CCML`. The same module path is used in `go.mod`, internal imports and the MusicBrainz `User-Agent`.
 
-For a new repository from scratch the equivalent module initialization command is:
-
-```bash
-go mod init github.com/YOUR_GITHUB_USER/ccml
-go mod tidy
-```
-
-Then:
+If the project directory is not yet a Git checkout, initialise and publish it with:
 
 ```bash
 git init
 git add .
 git commit -m "Initial CCML Wails application"
 git branch -M main
-git remote add origin git@github.com:YOUR_GITHUB_USER/ccml.git
+git remote add origin https://github.com/spacesarmat/CCML.git
 git push -u origin main
 ```
+
+If `origin` already exists, verify it with `git remote -v`; change it with `git remote set-url origin https://github.com/spacesarmat/CCML.git`.
+
+## GoLand
+
+Open the **project root** (the directory containing `go.mod`, `wails.json`, `app.go` and `frontend/`) in GoLand. Do not open only the `frontend` directory.
+
+1. In **Settings | Go | GOROOT**, select your installed Go SDK (Go 1.22+; the project currently declares Go 1.27).
+2. Open GoLand's built-in Terminal in the project root and run `go mod tidy`.
+3. Install Wails once with `go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0`. Make sure your Go bin directory is present in `PATH`.
+4. In `frontend/`, run `npm install`, then `npm run build`. The file `frontend/src/vite-env.d.ts` must remain in the project so TypeScript recognises CSS imports.
+5. Return to the project root and run `wails doctor`, then `wails dev`.
+
+For a production build use `wails build -clean`. Generated executables are written under `build/bin/`.
+
+GoLand should detect `go.mod` automatically. `.idea/` remains ignored intentionally; personal IDE metadata should not be committed to GitHub.
 
 ## External metadata providers
 

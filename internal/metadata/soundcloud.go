@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // SoundCloudProvider searches tracks using a SoundCloud OAuth access token.

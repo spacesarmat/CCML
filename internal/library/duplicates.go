@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // FindDuplicates groups tracks by normalized artist/title and near-equal duration.

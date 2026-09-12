@@ -3,7 +3,7 @@ package library
 import (
 	"testing"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 func TestFindDuplicatesMetadataAndDuration(t *testing.T) {

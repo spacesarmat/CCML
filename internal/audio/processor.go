@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // AnalysisOptions allows analysis to include the same pre-filters used during processing.

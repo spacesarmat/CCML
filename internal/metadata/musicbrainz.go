@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // MusicBrainzProvider searches the public MusicBrainz recording endpoint.

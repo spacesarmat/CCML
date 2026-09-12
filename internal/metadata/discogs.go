@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // DiscogsProvider searches the Discogs database API using a personal token.

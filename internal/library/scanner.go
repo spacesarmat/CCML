@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/your-github/ccml/internal/audio"
-	"github.com/your-github/ccml/internal/model"
-	"github.com/your-github/ccml/internal/store"
+	"github.com/spacesarmat/CCML/internal/audio"
+	"github.com/spacesarmat/CCML/internal/model"
+	"github.com/spacesarmat/CCML/internal/store"
 )
 
 var supportedExtensions = map[string]struct{}{

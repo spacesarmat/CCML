@@ -13,8 +13,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/your-github/ccml/internal/model"
-	"github.com/your-github/ccml/internal/store"
+	"github.com/spacesarmat/CCML/internal/model"
+	"github.com/spacesarmat/CCML/internal/store"
 )
 
 // Service renders templates and moves/renames indexed files.

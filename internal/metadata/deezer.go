@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // DeezerProvider searches Deezer's track catalog endpoint.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // AppleMusicProvider searches the Apple Music catalog with a developer token.

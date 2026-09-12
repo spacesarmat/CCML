@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // YouTubeProvider searches YouTube Data API v3. It is an approximation for

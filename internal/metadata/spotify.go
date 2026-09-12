@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // SpotifyProvider searches the Spotify Web API with a caller-supplied OAuth token.

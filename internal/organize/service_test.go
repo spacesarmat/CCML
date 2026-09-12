@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 func TestRenderRelativeMp3tagStyle(t *testing.T) {

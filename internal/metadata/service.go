@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // Provider is implemented by an external metadata service.

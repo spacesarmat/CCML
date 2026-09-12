@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/your-github/ccml/internal/model"
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 // Probe extracts technical information and embedded metadata using ffprobe.
