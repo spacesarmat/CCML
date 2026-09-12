@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -20,14 +22,20 @@ import (
 
 // App is the Wails binding exposed to the React frontend.
 type App struct {
-	ctx       context.Context
-	store     *store.Store
-	tools     *audio.Toolchain
-	scanner   *library.Scanner
-	processor *audio.Processor
-	bpmKey    *audio.EssentiaAnalyzer
-	metadata  *metadata.Service
-	organizer *organize.Service
+	ctx           context.Context
+	store         *store.Store
+	scanMu        sync.Mutex
+	scanCancel    context.CancelFunc
+	tools         *audio.Toolchain
+	scanner       *library.Scanner
+	processor     *audio.Processor
+	bpmKey        *audio.EssentiaAnalyzer
+	metadata      *metadata.Service
+	organizer     *organize.Service
+	toolUpdater   *audio.ToolUpdater
+	toolUpdateMu  sync.Mutex
+	toolUpdating  bool
+	toolUpdateErr string
 }
 
 // NewApp creates all backend services and opens the media-library database.
@@ -73,7 +81,7 @@ func NewApp() (*App, error) {
 	}
 	metaService := metadata.NewService(providers...)
 
-	return &App{
+	app := &App{
 		store:     db,
 		tools:     tools,
 		scanner:   library.NewScanner(db, probe),
@@ -81,15 +89,49 @@ func NewApp() (*App, error) {
 		bpmKey:    audio.NewEssentiaAnalyzer(),
 		metadata:  metaService,
 		organizer: organize.NewService(db),
-	}, nil
+	}
+	app.toolUpdater = audio.NewToolUpdater(appDir, tools)
+	return app, nil
 }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if a.toolUpdater == nil {
+		return
+	}
+	due, err := a.toolUpdater.ShouldAutoCheck()
+	if err != nil {
+		a.toolUpdateMu.Lock()
+		a.toolUpdateErr = err.Error()
+		a.toolUpdateMu.Unlock()
+		runtime.LogWarningf(ctx, "prepare automatic FFmpeg update check: %v", err)
+		return
+	}
+	if due {
+		a.toolUpdateMu.Lock()
+		a.toolUpdating = true
+		a.toolUpdateMu.Unlock()
+		go func() {
+			// Let the frontend subscribe to Wails events before emitting status.
+			timer := time.NewTimer(300 * time.Millisecond)
+			defer timer.Stop()
+			select {
+			case <-ctx.Done():
+				a.toolUpdateMu.Lock()
+				a.toolUpdating = false
+				a.toolUpdateMu.Unlock()
+				return
+			case <-timer.C:
+			}
+			if _, err := a.runFFmpegUpdate(ctx, false, true); err != nil && !errors.Is(err, context.Canceled) {
+				runtime.LogWarningf(ctx, "automatic FFmpeg update failed: %v", err)
+			}
+		}()
+	}
 }
 
 func (a *App) shutdown(_ context.Context) {
-	// Database cleanup is performed by Close after wails.Run returns.
+	a.CancelScan()
 }
 
 // Close releases application resources.
@@ -102,14 +144,69 @@ func (a *App) Close() error {
 
 // SystemStatus reports availability of optional external audio tools.
 func (a *App) SystemStatus() model.SystemStatus {
+	snapshot := a.tools.Snapshot()
+	a.toolUpdateMu.Lock()
+	updating := a.toolUpdating
+	updateErr := a.toolUpdateErr
+	a.toolUpdateMu.Unlock()
+	autoUpdateSupported := a.toolUpdater != nil && a.toolUpdater.AutoUpdateSupported()
 	return model.SystemStatus{
-		FFmpegPath:        a.tools.FFmpeg,
-		FFprobePath:       a.tools.FFprobe,
-		EssentiaPath:      a.bpmKey.Path(),
-		FFmpegReady:       a.tools.Ready(),
-		EssentiaReady:     a.bpmKey.Available(),
-		MetadataProviders: a.metadata.ProviderNames(),
+		FFmpegPath:                snapshot.FFmpeg,
+		FFprobePath:               snapshot.FFprobe,
+		FFmpegVersion:             snapshot.Version,
+		FFmpegSource:              snapshot.Source,
+		FFmpegReady:               a.tools.Ready(),
+		FFmpegUpdating:            updating,
+		FFmpegUpdateError:         updateErr,
+		FFmpegAutoUpdateSupported: autoUpdateSupported,
+		EssentiaPath:              a.bpmKey.Path(),
+		EssentiaReady:             a.bpmKey.Available(),
+		MetadataProviders:         a.metadata.ProviderNames(),
 	}
+}
+
+// UpdateFFmpeg checks for and installs the latest supported managed FFmpeg build.
+func (a *App) UpdateFFmpeg() (model.FFmpegUpdateResult, error) {
+	return a.runFFmpegUpdate(a.context(), true, false)
+}
+
+func (a *App) runFFmpegUpdate(ctx context.Context, force, alreadyMarked bool) (model.FFmpegUpdateResult, error) {
+	if a.toolUpdater == nil {
+		return model.FFmpegUpdateResult{}, errors.New("FFmpeg updater is not available")
+	}
+	if !alreadyMarked {
+		a.toolUpdateMu.Lock()
+		if a.toolUpdating {
+			a.toolUpdateMu.Unlock()
+			return model.FFmpegUpdateResult{}, errors.New("FFmpeg update is already running")
+		}
+		a.toolUpdating = true
+		a.toolUpdateErr = ""
+		a.toolUpdateMu.Unlock()
+	}
+
+	runtime.EventsEmit(ctx, "tools:ffmpeg:update-started")
+	result, err := a.toolUpdater.EnsureLatest(ctx, force)
+
+	a.toolUpdateMu.Lock()
+	a.toolUpdating = false
+	if err != nil {
+		a.toolUpdateErr = err.Error()
+	} else {
+		a.toolUpdateErr = ""
+	}
+	a.toolUpdateMu.Unlock()
+
+	if err != nil {
+		runtime.EventsEmit(ctx, "tools:ffmpeg:update-error", err.Error())
+		return model.FFmpegUpdateResult{}, err
+	}
+	out := model.FFmpegUpdateResult{
+		Version: result.Version, Changed: result.Changed, FFmpegPath: result.FFmpegPath,
+		FFprobePath: result.FFprobePath, Source: result.Source,
+	}
+	runtime.EventsEmit(ctx, "tools:ffmpeg:update-finished", out)
+	return out, nil
 }
 
 // SelectMusicFolder opens a native directory picker.
@@ -126,7 +223,7 @@ func (a *App) SelectMusicFolder() (string, error) {
 	return path, nil
 }
 
-// ScanFolder scans supported audio files and updates the SQLite media library.
+// ScanFolder incrementally scans supported audio files and updates the SQLite media library.
 func (a *App) ScanFolder(root string) (model.ScanResult, error) {
 	root = strings.TrimSpace(root)
 	if root == "" {
@@ -135,7 +232,77 @@ func (a *App) ScanFolder(root string) (model.ScanResult, error) {
 	if !a.tools.Ready() {
 		return model.ScanResult{}, errors.New("ffmpeg/ffprobe not found; install FFmpeg or configure CCML_FFMPEG and CCML_FFPROBE")
 	}
-	return a.scanner.Scan(a.context(), root)
+
+	a.scanMu.Lock()
+	if a.scanCancel != nil {
+		a.scanMu.Unlock()
+		return model.ScanResult{}, errors.New("a library scan is already running")
+	}
+	scanCtx, cancel := context.WithCancel(a.context())
+	a.scanCancel = cancel
+	a.scanMu.Unlock()
+
+	defer func() {
+		cancel()
+		a.scanMu.Lock()
+		a.scanCancel = nil
+		a.scanMu.Unlock()
+	}()
+
+	runtime.EventsEmit(a.context(), "library:scan:started", model.ScanProgress{Root: root})
+	result, err := a.scanner.Scan(scanCtx, root, func(progress model.ScanProgress) {
+		runtime.EventsEmit(a.context(), "library:scan:progress", progress)
+	})
+	if err != nil {
+		runtime.EventsEmit(a.context(), "library:scan:error", err.Error())
+		return result, err
+	}
+	runtime.EventsEmit(a.context(), "library:scan:finished", result)
+	return result, nil
+}
+
+// CancelScan cancels the active library scan, if any.
+func (a *App) CancelScan() bool {
+	a.scanMu.Lock()
+	cancel := a.scanCancel
+	a.scanMu.Unlock()
+	if cancel == nil {
+		return false
+	}
+	cancel()
+	return true
+}
+
+// ListLibraryRoots returns all managed music folders.
+func (a *App) ListLibraryRoots() ([]model.LibraryRoot, error) {
+	return a.store.ListLibraryRoots(a.context())
+}
+
+// RemoveLibraryRoot forgets a managed folder. Files on disk are never deleted.
+func (a *App) RemoveLibraryRoot(root string, deleteTracks bool) error {
+	root = strings.TrimSpace(root)
+	if root == "" {
+		return errors.New("library root is required")
+	}
+	absRoot, err := filepath.Abs(filepath.Clean(root))
+	if err != nil {
+		return fmt.Errorf("resolve library root: %w", err)
+	}
+	return a.store.RemoveLibraryRoot(a.context(), absRoot, deleteTracks)
+}
+
+// LibraryStatistics returns aggregate counts for the media library.
+func (a *App) LibraryStatistics() (model.LibraryStats, error) {
+	stats, err := a.store.LibraryStatistics(a.context())
+	if err != nil {
+		return model.LibraryStats{}, err
+	}
+	tracks, err := a.store.AllTracks(a.context())
+	if err != nil {
+		return model.LibraryStats{}, err
+	}
+	stats.DuplicateGroups = len(library.FindDuplicates(tracks, 2_000))
+	return stats, nil
 }
 
 // ListTracks returns a page of tracks from the media library.

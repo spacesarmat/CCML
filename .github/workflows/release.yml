@@ -24,7 +24,7 @@ jobs:
           node-version: '22'
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Build frontend
         working-directory: frontend
         run: npm run build
@@ -32,12 +32,37 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
       - name: Test
         run: go test ./...
-      - name: Build
+      - name: Build application
         run: wails build -clean
+
+      - name: Fetch pinned FFmpeg tools (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\scripts\fetch-ffmpeg.ps1 -OutputDir tools -ReleaseTag autobuild-2026-09-10-15-31
+      - name: Bundle FFmpeg tools (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build\bin\tools | Out-Null
+          Copy-Item -Force tools\ffmpeg.exe,tools\ffprobe.exe,tools\CCML-FFMPEG-MANIFEST.json,tools\FFMPEG-NOTICE.md,tools\COPYING.GPLv3 build\bin\tools\
+          Compress-Archive -Path build\bin\* -DestinationPath "CCML-Windows-$env:RUNNER_ARCH.zip" -Force
+
+      - name: Fetch pinned FFmpeg tools (macOS)
+        if: runner.os == 'macOS'
+        run: ./scripts/fetch-ffmpeg.sh tools n8.1.2-1
+      - name: Bundle FFmpeg tools (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p build/bin/CCML.app/Contents/Resources/tools
+          cp tools/ffmpeg tools/ffprobe tools/CCML-FFMPEG-MANIFEST.json tools/FFMPEG-NOTICE.md tools/COPYING.GPLv3 build/bin/CCML.app/Contents/Resources/tools/
+          chmod 755 build/bin/CCML.app/Contents/Resources/tools/ffmpeg build/bin/CCML.app/Contents/Resources/tools/ffprobe
+          # When signing/notarisation is added, sign after this point so the nested tools are part of the signed bundle.
+          ditto -c -k --sequesterRsrc --keepParent build/bin/CCML.app "CCML-macOS-${RUNNER_ARCH}.zip"
+
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ runner.os }}-${{ runner.arch }}
-          path: build/bin/**
+          path: CCML-*.zip
           if-no-files-found: error
 
   publish:
@@ -47,11 +72,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: Pack artifacts
-        run: |
-          cd artifacts
-          for dir in */; do zip -r "${dir%/}.zip" "$dir"; done
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" artifacts/*.zip --generate-notes
+        run: gh release create "${GITHUB_REF_NAME}" artifacts/**/*.zip --generate-notes

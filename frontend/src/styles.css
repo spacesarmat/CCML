@@ -65,3 +65,33 @@ details { margin: 10px 14px; padding: 8px 10px; border: 1px solid #293548; borde
 summary { cursor: pointer; }
 footer { color: #7e8ba0; font-size: 11px; padding: 0 4px; }
 @media (max-width: 1100px) { .library-layout { grid-template-columns: 1fr; } .detail-panel { max-height: none; } }
+
+/* Stage 2: managed roots, statistics and incremental scan progress. */
+.roots-panel { overflow: hidden; }
+.root-list { display: grid; }
+.root-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 9px 12px; border-top: 1px solid #202936; }
+.root-row:first-child { border-top: 0; }
+.root-row > span { color: #7f8da3; font-size: 11px; white-space: nowrap; }
+.root-path { min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: #111722; }
+.stats-grid { display: grid; grid-template-columns: repeat(6, minmax(110px, 1fr)); gap: 10px; }
+.stat-card { padding: 12px 14px; display: grid; gap: 4px; }
+.stat-card span { color: #7f8da3; font-size: 11px; }
+.stat-card strong { font-size: 18px; font-weight: 650; }
+.scan-panel { overflow: hidden; }
+.scan-counters { display: flex; flex-wrap: wrap; gap: 9px; padding: 12px 16px 8px; }
+.scan-counters span { border: 1px solid #293548; border-radius: 999px; padding: 5px 9px; color: #91a0b5; font-size: 11px; }
+.scan-counters strong { color: #f1f5fb; }
+.scan-current { margin: 0; padding: 4px 16px 13px; color: #8190a6; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+
+/* Managed FFmpeg toolchain status. */
+.tool-warning { padding: 10px 12px; display: grid; gap: 4px; color: #e7c675; }
+.tool-warning small { color: #9aa8bb; word-break: break-word; }
+
+/* Stage 3: bilingual EN/RU interface. */
+.topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.language-switcher { display: inline-flex; align-items: center; padding: 2px; border: 1px solid #364257; border-radius: 9px; background: #111722; }
+.language-switcher button { min-width: 38px; padding: 5px 8px; border: 0; border-radius: 6px; background: transparent; color: #8f9db1; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.language-switcher button:hover { background: #202b3c; }
+.language-switcher button.active { background: #4c6fff; color: #fff; }
+@media (max-width: 980px) { .topbar { align-items: flex-start; } .topbar-actions { justify-content: flex-end; } }

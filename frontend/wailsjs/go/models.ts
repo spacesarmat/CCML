@@ -118,6 +118,64 @@ export namespace model {
 		    return a;
 		}
 	}
+	export class FFmpegUpdateResult {
+	    version: string;
+	    changed: boolean;
+	    ffmpegPath: string;
+	    ffprobePath: string;
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FFmpegUpdateResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.changed = source["changed"];
+	        this.ffmpegPath = source["ffmpegPath"];
+	        this.ffprobePath = source["ffprobePath"];
+	        this.source = source["source"];
+	    }
+	}
+	export class LibraryRoot {
+	    path: string;
+	    createdAt: string;
+	    lastScanAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryRoot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.createdAt = source["createdAt"];
+	        this.lastScanAt = source["lastScanAt"];
+	    }
+	}
+	export class LibraryStats {
+	    tracks: number;
+	    artists: number;
+	    albums: number;
+	    durationMs: number;
+	    sizeBytes: number;
+	    duplicateGroups: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tracks = source["tracks"];
+	        this.artists = source["artists"];
+	        this.albums = source["albums"];
+	        this.durationMs = source["durationMs"];
+	        this.sizeBytes = source["sizeBytes"];
+	        this.duplicateGroups = source["duplicateGroups"];
+	    }
+	}
 	export class Loudness {
 	    inputI: number;
 	    inputTP: number;
@@ -290,7 +348,12 @@ export namespace model {
 	    root: string;
 	    found: number;
 	    indexed: number;
+	    added: number;
+	    updated: number;
+	    skipped: number;
+	    removed: number;
 	    failed: number;
+	    cancelled: boolean;
 	    duration: number;
 	    errors: string[];
 	
@@ -303,7 +366,12 @@ export namespace model {
 	        this.root = source["root"];
 	        this.found = source["found"];
 	        this.indexed = source["indexed"];
+	        this.added = source["added"];
+	        this.updated = source["updated"];
+	        this.skipped = source["skipped"];
+	        this.removed = source["removed"];
 	        this.failed = source["failed"];
+	        this.cancelled = source["cancelled"];
 	        this.duration = source["duration"];
 	        this.errors = source["errors"];
 	    }
@@ -311,8 +379,13 @@ export namespace model {
 	export class SystemStatus {
 	    ffmpegPath: string;
 	    ffprobePath: string;
-	    essentiaPath: string;
+	    ffmpegVersion: string;
+	    ffmpegSource: string;
 	    ffmpegReady: boolean;
+	    ffmpegUpdating: boolean;
+	    ffmpegUpdateError: string;
+	    ffmpegAutoUpdateSupported: boolean;
+	    essentiaPath: string;
 	    essentiaReady: boolean;
 	    metadataProviders: string[];
 	
@@ -324,8 +397,13 @@ export namespace model {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ffmpegPath = source["ffmpegPath"];
 	        this.ffprobePath = source["ffprobePath"];
-	        this.essentiaPath = source["essentiaPath"];
+	        this.ffmpegVersion = source["ffmpegVersion"];
+	        this.ffmpegSource = source["ffmpegSource"];
 	        this.ffmpegReady = source["ffmpegReady"];
+	        this.ffmpegUpdating = source["ffmpegUpdating"];
+	        this.ffmpegUpdateError = source["ffmpegUpdateError"];
+	        this.ffmpegAutoUpdateSupported = source["ffmpegAutoUpdateSupported"];
+	        this.essentiaPath = source["essentiaPath"];
 	        this.essentiaReady = source["essentiaReady"];
 	        this.metadataProviders = source["metadataProviders"];
 	    }

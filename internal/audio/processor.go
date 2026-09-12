@@ -105,7 +105,7 @@ func (p *Processor) Process(ctx context.Context, input string, opts model.Proces
 	args = append(args, codecArgs...)
 	args = append(args, tempOutput)
 
-	cmd := exec.CommandContext(ctx, p.tools.FFmpeg, args...)
+	cmd := exec.CommandContext(ctx, p.tools.FFmpegPath(), args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -159,7 +159,7 @@ func (p *Processor) WriteReplayGain(ctx context.Context, input string, targetLUF
 		"-metadata", fmt.Sprintf("REPLAYGAIN_TRACK_PEAK=%.8f", peakLinear),
 		temp,
 	}
-	cmd := exec.CommandContext(ctx, p.tools.FFmpeg, args...)
+	cmd := exec.CommandContext(ctx, p.tools.FFmpegPath(), args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -177,7 +177,7 @@ func (p *Processor) WriteReplayGain(ctx context.Context, input string, targetLUF
 }
 
 func (p *Processor) runLoudnessPass(ctx context.Context, input, filterGraph string) (model.Loudness, error) {
-	cmd := exec.CommandContext(ctx, p.tools.FFmpeg,
+	cmd := exec.CommandContext(ctx, p.tools.FFmpegPath(),
 		"-hide_banner", "-nostats", "-i", input,
 		"-map", "0:a:0", "-af", filterGraph,
 		"-f", "null", "-",
@@ -236,10 +236,10 @@ func (p *Processor) prefilters(preGainDB float64, repair, multiband bool, pitchS
 }
 
 func (p *Processor) hasFilter(name string) bool {
-	if p.tools == nil || p.tools.FFmpeg == "" {
+	if p.tools == nil || p.tools.FFmpegPath() == "" {
 		return false
 	}
-	cmd := exec.Command(p.tools.FFmpeg, "-hide_banner", "-filters")
+	cmd := exec.Command(p.tools.FFmpegPath(), "-hide_banner", "-filters")
 	output, err := cmd.Output()
 	if err != nil {
 		return false
@@ -372,7 +372,7 @@ func codecArguments(ext string) ([]string, error) {
 	case ".aif", ".aiff":
 		return []string{"-c:a", "pcm_s24be"}, nil
 	case ".ogg", ".oga":
-		return []string{"-c:a", "libvorbis", "-q:a", "6"}, nil
+		return []string{"-c:a", "libopus", "-b:a", "192k"}, nil
 	default:
 		return nil, fmt.Errorf("unsupported output extension %q", ext)
 	}

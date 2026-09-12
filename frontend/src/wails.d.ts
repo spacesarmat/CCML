@@ -1,6 +1,9 @@
 import type {
   BPMKey,
   DuplicateGroup,
+  FFmpegUpdateResult,
+  LibraryRoot,
+  LibraryStats,
   Loudness,
   MetadataLookupResult,
   OrganizeRequest,
@@ -17,8 +20,13 @@ declare global {
       main: {
         App: {
           SystemStatus(): Promise<SystemStatus>
+          UpdateFFmpeg(): Promise<FFmpegUpdateResult>
           SelectMusicFolder(): Promise<string>
           ScanFolder(root: string): Promise<ScanResult>
+          CancelScan(): Promise<boolean>
+          ListLibraryRoots(): Promise<LibraryRoot[]>
+          RemoveLibraryRoot(root: string, deleteTracks: boolean): Promise<void>
+          LibraryStatistics(): Promise<LibraryStats>
           ListTracks(search: string, limit: number, offset: number): Promise<Track[]>
           FindDuplicates(): Promise<DuplicateGroup[]>
           AnalyzeLoudness(trackID: number): Promise<Loudness>

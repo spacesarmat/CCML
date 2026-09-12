@@ -21,16 +21,39 @@ Wails + React/TypeScript desktop application for Windows and macOS. The backend 
 
 ## Runtime dependencies
 
-### Required: FFmpeg + ffprobe
+### Managed FFmpeg + ffprobe
 
-CCML intentionally uses FFmpeg rather than implementing codecs/DSP in Go. Install a recent FFmpeg build and ensure `ffmpeg` and `ffprobe` are in `PATH`, or set:
+CCML uses FFmpeg for decoding, probing and DSP, but end users do **not** need to install FFmpeg separately. Windows/macOS release packages bundle `ffmpeg` and `ffprobe`. CCML discovers tools in this order:
+
+1. explicit `CCML_FFMPEG` + `CCML_FFPROBE` overrides;
+2. a SHA-256 verified CCML-managed update in the user's configuration directory;
+3. the binaries bundled with the application;
+4. system `PATH` as a development fallback.
+
+When no usable pair exists CCML downloads a supported build automatically. When tools are already available, the application checks for updates at most once every seven days. The UI also has an **Update FFmpeg** action. A candidate update is activated only after its published SHA-256 digest is verified and CCML confirms required filters/encoders are present. A failed update does not replace a working toolchain.
+
+Windows uses GPL builds from `BtbN/FFmpeg-Builds` (x64/ARM64). macOS uses native Intel/Apple Silicon static builds from `shaka-project/static-ffmpeg-binaries`. Distribution notices and GPLv3 text live in `third_party/ffmpeg/` and are copied next to bundled binaries.
+
+For local/offline development you can prefetch the pinned bootstrap binaries:
+
+```powershell
+# Windows, from the project root
+.\scripts\fetch-ffmpeg.ps1
+```
+
+```bash
+# macOS, from the project root
+./scripts/fetch-ffmpeg.sh
+```
+
+Environment overrides remain available for debugging/custom builds:
 
 ```text
 CCML_FFMPEG=/path/to/ffmpeg
 CCML_FFPROBE=/path/to/ffprobe
 ```
 
-The FFmpeg build should include `adeclip`, `mcompand`, `alimiter`. Pitch shift additionally needs the `rubberband` filter (`--enable-librubberband`).
+The core mastering chain requires `loudnorm`, `adeclip`, `mcompand` and `alimiter`. RubberBand pitch shifting is available when the selected FFmpeg build exposes the `rubberband` filter. The bundled Windows GPL build includes it; the current native macOS bootstrap build does not, so pitch shifting is treated as an optional capability there.
 
 ### Optional: Essentia
 
@@ -46,7 +69,7 @@ CCML_ESSENTIA=/path/to/essentia_streaming_extractor_music
 - Node.js 22+
 - React 19.3 / TypeScript 7 / Vite 8 (pinned in `frontend/package.json`)
 - Wails v2.15.x (stable v2 line used by this project)
-- FFmpeg
+- FFmpeg is downloaded/bundled by CCML (or run the platform fetch script for local development)
 
 Install Wails:
 
@@ -127,7 +150,7 @@ The backend uses a `metadata.Provider` interface, so provider-specific auth can 
 
 The processing output is a copy by default (`CCML Processed/<filename>`). If an output path is explicitly set to the original path, CCML renders to a temporary file and replaces only after FFmpeg succeeds. `KeepOriginal` creates a `.ccml-backup` before replacement.
 
-The current pitch function is a high-quality semitone pitch shift through FFmpeg/libRubberBand. It is **not** automatic vocal Auto-Tune or note-by-note pitch correction. That requires a dedicated pitch detector/correction engine and is intentionally a separate future DSP module.
+The current pitch function is a semitone pitch shift through FFmpeg/libRubberBand when that optional filter is available. It is **not** automatic vocal Auto-Tune or note-by-note pitch correction. That requires a dedicated pitch detector/correction engine and is intentionally a separate future DSP module.
 
 The multiband compressor currently uses FFmpeg's documented `mcompand` multi-band profile and is opt-in. Treat it as a starting preset, not a universal mastering profile. Production audio software should expose presets, A/B preview, headroom safeguards and regression tests against reference audio.
 
@@ -137,7 +160,7 @@ The multiband compressor currently uses FFmpeg's documented `mcompand` multi-ban
 go test ./...
 ```
 
-Unit tests currently cover duplicate grouping, rename/template sanitization, processing defaults, FFmpeg loudness JSON extraction, and filter construction.
+Unit tests cover duplicate grouping, rename/template sanitization, processing defaults, FFmpeg loudness JSON extraction/filter construction, updater platform selection, SHA-256 verification and Windows archive extraction.
 
 ## Project layout
 
@@ -165,4 +188,51 @@ Unit tests currently cover duplicate grouping, rename/template sanitization, pro
 5. Dry-run/batch organizer with collision policy and undo journal.
 6. Waveform/A-B audio preview and preset management.
 7. Automatic clipping statistics and per-track DSP decision engine.
-8. Signed/notarized Windows/macOS installers and bundled FFmpeg licensing review.
+8. Signed/notarized Windows/macOS installers; sign/notarize after FFmpeg is placed in the final application bundle.
+
+## Stage 2: incremental library scanning
+
+Stage 2 makes the local media library safe to rescan repeatedly:
+
+- unchanged files are detected by absolute path, file size and modification time and skip `ffprobe`;
+- new and changed files are probed and upserted into SQLite;
+- missing files are removed from the database only after a complete, non-cancelled scan;
+- an active scan can be cancelled from the Wails UI;
+- managed library roots and their last successful scan time are stored in SQLite;
+- the UI shows live scan counters plus track/artist/album/duration/size statistics;
+- `schema_version`, `library_roots` and `scan_entries` are created automatically when an existing database is opened.
+
+No audio file is deleted by the Stage 2 cleanup. Removing a library root with database cleanup deletes only CCML database rows.
+
+After updating an existing checkout, run:
+
+```powershell
+go mod tidy
+cd frontend
+npm install
+cd ..
+wails dev
+```
+
+`wails dev` regenerates `frontend/wailsjs` bindings for the new `CancelScan`, `ListLibraryRoots`, `RemoveLibraryRoot` and `LibraryStatistics` methods.
+
+
+## Managed FFmpeg update design
+
+Release builds pin a known bootstrap build for reproducibility. Runtime update checks use the platform provider's current supported release and verify GitHub's published SHA-256 digest before installing. Downloaded tools are validated with `ffprobe -version`, `ffmpeg -filters` and `ffmpeg -encoders` before `current.json` is atomically switched to the new version.
+
+Managed updates are stored under the user's CCML configuration directory (`.../CCML/tools/ffmpeg/`) instead of modifying the installed `.exe` or macOS `.app`. This keeps application signing/notarization boundaries intact and makes rollback possible by retaining versioned tool directories.
+
+For `.ogg` processing CCML encodes Opus in the OGG container (`libopus`) so the same processing path works with both selected Windows and macOS bootstrap builds. Existing OGG/Vorbis files remain readable and scannable.
+
+## Interface languages
+
+CCML supports English and Russian UI languages without an external i18n dependency.
+
+- The first launch follows the OS/WebView language (`ru-*` selects Russian; other locales select English).
+- Use the `RU / EN` switch in the top bar to change the language immediately.
+- The selected language is saved locally in `localStorage` under `ccml.language`.
+- Dates and numeric grouping are formatted using the selected locale.
+- Technical error output returned by FFmpeg, ffprobe, Essentia, operating-system APIs, or remote metadata services is intentionally kept verbatim for diagnostics.
+
+Translations live in `frontend/src/i18n.ts`. Add new user-facing strings there instead of hard-coding them in React components.

@@ -4,6 +4,7 @@ export type Track = {
   fileName: string
   extension: string
   size: number
+  modifiedUnix: number
   title: string
   artist: string
   album: string
@@ -31,9 +32,43 @@ export type ScanResult = {
   root: string
   found: number
   indexed: number
+  added: number
+  updated: number
+  skipped: number
+  removed: number
   failed: number
+  cancelled: boolean
   duration: number
   errors: string[] | null
+}
+
+export type ScanProgress = {
+  root: string
+  currentFile: string
+  found: number
+  scanned: number
+  added: number
+  updated: number
+  skipped: number
+  removed: number
+  failed: number
+  finished: boolean
+  cancelled: boolean
+}
+
+export type LibraryRoot = {
+  path: string
+  createdAt: string
+  lastScanAt: string
+}
+
+export type LibraryStats = {
+  tracks: number
+  artists: number
+  albums: number
+  durationMs: number
+  sizeBytes: number
+  duplicateGroups: number
 }
 
 export type DuplicateGroup = {
@@ -107,8 +142,21 @@ export type OrganizeRequest = {
 export type SystemStatus = {
   ffmpegPath: string
   ffprobePath: string
-  essentiaPath: string
+  ffmpegVersion: string
+  ffmpegSource: string
   ffmpegReady: boolean
+  ffmpegUpdating: boolean
+  ffmpegUpdateError: string
+  ffmpegAutoUpdateSupported: boolean
+  essentiaPath: string
   essentiaReady: boolean
   metadataProviders: string[]
+}
+
+export type FFmpegUpdateResult = {
+  version: string
+  changed: boolean
+  ffmpegPath: string
+  ffprobePath: string
+  source: string
 }

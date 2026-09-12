@@ -6,9 +6,15 @@ export function AnalyzeBPMKey(arg1:number):Promise<model.BPMKey>;
 
 export function AnalyzeLoudness(arg1:number):Promise<model.Loudness>;
 
+export function CancelScan():Promise<boolean>;
+
 export function Close():Promise<void>;
 
 export function FindDuplicates():Promise<Array<model.DuplicateGroup>>;
+
+export function LibraryStatistics():Promise<model.LibraryStats>;
+
+export function ListLibraryRoots():Promise<Array<model.LibraryRoot>>;
 
 export function ListTracks(arg1:string,arg2:number,arg3:number):Promise<Array<model.Track>>;
 
@@ -20,10 +26,14 @@ export function OrganizeTrack(arg1:number,arg2:model.OrganizeRequest):Promise<st
 
 export function PreviewRename(arg1:number,arg2:model.OrganizeRequest):Promise<string>;
 
+export function RemoveLibraryRoot(arg1:string,arg2:boolean):Promise<void>;
+
 export function ScanFolder(arg1:string):Promise<model.ScanResult>;
 
 export function SelectMusicFolder():Promise<string>;
 
 export function SystemStatus():Promise<model.SystemStatus>;
+
+export function UpdateFFmpeg():Promise<model.FFmpegUpdateResult>;
 
 export function WriteReplayGain(arg1:number,arg2:number):Promise<model.Loudness>;

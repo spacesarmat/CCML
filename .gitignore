@@ -25,3 +25,13 @@ Thumbs.db
 
 # Audio backups / generated copies
 *.ccml-backup
+
+# Downloaded FFmpeg toolchain (release workflow/runtime manages these files).
+/tools/ffmpeg
+/tools/ffprobe
+/tools/ffmpeg.exe
+/tools/ffprobe.exe
+/tools/CCML-FFMPEG-RELEASE.txt
+/tools/CCML-FFMPEG-MANIFEST.json
+/tools/FFMPEG-NOTICE.md
+/tools/COPYING.GPLv3

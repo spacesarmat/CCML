@@ -42,11 +42,11 @@ type probeOutput struct {
 
 // Read returns metadata for a supported audio file.
 func (p *Probe) Read(ctx context.Context, path string) (model.Track, error) {
-	if p.tools == nil || p.tools.FFprobe == "" {
+	if p.tools == nil || p.tools.FFprobePath() == "" {
 		return model.Track{}, errors.New("ffprobe is not available")
 	}
 
-	cmd := exec.CommandContext(ctx, p.tools.FFprobe,
+	cmd := exec.CommandContext(ctx, p.tools.FFprobePath(),
 		"-v", "error",
 		"-print_format", "json",
 		"-show_format",

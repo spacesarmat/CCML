@@ -10,12 +10,24 @@ export function AnalyzeLoudness(arg1) {
   return window['go']['main']['App']['AnalyzeLoudness'](arg1);
 }
 
+export function CancelScan() {
+  return window['go']['main']['App']['CancelScan']();
+}
+
 export function Close() {
   return window['go']['main']['App']['Close']();
 }
 
 export function FindDuplicates() {
   return window['go']['main']['App']['FindDuplicates']();
+}
+
+export function LibraryStatistics() {
+  return window['go']['main']['App']['LibraryStatistics']();
+}
+
+export function ListLibraryRoots() {
+  return window['go']['main']['App']['ListLibraryRoots']();
 }
 
 export function ListTracks(arg1, arg2, arg3) {
@@ -38,6 +50,10 @@ export function PreviewRename(arg1, arg2) {
   return window['go']['main']['App']['PreviewRename'](arg1, arg2);
 }
 
+export function RemoveLibraryRoot(arg1, arg2) {
+  return window['go']['main']['App']['RemoveLibraryRoot'](arg1, arg2);
+}
+
 export function ScanFolder(arg1) {
   return window['go']['main']['App']['ScanFolder'](arg1);
 }
@@ -48,6 +64,10 @@ export function SelectMusicFolder() {
 
 export function SystemStatus() {
   return window['go']['main']['App']['SystemStatus']();
+}
+
+export function UpdateFFmpeg() {
+  return window['go']['main']['App']['UpdateFFmpeg']();
 }
 
 export function WriteReplayGain(arg1, arg2) {

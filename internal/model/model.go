@@ -34,14 +34,51 @@ type Track struct {
 	ScanError    string  `json:"scanError"`
 }
 
-// ScanResult summarizes a folder scan.
+// ScanResult summarizes a completed or cancelled folder scan.
 type ScanResult struct {
-	Root     string        `json:"root"`
-	Found    int           `json:"found"`
-	Indexed  int           `json:"indexed"`
-	Failed   int           `json:"failed"`
-	Duration time.Duration `json:"duration"`
-	Errors   []string      `json:"errors"`
+	Root      string        `json:"root"`
+	Found     int           `json:"found"`
+	Indexed   int           `json:"indexed"`
+	Added     int           `json:"added"`
+	Updated   int           `json:"updated"`
+	Skipped   int           `json:"skipped"`
+	Removed   int           `json:"removed"`
+	Failed    int           `json:"failed"`
+	Cancelled bool          `json:"cancelled"`
+	Duration  time.Duration `json:"duration"`
+	Errors    []string      `json:"errors"`
+}
+
+// ScanProgress is emitted while the scanner processes a library root.
+type ScanProgress struct {
+	Root        string `json:"root"`
+	CurrentFile string `json:"currentFile"`
+	Found       int    `json:"found"`
+	Scanned     int    `json:"scanned"`
+	Added       int    `json:"added"`
+	Updated     int    `json:"updated"`
+	Skipped     int    `json:"skipped"`
+	Removed     int    `json:"removed"`
+	Failed      int    `json:"failed"`
+	Finished    bool   `json:"finished"`
+	Cancelled   bool   `json:"cancelled"`
+}
+
+// LibraryRoot is a folder managed by the media library.
+type LibraryRoot struct {
+	Path       string `json:"path"`
+	CreatedAt  string `json:"createdAt"`
+	LastScanAt string `json:"lastScanAt"`
+}
+
+// LibraryStats is a compact summary of the indexed media library.
+type LibraryStats struct {
+	Tracks          int64 `json:"tracks"`
+	Artists         int64 `json:"artists"`
+	Albums          int64 `json:"albums"`
+	DurationMS      int64 `json:"durationMs"`
+	SizeBytes       int64 `json:"sizeBytes"`
+	DuplicateGroups int   `json:"duplicateGroups"`
 }
 
 // DuplicateGroup is a probable set of duplicate tracks.
@@ -130,10 +167,24 @@ type OrganizeRequest struct {
 
 // SystemStatus reports optional runtime dependencies.
 type SystemStatus struct {
-	FFmpegPath        string   `json:"ffmpegPath"`
-	FFprobePath       string   `json:"ffprobePath"`
-	EssentiaPath      string   `json:"essentiaPath"`
-	FFmpegReady       bool     `json:"ffmpegReady"`
-	EssentiaReady     bool     `json:"essentiaReady"`
-	MetadataProviders []string `json:"metadataProviders"`
+	FFmpegPath                string   `json:"ffmpegPath"`
+	FFprobePath               string   `json:"ffprobePath"`
+	FFmpegVersion             string   `json:"ffmpegVersion"`
+	FFmpegSource              string   `json:"ffmpegSource"`
+	FFmpegReady               bool     `json:"ffmpegReady"`
+	FFmpegUpdating            bool     `json:"ffmpegUpdating"`
+	FFmpegUpdateError         string   `json:"ffmpegUpdateError"`
+	FFmpegAutoUpdateSupported bool     `json:"ffmpegAutoUpdateSupported"`
+	EssentiaPath              string   `json:"essentiaPath"`
+	EssentiaReady             bool     `json:"essentiaReady"`
+	MetadataProviders         []string `json:"metadataProviders"`
+}
+
+// FFmpegUpdateResult reports the result of a managed FFmpeg update.
+type FFmpegUpdateResult struct {
+	Version     string `json:"version"`
+	Changed     bool   `json:"changed"`
+	FFmpegPath  string `json:"ffmpegPath"`
+	FFprobePath string `json:"ffprobePath"`
+	Source      string `json:"source"`
 }

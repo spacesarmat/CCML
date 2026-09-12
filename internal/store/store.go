@@ -94,9 +94,32 @@ CREATE TABLE IF NOT EXISTS tracks (
 CREATE INDEX IF NOT EXISTS idx_tracks_artist_title ON tracks(artist, title);
 CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album);
 CREATE INDEX IF NOT EXISTS idx_tracks_duration ON tracks(duration_ms);
+
+CREATE TABLE IF NOT EXISTS schema_version (
+    version INTEGER PRIMARY KEY,
+    applied_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS library_roots (
+    path TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    last_scan_at TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS scan_entries (
+    path TEXT PRIMARY KEY,
+    root_path TEXT NOT NULL,
+    last_seen_scan TEXT NOT NULL,
+    FOREIGN KEY(path) REFERENCES tracks(path) ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_scan_entries_root ON scan_entries(root_path, last_seen_scan);
 `
 	if _, err := db.Exec(schema); err != nil {
 		return fmt.Errorf("migrate sqlite schema: %w", err)
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?)`, now, now); err != nil {
+		return fmt.Errorf("record sqlite schema version: %w", err)
 	}
 	return nil
 }
