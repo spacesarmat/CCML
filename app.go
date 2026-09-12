@@ -18,6 +18,7 @@ import (
 	"github.com/spacesarmat/CCML/internal/model"
 	"github.com/spacesarmat/CCML/internal/organize"
 	"github.com/spacesarmat/CCML/internal/store"
+	"github.com/spacesarmat/CCML/internal/tagging"
 )
 
 // App is the Wails binding exposed to the React frontend.
@@ -32,6 +33,7 @@ type App struct {
 	bpmKey        *audio.EssentiaAnalyzer
 	metadata      *metadata.Service
 	organizer     *organize.Service
+	tagEditor     *tagging.Service
 	toolUpdater   *audio.ToolUpdater
 	toolUpdateMu  sync.Mutex
 	toolUpdating  bool
@@ -58,7 +60,7 @@ func NewApp() (*App, error) {
 	tools := audio.DiscoverToolchain()
 	probe := audio.NewProbe(tools)
 	processor := audio.NewProcessor(tools)
-	const metadataUserAgent = "CCML/0.1 (https://github.com/spacesarmat/CCML)"
+	const metadataUserAgent = "CCML/0.4 (https://github.com/spacesarmat/CCML)"
 	providers := []metadata.Provider{
 		metadata.NewMusicBrainzProvider(metadataUserAgent),
 		metadata.NewTheAudioDBProvider(os.Getenv("THEAUDIODB_API_KEY")),
@@ -80,6 +82,14 @@ func NewApp() (*App, error) {
 		providers = append(providers, metadata.NewSoundCloudProvider(token))
 	}
 	metaService := metadata.NewService(providers...)
+	tagEditor, err := tagging.NewService(db, appDir)
+	if err != nil {
+		closeErr := db.Close()
+		if closeErr != nil {
+			return nil, errors.Join(err, fmt.Errorf("close database after tag-editor failure: %w", closeErr))
+		}
+		return nil, err
+	}
 
 	app := &App{
 		store:     db,
@@ -89,6 +99,7 @@ func NewApp() (*App, error) {
 		bpmKey:    audio.NewEssentiaAnalyzer(),
 		metadata:  metaService,
 		organizer: organize.NewService(db),
+		tagEditor: tagEditor,
 	}
 	app.toolUpdater = audio.NewToolUpdater(appDir, tools)
 	return app, nil
@@ -317,6 +328,63 @@ func (a *App) FindDuplicates() ([]model.DuplicateGroup, error) {
 		return nil, err
 	}
 	return library.FindDuplicates(tracks, 2_000), nil
+}
+
+// ReadTrackTags reads editable tags directly from the selected audio file.
+func (a *App) ReadTrackTags(trackID int64) (model.TagSnapshot, error) {
+	return a.tagEditor.Read(a.context(), trackID)
+}
+
+// PreviewTagEdits previews a partial tag edit for one or more tracks.
+func (a *App) PreviewTagEdits(trackIDs []int64, patch model.TagPatch) ([]model.TagPreview, error) {
+	return a.tagEditor.Preview(a.context(), trackIDs, patch)
+}
+
+// ApplyTagEdits writes a partial tag edit to files and SQLite, recording Undo history.
+func (a *App) ApplyTagEdits(trackIDs []int64, patch model.TagPatch) (model.TagApplyResult, error) {
+	return a.tagEditor.Apply(a.context(), trackIDs, patch)
+}
+
+// SelectCoverArt opens a native JPEG/PNG picker.
+func (a *App) SelectCoverArt() (string, error) {
+	if a.ctx == nil {
+		return "", errors.New("application is not ready")
+	}
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select cover artwork",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Images (*.jpg;*.jpeg;*.png)", Pattern: "*.jpg;*.jpeg;*.png"},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("select cover artwork: %w", err)
+	}
+	return path, nil
+}
+
+// SetCoverArt embeds one JPEG/PNG cover into all selected tracks.
+func (a *App) SetCoverArt(trackIDs []int64, imagePath string) (model.TagApplyResult, error) {
+	return a.tagEditor.SetCoverArt(a.context(), trackIDs, imagePath)
+}
+
+// RemoveCoverArt removes the front-cover image from all selected tracks.
+func (a *App) RemoveCoverArt(trackIDs []int64) (model.TagApplyResult, error) {
+	return a.tagEditor.RemoveCoverArt(a.context(), trackIDs)
+}
+
+// ApplyMetadataCandidate writes a provider candidate to the file and optionally embeds its artwork.
+func (a *App) ApplyMetadataCandidate(trackID int64, candidate model.MetadataCandidate, includeArtwork bool) (model.TagApplyResult, error) {
+	return a.tagEditor.ApplyMetadataCandidate(a.context(), trackID, candidate, includeArtwork)
+}
+
+// ListTagHistory returns recent reversible metadata edits.
+func (a *App) ListTagHistory(limit int) ([]model.TagHistory, error) {
+	return a.tagEditor.History(a.context(), limit)
+}
+
+// UndoTagChange restores the tags and changed front covers from one change set.
+func (a *App) UndoTagChange(changeSetID int64) (model.TagApplyResult, error) {
+	return a.tagEditor.Undo(a.context(), changeSetID)
 }
 
 // AnalyzeLoudness runs EBU R128 loudness analysis and stores the result.

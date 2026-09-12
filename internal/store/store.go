@@ -74,7 +74,11 @@ CREATE TABLE IF NOT EXISTS tracks (
     genre TEXT NOT NULL DEFAULT '',
     year INTEGER NOT NULL DEFAULT 0,
     track_number INTEGER NOT NULL DEFAULT 0,
+    track_total INTEGER NOT NULL DEFAULT 0,
     disc_number INTEGER NOT NULL DEFAULT 0,
+    disc_total INTEGER NOT NULL DEFAULT 0,
+    composer TEXT NOT NULL DEFAULT '',
+    comment TEXT NOT NULL DEFAULT '',
     duration_ms INTEGER NOT NULL DEFAULT 0,
     codec TEXT NOT NULL DEFAULT '',
     sample_rate INTEGER NOT NULL DEFAULT 0,
@@ -113,12 +117,49 @@ CREATE TABLE IF NOT EXISTS scan_entries (
     FOREIGN KEY(path) REFERENCES tracks(path) ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_scan_entries_root ON scan_entries(root_path, last_seen_scan);
+
+CREATE TABLE IF NOT EXISTS tag_change_sets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    label TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'applied',
+    affected_count INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS tag_change_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    change_set_id INTEGER NOT NULL,
+    track_id INTEGER NOT NULL,
+    before_json TEXT NOT NULL,
+    after_json TEXT NOT NULL,
+    before_cover_path TEXT NOT NULL DEFAULT '',
+    cover_changed INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY(change_set_id) REFERENCES tag_change_sets(id) ON DELETE CASCADE,
+    FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_tag_change_items_set ON tag_change_items(change_set_id);
 `
 	if _, err := db.Exec(schema); err != nil {
 		return fmt.Errorf("migrate sqlite schema: %w", err)
 	}
+	for _, column := range []struct {
+		table string
+		name  string
+		ddl   string
+	}{
+		{table: "tracks", name: "track_total", ddl: "INTEGER NOT NULL DEFAULT 0"},
+		{table: "tracks", name: "disc_total", ddl: "INTEGER NOT NULL DEFAULT 0"},
+		{table: "tracks", name: "composer", ddl: "TEXT NOT NULL DEFAULT ''"},
+		{table: "tracks", name: "comment", ddl: "TEXT NOT NULL DEFAULT ''"},
+		{table: "tag_change_items", name: "cover_changed", ddl: "INTEGER NOT NULL DEFAULT 0"},
+	} {
+		if err := ensureColumn(db, column.table, column.name, column.ddl); err != nil {
+			return err
+		}
+	}
+
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?)`, now, now); err != nil {
+	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?)`, now, now, now); err != nil {
 		return fmt.Errorf("record sqlite schema version: %w", err)
 	}
 	return nil
@@ -138,9 +179,9 @@ func (s *Store) UpsertTrack(ctx context.Context, t model.Track) (int64, error) {
 	const query = `
 INSERT INTO tracks (
     path, file_name, extension, size, modified_unix,
-    title, artist, album, album_artist, genre, year, track_number, disc_number,
+    title, artist, album, album_artist, genre, year, track_number, track_total, disc_number, disc_total, composer, comment,
     duration_ms, codec, sample_rate, channels, bit_rate, scan_error, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(path) DO UPDATE SET
     file_name=excluded.file_name,
     extension=excluded.extension,
@@ -153,7 +194,11 @@ ON CONFLICT(path) DO UPDATE SET
     genre=excluded.genre,
     year=excluded.year,
     track_number=excluded.track_number,
+    track_total=excluded.track_total,
     disc_number=excluded.disc_number,
+    disc_total=excluded.disc_total,
+    composer=excluded.composer,
+    comment=excluded.comment,
     duration_ms=excluded.duration_ms,
     codec=excluded.codec,
     sample_rate=excluded.sample_rate,
@@ -166,7 +211,7 @@ RETURNING id`
 	var id int64
 	err := s.db.QueryRowContext(ctx, query,
 		t.Path, t.FileName, t.Extension, t.Size, t.ModifiedUnix,
-		t.Title, t.Artist, t.Album, t.AlbumArtist, t.Genre, t.Year, t.TrackNumber, t.DiscNumber,
+		t.Title, t.Artist, t.Album, t.AlbumArtist, t.Genre, t.Year, t.TrackNumber, t.TrackTotal, t.DiscNumber, t.DiscTotal, t.Composer, t.Comment,
 		t.DurationMS, t.Codec, t.SampleRate, t.Channels, t.BitRate, t.ScanError, now, now,
 	).Scan(&id)
 	if err != nil {
@@ -300,7 +345,7 @@ func ensureAffected(res sql.Result, id int64) error {
 }
 
 const trackColumns = `id, path, file_name, extension, size, modified_unix,
- title, artist, album, album_artist, genre, year, track_number, disc_number,
+ title, artist, album, album_artist, genre, year, track_number, track_total, disc_number, disc_total, composer, comment,
  duration_ms, codec, sample_rate, channels, bit_rate,
  bpm, musical_key, key_scale, loudness_i, true_peak, lra, threshold, scan_error`
 
@@ -312,7 +357,7 @@ func scanTrack(row rowScanner) (model.Track, error) {
 	var t model.Track
 	err := row.Scan(
 		&t.ID, &t.Path, &t.FileName, &t.Extension, &t.Size, &t.ModifiedUnix,
-		&t.Title, &t.Artist, &t.Album, &t.AlbumArtist, &t.Genre, &t.Year, &t.TrackNumber, &t.DiscNumber,
+		&t.Title, &t.Artist, &t.Album, &t.AlbumArtist, &t.Genre, &t.Year, &t.TrackNumber, &t.TrackTotal, &t.DiscNumber, &t.DiscTotal, &t.Composer, &t.Comment,
 		&t.DurationMS, &t.Codec, &t.SampleRate, &t.Channels, &t.BitRate,
 		&t.BPM, &t.Key, &t.KeyScale, &t.LoudnessI, &t.TruePeak, &t.LRA, &t.Threshold, &t.ScanError,
 	)

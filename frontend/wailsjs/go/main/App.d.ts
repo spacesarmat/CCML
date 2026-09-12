@@ -6,6 +6,10 @@ export function AnalyzeBPMKey(arg1:number):Promise<model.BPMKey>;
 
 export function AnalyzeLoudness(arg1:number):Promise<model.Loudness>;
 
+export function ApplyMetadataCandidate(arg1:number,arg2:model.MetadataCandidate,arg3:boolean):Promise<model.TagApplyResult>;
+
+export function ApplyTagEdits(arg1:Array<number>,arg2:model.TagPatch):Promise<model.TagApplyResult>;
+
 export function CancelScan():Promise<boolean>;
 
 export function Close():Promise<void>;
@@ -15,6 +19,8 @@ export function FindDuplicates():Promise<Array<model.DuplicateGroup>>;
 export function LibraryStatistics():Promise<model.LibraryStats>;
 
 export function ListLibraryRoots():Promise<Array<model.LibraryRoot>>;
+
+export function ListTagHistory(arg1:number):Promise<Array<model.TagHistory>>;
 
 export function ListTracks(arg1:string,arg2:number,arg3:number):Promise<Array<model.Track>>;
 
@@ -26,13 +32,25 @@ export function OrganizeTrack(arg1:number,arg2:model.OrganizeRequest):Promise<st
 
 export function PreviewRename(arg1:number,arg2:model.OrganizeRequest):Promise<string>;
 
+export function PreviewTagEdits(arg1:Array<number>,arg2:model.TagPatch):Promise<Array<model.TagPreview>>;
+
+export function ReadTrackTags(arg1:number):Promise<model.TagSnapshot>;
+
+export function RemoveCoverArt(arg1:Array<number>):Promise<model.TagApplyResult>;
+
 export function RemoveLibraryRoot(arg1:string,arg2:boolean):Promise<void>;
 
 export function ScanFolder(arg1:string):Promise<model.ScanResult>;
 
+export function SelectCoverArt():Promise<string>;
+
 export function SelectMusicFolder():Promise<string>;
 
+export function SetCoverArt(arg1:Array<number>,arg2:string):Promise<model.TagApplyResult>;
+
 export function SystemStatus():Promise<model.SystemStatus>;
+
+export function UndoTagChange(arg1:number):Promise<model.TagApplyResult>;
 
 export function UpdateFFmpeg():Promise<model.FFmpegUpdateResult>;
 

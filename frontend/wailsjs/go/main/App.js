@@ -10,6 +10,14 @@ export function AnalyzeLoudness(arg1) {
   return window['go']['main']['App']['AnalyzeLoudness'](arg1);
 }
 
+export function ApplyMetadataCandidate(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ApplyMetadataCandidate'](arg1, arg2, arg3);
+}
+
+export function ApplyTagEdits(arg1, arg2) {
+  return window['go']['main']['App']['ApplyTagEdits'](arg1, arg2);
+}
+
 export function CancelScan() {
   return window['go']['main']['App']['CancelScan']();
 }
@@ -28,6 +36,10 @@ export function LibraryStatistics() {
 
 export function ListLibraryRoots() {
   return window['go']['main']['App']['ListLibraryRoots']();
+}
+
+export function ListTagHistory(arg1) {
+  return window['go']['main']['App']['ListTagHistory'](arg1);
 }
 
 export function ListTracks(arg1, arg2, arg3) {
@@ -50,6 +62,18 @@ export function PreviewRename(arg1, arg2) {
   return window['go']['main']['App']['PreviewRename'](arg1, arg2);
 }
 
+export function PreviewTagEdits(arg1, arg2) {
+  return window['go']['main']['App']['PreviewTagEdits'](arg1, arg2);
+}
+
+export function ReadTrackTags(arg1) {
+  return window['go']['main']['App']['ReadTrackTags'](arg1);
+}
+
+export function RemoveCoverArt(arg1) {
+  return window['go']['main']['App']['RemoveCoverArt'](arg1);
+}
+
 export function RemoveLibraryRoot(arg1, arg2) {
   return window['go']['main']['App']['RemoveLibraryRoot'](arg1, arg2);
 }
@@ -58,12 +82,24 @@ export function ScanFolder(arg1) {
   return window['go']['main']['App']['ScanFolder'](arg1);
 }
 
+export function SelectCoverArt() {
+  return window['go']['main']['App']['SelectCoverArt']();
+}
+
 export function SelectMusicFolder() {
   return window['go']['main']['App']['SelectMusicFolder']();
 }
 
+export function SetCoverArt(arg1, arg2) {
+  return window['go']['main']['App']['SetCoverArt'](arg1, arg2);
+}
+
 export function SystemStatus() {
   return window['go']['main']['App']['SystemStatus']();
+}
+
+export function UndoTagChange(arg1) {
+  return window['go']['main']['App']['UndoTagChange'](arg1);
 }
 
 export function UpdateFFmpeg() {

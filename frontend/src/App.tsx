@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { EventsOn } from '../wailsjs/runtime/runtime'
+import TagEditor from './TagEditor'
 import {
   detectInitialLanguage,
   localeFor,
@@ -48,7 +49,8 @@ function App() {
   const [folder, setFolder] = useState('')
   const [search, setSearch] = useState('')
   const [tracks, setTracks] = useState<Track[]>([])
-  const [selectedID, setSelectedID] = useState<number | null>(null)
+  const [selectedIDs, setSelectedIDs] = useState<number[]>([])
+  const [tagRevision, setTagRevision] = useState(0)
   const [message, setMessage] = useState(() => translate(detectInitialLanguage(), 'message.ready'))
   const [busy, setBusy] = useState(false)
   const [processing, setProcessing] = useState(defaultProcessing)
@@ -65,10 +67,12 @@ function App() {
   const locale = localeFor(language)
   const t = (key: TranslationKey, params?: TranslateParams) => translate(language, key, params)
 
-  const selected = useMemo(
-    () => tracks.find((track) => track.id === selectedID) ?? null,
-    [tracks, selectedID],
+  const selectedTracks = useMemo(
+    () => tracks.filter((track) => selectedIDs.includes(track.id)),
+    [tracks, selectedIDs],
   )
+
+  const selected = selectedTracks.length === 1 ? selectedTracks[0] : null
 
   function backend() {
     if (!window.go?.main?.App) {
@@ -169,6 +173,8 @@ function App() {
     const result = await run(t('message.loadingLibrary'), () => backend().ListTracks(query, 500, 0))
     if (result) {
       setTracks(result)
+      const visibleIDs = new Set(result.map((track) => track.id))
+      setSelectedIDs((current) => current.filter((id) => visibleIDs.has(id)))
       setMessage(t('message.tracksLoaded', {count: result.length}))
     }
   }
@@ -258,6 +264,38 @@ function App() {
       setMessage(t('message.libraryFolderRemoved'))
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  function toggleTrackSelection(trackID: number) {
+    setSelectedIDs((current) => current.includes(trackID)
+      ? current.filter((id) => id !== trackID)
+      : [...current, trackID])
+  }
+
+  function selectOnlyTrack(trackID: number) {
+    setSelectedIDs([trackID])
+  }
+
+  function toggleAllVisible() {
+    if (tracks.length > 0 && tracks.every((track) => selectedIDs.includes(track.id))) {
+      setSelectedIDs([])
+      return
+    }
+    setSelectedIDs(tracks.map((track) => track.id))
+  }
+
+  async function tagDataChanged() {
+    setTagRevision((value) => value + 1)
+    await Promise.all([refreshTracks(search), refreshStats()])
+  }
+
+  async function applyMetadataCandidate(item: MetadataCandidate, includeArtwork: boolean) {
+    if (!selected) return
+    const result = await run(t('message.applyingMetadata'), () => backend().ApplyMetadataCandidate(selected.id, item, includeArtwork))
+    if (result) {
+      await tagDataChanged()
+      setMessage(t('message.metadataApplied', {changed: result.changed, failed: result.failed}))
     }
   }
 
@@ -473,6 +511,14 @@ function App() {
             <table>
               <thead>
                 <tr>
+                  <th className="selection-col">
+                    <input
+                      type="checkbox"
+                      aria-label={t('library.selectAll')}
+                      checked={tracks.length > 0 && tracks.every((track) => selectedIDs.includes(track.id))}
+                      onChange={toggleAllVisible}
+                    />
+                  </th>
                   <th>#</th>
                   <th>{t('table.artist')}</th>
                   <th>{t('table.title')}</th>
@@ -487,9 +533,17 @@ function App() {
                 {tracks.map((track) => (
                   <tr
                     key={track.id}
-                    className={selectedID === track.id ? 'selected' : ''}
-                    onClick={() => setSelectedID(track.id)}
+                    className={selectedIDs.includes(track.id) ? 'selected' : ''}
+                    onClick={() => selectOnlyTrack(track.id)}
                   >
+                    <td className="selection-col" onClick={(event: { stopPropagation(): void }) => event.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIDs.includes(track.id)}
+                        aria-label={t('library.selectTrack', {title: track.title || track.fileName})}
+                        onChange={() => toggleTrackSelection(track.id)}
+                      />
+                    </td>
                     <td>{track.trackNumber || '–'}</td>
                     <td>{track.artist || t('library.unknownArtist')}</td>
                     <td>{track.title || track.fileName}</td>
@@ -507,9 +561,19 @@ function App() {
 
         <aside className="panel detail-panel">
           <div className="panel-title">
-            <h2>{selected?.title || t('details.selectTrack')}</h2>
-            <span>{selected?.artist || t('details.toolsHere')}</span>
+            <h2>{selected?.title || (selectedTracks.length > 1 ? t('details.multipleTracks', {count: selectedTracks.length}) : t('details.selectTrack'))}</h2>
+            <span>{selected?.artist || (selectedTracks.length > 1 ? t('details.batchEditing') : t('details.toolsHere'))}</span>
           </div>
+
+          <TagEditor
+            language={language}
+            tracks={selectedTracks}
+            revision={tagRevision}
+            disabled={busy || scanning}
+            onBusyChange={setBusy}
+            onMessage={setMessage}
+            onChanged={tagDataChanged}
+          />
 
           {selected && (
             <>
@@ -570,6 +634,12 @@ function App() {
                   <strong>{item.artist} — {item.title}</strong>
                   <span>{item.album || t('metadata.unknownAlbum')}</span>
                   <small>{item.source} · {t('metadata.match', {percent: Math.round(item.confidence * 100)})}</small>
+                  {selected && (
+                    <div className="metadata-actions">
+                      <button onClick={() => void applyMetadataCandidate(item, false)} disabled={busy}>{t('metadata.applyTags')}</button>
+                      {item.artworkUrl && <button onClick={() => void applyMetadataCandidate(item, true)} disabled={busy}>{t('metadata.applyWithArtwork')}</button>}
+                    </div>
+                  )}
                 </div>
               </article>
             ))}

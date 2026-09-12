@@ -3,6 +3,7 @@ module github.com/spacesarmat/CCML
 go 1.27.0
 
 require (
+	github.com/tommyo123/mtag v1.0.2
 	github.com/wailsapp/wails/v2 v2.15.0
 	modernc.org/sqlite v1.58.0
 )

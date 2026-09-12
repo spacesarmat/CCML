@@ -18,7 +18,11 @@ type Track struct {
 	Genre        string  `json:"genre"`
 	Year         int     `json:"year"`
 	TrackNumber  int     `json:"trackNumber"`
+	TrackTotal   int     `json:"trackTotal"`
 	DiscNumber   int     `json:"discNumber"`
+	DiscTotal    int     `json:"discTotal"`
+	Composer     string  `json:"composer"`
+	Comment      string  `json:"comment"`
 	DurationMS   int64   `json:"durationMs"`
 	Codec        string  `json:"codec"`
 	SampleRate   int     `json:"sampleRate"`
@@ -79,6 +83,68 @@ type LibraryStats struct {
 	DurationMS      int64 `json:"durationMs"`
 	SizeBytes       int64 `json:"sizeBytes"`
 	DuplicateGroups int   `json:"duplicateGroups"`
+}
+
+// TagSnapshot is the editable metadata state for one audio file.
+type TagSnapshot struct {
+	Title       string `json:"title"`
+	Artist      string `json:"artist"`
+	Album       string `json:"album"`
+	AlbumArtist string `json:"albumArtist"`
+	Genre       string `json:"genre"`
+	Composer    string `json:"composer"`
+	Comment     string `json:"comment"`
+	Year        int    `json:"year"`
+	TrackNumber int    `json:"trackNumber"`
+	TrackTotal  int    `json:"trackTotal"`
+	DiscNumber  int    `json:"discNumber"`
+	DiscTotal   int    `json:"discTotal"`
+	CoverMIME   string `json:"coverMime"`
+	CoverSize   int    `json:"coverSize"`
+}
+
+// TagPatch describes a partial metadata edit. Fields lists the values that
+// should actually be changed, which makes empty-string clearing and batch edits unambiguous.
+type TagPatch struct {
+	Fields      []string `json:"fields"`
+	Title       string   `json:"title"`
+	Artist      string   `json:"artist"`
+	Album       string   `json:"album"`
+	AlbumArtist string   `json:"albumArtist"`
+	Genre       string   `json:"genre"`
+	Composer    string   `json:"composer"`
+	Comment     string   `json:"comment"`
+	Year        int      `json:"year"`
+	TrackNumber int      `json:"trackNumber"`
+	TrackTotal  int      `json:"trackTotal"`
+	DiscNumber  int      `json:"discNumber"`
+	DiscTotal   int      `json:"discTotal"`
+}
+
+// TagPreview shows the before/after state of a proposed edit.
+type TagPreview struct {
+	TrackID  int64       `json:"trackId"`
+	Path     string      `json:"path"`
+	Before   TagSnapshot `json:"before"`
+	After    TagSnapshot `json:"after"`
+	Warnings []string    `json:"warnings"`
+}
+
+// TagApplyResult summarizes a tag, cover-art, metadata-provider, or undo operation.
+type TagApplyResult struct {
+	ChangeSetID int64    `json:"changeSetId"`
+	Changed     int      `json:"changed"`
+	Failed      int      `json:"failed"`
+	Errors      []string `json:"errors"`
+}
+
+// TagHistory describes one reversible metadata change set.
+type TagHistory struct {
+	ID            int64  `json:"id"`
+	CreatedAt     string `json:"createdAt"`
+	Label         string `json:"label"`
+	Status        string `json:"status"`
+	AffectedCount int    `json:"affectedCount"`
 }
 
 // DuplicateGroup is a probable set of duplicate tracks.

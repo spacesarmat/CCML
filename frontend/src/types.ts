@@ -12,7 +12,11 @@ export type Track = {
   genre: string
   year: number
   trackNumber: number
+  trackTotal: number
   discNumber: number
+  discTotal: number
+  composer: string
+  comment: string
   durationMs: number
   codec: string
   sampleRate: number
@@ -69,6 +73,62 @@ export type LibraryStats = {
   durationMs: number
   sizeBytes: number
   duplicateGroups: number
+}
+
+export type TagSnapshot = {
+  title: string
+  artist: string
+  album: string
+  albumArtist: string
+  genre: string
+  composer: string
+  comment: string
+  year: number
+  trackNumber: number
+  trackTotal: number
+  discNumber: number
+  discTotal: number
+  coverMime: string
+  coverSize: number
+}
+
+export type TagPatch = {
+  fields: string[]
+  title: string
+  artist: string
+  album: string
+  albumArtist: string
+  genre: string
+  composer: string
+  comment: string
+  year: number
+  trackNumber: number
+  trackTotal: number
+  discNumber: number
+  discTotal: number
+}
+
+export type TagPreview = {
+  trackId: number
+  path: string
+  before: TagSnapshot
+  after: TagSnapshot
+  warnings: string[] | null
+}
+
+export type TagApplyResult = {
+  changeSetId: number
+  changed: number
+  failed: number
+  errors: string[] | null
+}
+
+export type TagHistory = {
+  id: number
+  createdAt: string
+  label: string
+  status: string
+  affectedCount: number
 }
 
 export type DuplicateGroup = {

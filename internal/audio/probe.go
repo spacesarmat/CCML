@@ -110,9 +110,13 @@ func (p *Probe) Read(ctx context.Context, path string) (model.Track, error) {
 		Album:       tagValue(tags, "album"),
 		AlbumArtist: firstTag(tags, "album_artist", "albumartist", "album artist"),
 		Genre:       tagValue(tags, "genre"),
+		Composer:    tagValue(tags, "composer"),
+		Comment:     firstTag(tags, "comment", "description"),
 		Year:        parseYear(firstTag(tags, "date", "year")),
-		TrackNumber: parseLeadingInt(firstTag(tags, "track", "tracknumber")),
-		DiscNumber:  parseLeadingInt(firstTag(tags, "disc", "discnumber")),
+		TrackNumber: parsePairPart(firstTag(tags, "track", "tracknumber"), 0),
+		TrackTotal:  parsePairPart(firstTag(tags, "track", "tracknumber"), 1),
+		DiscNumber:  parsePairPart(firstTag(tags, "disc", "discnumber"), 0),
+		DiscTotal:   parsePairPart(firstTag(tags, "disc", "discnumber"), 1),
 		DurationMS:  duration,
 		Codec:       audioStream.CodecName,
 		SampleRate:  int(parseInt64(audioStream.SampleRate)),
@@ -176,12 +180,13 @@ func parseYear(raw string) int {
 	return value
 }
 
-func parseLeadingInt(raw string) int {
+func parsePairPart(raw string, part int) int {
 	raw = strings.TrimSpace(raw)
-	if index := strings.IndexByte(raw, '/'); index >= 0 {
-		raw = raw[:index]
+	parts := strings.SplitN(raw, "/", 2)
+	if part < 0 || part >= len(parts) {
+		return 0
 	}
-	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	value, err := strconv.Atoi(strings.TrimSpace(parts[part]))
 	if err != nil || value < 0 {
 		return 0
 	}

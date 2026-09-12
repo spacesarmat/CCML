@@ -32,7 +32,11 @@ export namespace model {
 	    genre: string;
 	    year: number;
 	    trackNumber: number;
+	    trackTotal: number;
 	    discNumber: number;
+	    discTotal: number;
+	    composer: string;
+	    comment: string;
 	    durationMs: number;
 	    codec: string;
 	    sampleRate: number;
@@ -66,7 +70,11 @@ export namespace model {
 	        this.genre = source["genre"];
 	        this.year = source["year"];
 	        this.trackNumber = source["trackNumber"];
+	        this.trackTotal = source["trackTotal"];
 	        this.discNumber = source["discNumber"];
+	        this.discTotal = source["discTotal"];
+	        this.composer = source["composer"];
+	        this.comment = source["comment"];
 	        this.durationMs = source["durationMs"];
 	        this.codec = source["codec"];
 	        this.sampleRate = source["sampleRate"];
@@ -408,6 +416,157 @@ export namespace model {
 	        this.metadataProviders = source["metadataProviders"];
 	    }
 	}
+	export class TagApplyResult {
+	    changeSetId: number;
+	    changed: number;
+	    failed: number;
+	    errors: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TagApplyResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.changeSetId = source["changeSetId"];
+	        this.changed = source["changed"];
+	        this.failed = source["failed"];
+	        this.errors = source["errors"];
+	    }
+	}
+	export class TagHistory {
+	    id: number;
+	    createdAt: string;
+	    label: string;
+	    status: string;
+	    affectedCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TagHistory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.createdAt = source["createdAt"];
+	        this.label = source["label"];
+	        this.status = source["status"];
+	        this.affectedCount = source["affectedCount"];
+	    }
+	}
+	export class TagPatch {
+	    fields: string[];
+	    title: string;
+	    artist: string;
+	    album: string;
+	    albumArtist: string;
+	    genre: string;
+	    composer: string;
+	    comment: string;
+	    year: number;
+	    trackNumber: number;
+	    trackTotal: number;
+	    discNumber: number;
+	    discTotal: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TagPatch(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.fields = source["fields"];
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.album = source["album"];
+	        this.albumArtist = source["albumArtist"];
+	        this.genre = source["genre"];
+	        this.composer = source["composer"];
+	        this.comment = source["comment"];
+	        this.year = source["year"];
+	        this.trackNumber = source["trackNumber"];
+	        this.trackTotal = source["trackTotal"];
+	        this.discNumber = source["discNumber"];
+	        this.discTotal = source["discTotal"];
+	    }
+	}
+	export class TagSnapshot {
+	    title: string;
+	    artist: string;
+	    album: string;
+	    albumArtist: string;
+	    genre: string;
+	    composer: string;
+	    comment: string;
+	    year: number;
+	    trackNumber: number;
+	    trackTotal: number;
+	    discNumber: number;
+	    discTotal: number;
+	    coverMime: string;
+	    coverSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TagSnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.album = source["album"];
+	        this.albumArtist = source["albumArtist"];
+	        this.genre = source["genre"];
+	        this.composer = source["composer"];
+	        this.comment = source["comment"];
+	        this.year = source["year"];
+	        this.trackNumber = source["trackNumber"];
+	        this.trackTotal = source["trackTotal"];
+	        this.discNumber = source["discNumber"];
+	        this.discTotal = source["discTotal"];
+	        this.coverMime = source["coverMime"];
+	        this.coverSize = source["coverSize"];
+	    }
+	}
+	export class TagPreview {
+	    trackId: number;
+	    path: string;
+	    before: TagSnapshot;
+	    after: TagSnapshot;
+	    warnings: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TagPreview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.trackId = source["trackId"];
+	        this.path = source["path"];
+	        this.before = this.convertValues(source["before"], TagSnapshot);
+	        this.after = this.convertValues(source["after"], TagSnapshot);
+	        this.warnings = source["warnings"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 
 }
 

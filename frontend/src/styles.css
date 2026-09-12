@@ -95,3 +95,41 @@ footer { color: #7e8ba0; font-size: 11px; padding: 0 4px; }
 .language-switcher button:hover { background: #202b3c; }
 .language-switcher button.active { background: #4c6fff; color: #fff; }
 @media (max-width: 980px) { .topbar { align-items: flex-start; } .topbar-actions { justify-content: flex-end; } }
+
+/* Stage 4: batch tag editor, cover art, preview and Undo history. */
+button, input, textarea { font: inherit; }
+textarea { width: 100%; resize: vertical; border: 1px solid #303b4d; background: #111722; color: #eff4fb; border-radius: 8px; padding: 9px 10px; outline: none; }
+textarea:focus { border-color: #6b86ff; box-shadow: 0 0 0 2px rgba(107, 134, 255, .14); }
+.library-layout { grid-template-columns: minmax(0, 1fr) 460px; }
+.selection-col { width: 34px; max-width: 34px; text-align: center; padding-left: 6px; padding-right: 6px; }
+.selection-col input { width: auto; accent-color: #6b86ff; }
+.tag-editor { border-bottom: 1px solid #263142; padding: 12px 14px 15px; display: grid; gap: 10px; }
+.tag-editor-empty { padding: 14px; color: #78869b; border-bottom: 1px solid #263142; font-size: 12px; }
+.tag-editor-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.tag-editor-heading h3 { margin: 0; color: #dce5f2; font-size: 14px; }
+.tag-editor-heading span { color: #8290a5; font-size: 11px; }
+.tag-help { margin: 0; color: #7f8da3; font-size: 11px; line-height: 1.45; }
+.tag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tag-field, .tag-comment-field { display: grid; gap: 4px; min-width: 0; }
+.tag-field > span, .tag-comment-field > span { display: flex; align-items: center; gap: 6px; color: #93a1b5; font-size: 10px; }
+.tag-field > span input, .tag-comment-field > span input { width: auto; accent-color: #6b86ff; }
+.tag-field > input { padding: 7px 8px; font-size: 11px; }
+.tag-comment-field textarea { font-size: 11px; min-height: 64px; }
+.tag-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cover-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 7px; border-top: 1px solid #263142; padding-top: 10px; }
+.cover-row > div { min-width: 0; display: grid; gap: 2px; }
+.cover-row strong { font-size: 11px; }
+.cover-row span { color: #7f8da3; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-preview-list, .tag-history { display: grid; gap: 7px; border-top: 1px solid #263142; padding-top: 10px; }
+.tag-preview-list > strong, .tag-history > strong { font-size: 11px; color: #aebbd0; }
+.tag-preview-item { display: grid; gap: 2px; padding: 7px 8px; border: 1px solid #283447; border-radius: 7px; background: #111722; }
+.tag-preview-item span { color: #a8b6c9; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-preview-item small { color: #73839a; line-height: 1.4; }
+.tag-history-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 8px; border: 1px solid #283447; border-radius: 7px; background: #111722; }
+.tag-history-row > div { display: grid; min-width: 0; gap: 2px; }
+.tag-history-row span { font-size: 11px; color: #c6d0df; }
+.tag-history-row small { font-size: 9px; color: #728196; }
+.metadata-actions { display: flex !important; flex-wrap: wrap; gap: 6px !important; margin-top: 5px; }
+.metadata-actions button { padding: 5px 8px; font-size: 10px; }
+@media (max-width: 1250px) { .library-layout { grid-template-columns: minmax(0, 1fr) 420px; } }
+@media (max-width: 1100px) { .library-layout { grid-template-columns: 1fr; } }

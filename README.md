@@ -14,6 +14,8 @@ Wails + React/TypeScript desktop application for Windows and macOS. The backend 
 - rendering/mastering chain: pre-gain → clipping repair → optional multiband compression → optional pitch shift → two-pass loudness normalization → limiter;
 - optional BPM/Key analysis via Essentia;
 - mp3tag-style `%artist%/%album%/%track% - %title%` rename templates;
+- direct tag editing for MP3, FLAC, M4A/AAC, WAV, AIFF and OGG, including batch partial edits and embedded cover art;
+- metadata change history with Undo and provider-candidate application;
 - optional regex rename pass;
 - safe move/rename with SQLite path update and rollback attempt;
 - React + TypeScript Wails UI;
@@ -160,7 +162,7 @@ The multiband compressor currently uses FFmpeg's documented `mcompand` multi-ban
 go test ./...
 ```
 
-Unit tests cover duplicate grouping, rename/template sanitization, processing defaults, FFmpeg loudness JSON extraction/filter construction, updater platform selection, SHA-256 verification and Windows archive extraction.
+Unit tests cover duplicate grouping, rename/template sanitization, processing defaults, FFmpeg loudness JSON extraction/filter construction, updater platform selection, SHA-256 verification, Windows archive extraction, and partial tag-edit validation.
 
 ## Project layout
 
@@ -182,7 +184,7 @@ Unit tests cover duplicate grouping, rename/template sanitization, processing de
 ## Next production milestones
 
 1. Chromaprint/AcoustID fingerprint duplicates and identification.
-2. Metadata candidate merge/scoring and writing tags/artwork back to files.
+2. Metadata candidate merge/scoring, field-by-field candidate comparison, and richer release/label/catalog-number fields.
 3. Credential UI + OAuth/PKCE token lifecycle for authenticated providers.
 4. Batch jobs with progress/cancel/resume and bounded worker queues.
 5. Dry-run/batch organizer with collision policy and undo journal.
@@ -236,3 +238,32 @@ CCML supports English and Russian UI languages without an external i18n dependen
 - Technical error output returned by FFmpeg, ffprobe, Essentia, operating-system APIs, or remote metadata services is intentionally kept verbatim for diagnostics.
 
 Translations live in `frontend/src/i18n.ts`. Add new user-facing strings there instead of hard-coding them in React components.
+
+
+## Stage 3: tag editor and Undo
+
+Stage 3 adds an Mp3tag-style metadata editor backed by `github.com/tommyo123/mtag` v1.0.2. The dependency is MIT licensed; its notice is retained in `third_party/mtag/`.
+
+- select one or many tracks directly in the library table;
+- edit Title, Artist, Album, Album Artist, Genre, Composer, Comment, Year, Track/Total and Disc/Total;
+- batch editing is partial: only explicitly enabled fields are changed, so mixed values on other selected tracks are preserved;
+- preview before writing shows before/after values;
+- changes are written to the audio file first and then synchronized to SQLite;
+- JPEG/PNG front cover replacement and removal are supported; unrelated embedded pictures are preserved when removing the front cover;
+- MusicBrainz/Discogs/Deezer/etc. candidates can be applied to a selected file, optionally including provider artwork;
+- every successful edit creates a reversible change set in SQLite; cover bytes are backed up only when the cover actually changes;
+- Undo restores text tags and the previous front cover;
+- tag history is stored under the CCML user configuration directory, not beside the music files.
+
+After installing this update, run:
+
+```powershell
+go mod tidy
+go test ./...
+cd frontend
+npm run build
+cd ..
+wails dev
+```
+
+`wails dev` regenerates Wails bindings for `ReadTrackTags`, `PreviewTagEdits`, `ApplyTagEdits`, cover-art actions, metadata application and Undo/history methods.
