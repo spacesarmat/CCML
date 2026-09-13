@@ -1,45 +1,50 @@
 // Package model contains shared domain types used by backend services and Wails bindings.
 package model
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // Track represents one indexed audio file.
 type Track struct {
-	ID            int64   `json:"id"`
-	Path          string  `json:"path"`
-	FileName      string  `json:"fileName"`
-	Extension     string  `json:"extension"`
-	Size          int64   `json:"size"`
-	ModifiedUnix  int64   `json:"modifiedUnix"`
-	Title         string  `json:"title"`
-	Artist        string  `json:"artist"`
-	Album         string  `json:"album"`
-	AlbumArtist   string  `json:"albumArtist"`
-	Genre         string  `json:"genre"`
-	Year          int     `json:"year"`
-	TrackNumber   int     `json:"trackNumber"`
-	TrackTotal    int     `json:"trackTotal"`
-	DiscNumber    int     `json:"discNumber"`
-	DiscTotal     int     `json:"discTotal"`
-	Composer      string  `json:"composer"`
-	Comment       string  `json:"comment"`
-	Label         string  `json:"label"`
-	CatalogNumber string  `json:"catalogNumber"`
-	ISRC          string  `json:"isrc"`
-	ReleaseDate   string  `json:"releaseDate"`
-	DurationMS    int64   `json:"durationMs"`
-	Codec         string  `json:"codec"`
-	SampleRate    int     `json:"sampleRate"`
-	Channels      int     `json:"channels"`
-	BitRate       int64   `json:"bitRate"`
-	BPM           float64 `json:"bpm"`
-	Key           string  `json:"key"`
-	KeyScale      string  `json:"keyScale"`
-	LoudnessI     float64 `json:"loudnessI"`
-	TruePeak      float64 `json:"truePeak"`
-	LRA           float64 `json:"lra"`
-	Threshold     float64 `json:"threshold"`
-	ScanError     string  `json:"scanError"`
+	ID                       int64   `json:"id"`
+	Path                     string  `json:"path"`
+	FileName                 string  `json:"fileName"`
+	Extension                string  `json:"extension"`
+	Size                     int64   `json:"size"`
+	ModifiedUnix             int64   `json:"modifiedUnix"`
+	Title                    string  `json:"title"`
+	Artist                   string  `json:"artist"`
+	Album                    string  `json:"album"`
+	AlbumArtist              string  `json:"albumArtist"`
+	Genre                    string  `json:"genre"`
+	Year                     int     `json:"year"`
+	TrackNumber              int     `json:"trackNumber"`
+	TrackTotal               int     `json:"trackTotal"`
+	DiscNumber               int     `json:"discNumber"`
+	DiscTotal                int     `json:"discTotal"`
+	Composer                 string  `json:"composer"`
+	Comment                  string  `json:"comment"`
+	Label                    string  `json:"label"`
+	CatalogNumber            string  `json:"catalogNumber"`
+	ISRC                     string  `json:"isrc"`
+	ReleaseDate              string  `json:"releaseDate"`
+	DurationMS               int64   `json:"durationMs"`
+	Codec                    string  `json:"codec"`
+	SampleRate               int     `json:"sampleRate"`
+	Channels                 int     `json:"channels"`
+	BitRate                  int64   `json:"bitRate"`
+	BPM                      float64 `json:"bpm"`
+	Key                      string  `json:"key"`
+	KeyScale                 string  `json:"keyScale"`
+	LoudnessI                float64 `json:"loudnessI"`
+	TruePeak                 float64 `json:"truePeak"`
+	LRA                      float64 `json:"lra"`
+	Threshold                float64 `json:"threshold"`
+	ScanError                string  `json:"scanError"`
+	LastMetadataJobStatus    string  `json:"lastMetadataJobStatus"`
+	LastMetadataJobUpdatedAt string  `json:"lastMetadataJobUpdatedAt"`
 }
 
 // ScanResult summarizes a completed or cancelled folder scan.
@@ -198,6 +203,22 @@ type ProcessingResult struct {
 	FilterGraph string   `json:"filterGraph"`
 }
 
+// TrackMedia contains private loopback URLs used by the Inspector player.
+type TrackMedia struct {
+	AudioURL   string `json:"audioUrl"`
+	CoverURL   string `json:"coverUrl"`
+	DurationMS int64  `json:"durationMs"`
+	IsPreview  bool   `json:"isPreview"`
+}
+
+// SpectrogramComparison contains generated before/after spectrogram images.
+type SpectrogramComparison struct {
+	BeforeURL  string `json:"beforeUrl"`
+	AfterURL   string `json:"afterUrl"`
+	BeforePath string `json:"beforePath"`
+	AfterPath  string `json:"afterPath"`
+}
+
 // BPMKey is optional Essentia analysis output.
 type BPMKey struct {
 	BPM      float64 `json:"bpm"`
@@ -220,6 +241,7 @@ type MetadataScore struct {
 	Title        float64 `json:"title"`
 	Artist       float64 `json:"artist"`
 	Album        float64 `json:"album"`
+	Version      float64 `json:"version"`
 	Duration     float64 `json:"duration"`
 	Identifier   float64 `json:"identifier"`
 	Completeness float64 `json:"completeness"`
@@ -251,6 +273,8 @@ type MetadataCandidate struct {
 	ArtworkEmbeddable bool          `json:"artworkEmbeddable"`
 	DurationMS        int64         `json:"durationMs"`
 	Confidence        float64       `json:"confidence"`
+	MatchClass        string        `json:"matchClass"`
+	MatchIssues       []string      `json:"matchIssues"`
 	Score             MetadataScore `json:"score"`
 }
 
@@ -264,12 +288,26 @@ type MetadataFieldOption struct {
 	Confidence float64 `json:"confidence"`
 }
 
-// MetadataLookupResult contains ranked provider results and a cross-provider suggestion.
+// MetadataProviderReport describes one provider attempt during a lookup.
+type MetadataProviderReport struct {
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Candidates int    `json:"candidates"`
+	DurationMS int64  `json:"durationMs"`
+	Error      string `json:"error"`
+	Retryable  bool   `json:"retryable"`
+}
+
+// MetadataLookupResult contains ranked provider results, provider diagnostics,
+// and a cross-provider suggestion.
 type MetadataLookupResult struct {
-	Candidates   []MetadataCandidate   `json:"candidates"`
-	Suggested    MetadataCandidate     `json:"suggested"`
-	FieldOptions []MetadataFieldOption `json:"fieldOptions"`
-	Warnings     []string              `json:"warnings"`
+	Candidates      []MetadataCandidate      `json:"candidates"`
+	Suggested       MetadataCandidate        `json:"suggested"`
+	FieldOptions    []MetadataFieldOption    `json:"fieldOptions"`
+	ProviderReports []MetadataProviderReport `json:"providerReports"`
+	Warnings        []string                 `json:"warnings"`
+	Cached          bool                     `json:"cached"`
+	CacheAgeSeconds int64                    `json:"cacheAgeSeconds"`
 }
 
 // MetadataEnrichmentOptions controls automatic enrichment for selected tracks.
@@ -299,6 +337,43 @@ type MetadataEnrichmentResult struct {
 	Items     []MetadataEnrichmentItem `json:"items"`
 }
 
+// BackgroundJob is one persistent asynchronous library operation.
+type BackgroundJob struct {
+	ID             int64   `json:"id"`
+	Type           string  `json:"type"`
+	Title          string  `json:"title"`
+	Status         string  `json:"status"`
+	OptionsJSON    string  `json:"optionsJson"`
+	CreatedAt      string  `json:"createdAt"`
+	StartedAt      string  `json:"startedAt"`
+	FinishedAt     string  `json:"finishedAt"`
+	UpdatedAt      string  `json:"updatedAt"`
+	TotalItems     int     `json:"totalItems"`
+	CompletedItems int     `json:"completedItems"`
+	SkippedItems   int     `json:"skippedItems"`
+	FailedItems    int     `json:"failedItems"`
+	CancelledItems int     `json:"cancelledItems"`
+	CurrentItem    string  `json:"currentItem"`
+	LastError      string  `json:"lastError"`
+	Progress       float64 `json:"progress"`
+}
+
+// BackgroundJobItem is one track-sized unit of work inside a background job.
+type BackgroundJobItem struct {
+	ID         int64  `json:"id"`
+	JobID      int64  `json:"jobId"`
+	TrackID    int64  `json:"trackId"`
+	Path       string `json:"path"`
+	Status     string `json:"status"`
+	Attempts   int    `json:"attempts"`
+	Error      string `json:"error"`
+	ResultJSON string `json:"resultJson"`
+	CreatedAt  string `json:"createdAt"`
+	StartedAt  string `json:"startedAt"`
+	FinishedAt string `json:"finishedAt"`
+	UpdatedAt  string `json:"updatedAt"`
+}
+
 // OrganizeRequest controls mp3tag-style template and regex-based renaming.
 type OrganizeRequest struct {
 	RootDir      string `json:"rootDir"`
@@ -306,6 +381,69 @@ type OrganizeRequest struct {
 	RegexPattern string `json:"regexPattern"`
 	RegexReplace string `json:"regexReplace"`
 	Move         bool   `json:"move"`
+}
+
+// MetadataSettings controls external metadata providers and their credentials.
+// Secrets are stored locally in the CCML user configuration directory.
+type MetadataSettings struct {
+	MusicBrainzEnabled bool `json:"musicBrainzEnabled"`
+	TheAudioDBEnabled  bool `json:"theAudioDBEnabled"`
+	DeezerEnabled      bool `json:"deezerEnabled"`
+	ITunesEnabled      bool `json:"iTunesEnabled"`
+	DiscogsEnabled     bool `json:"discogsEnabled"`
+	SpotifyEnabled     bool `json:"spotifyEnabled"`
+	AppleMusicEnabled  bool `json:"appleMusicEnabled"`
+	YouTubeEnabled     bool `json:"youtubeEnabled"`
+	SoundCloudEnabled  bool `json:"soundCloudEnabled"`
+	YandexMusicEnabled bool `json:"yandexMusicEnabled"`
+	TraxsourceEnabled  bool `json:"traxsourceEnabled"`
+
+	TheAudioDBAPIKey         string `json:"theAudioDBApiKey"`
+	ITunesCountry            string `json:"iTunesCountry"`
+	DiscogsToken             string `json:"discogsToken"`
+	SpotifyAccessToken       string `json:"spotifyAccessToken"`
+	SpotifyClientID          string `json:"spotifyClientId"`
+	SpotifyClientSecret      string `json:"spotifyClientSecret"`
+	SpotifyMarket            string `json:"spotifyMarket"`
+	AppleMusicDeveloperToken string `json:"appleMusicDeveloperToken"`
+	AppleMusicStorefront     string `json:"appleMusicStorefront"`
+	YouTubeAPIKey            string `json:"youTubeApiKey"`
+	SoundCloudAccessToken    string `json:"soundCloudAccessToken"`
+	YandexMusicToken         string `json:"yandexMusicToken"`
+	YandexMusicLanguage      string `json:"yandexMusicLanguage"`
+}
+
+// Normalize trims credential fields and applies safe regional defaults.
+func (s *MetadataSettings) Normalize() {
+	s.TheAudioDBAPIKey = strings.TrimSpace(s.TheAudioDBAPIKey)
+	s.ITunesCountry = strings.ToUpper(strings.TrimSpace(s.ITunesCountry))
+	s.DiscogsToken = strings.TrimSpace(s.DiscogsToken)
+	s.SpotifyAccessToken = strings.TrimSpace(s.SpotifyAccessToken)
+	s.SpotifyClientID = strings.TrimSpace(s.SpotifyClientID)
+	s.SpotifyClientSecret = strings.TrimSpace(s.SpotifyClientSecret)
+	s.SpotifyMarket = strings.ToUpper(strings.TrimSpace(s.SpotifyMarket))
+	s.AppleMusicDeveloperToken = strings.TrimSpace(s.AppleMusicDeveloperToken)
+	s.AppleMusicStorefront = strings.ToLower(strings.TrimSpace(s.AppleMusicStorefront))
+	s.YouTubeAPIKey = strings.TrimSpace(s.YouTubeAPIKey)
+	s.SoundCloudAccessToken = strings.TrimSpace(s.SoundCloudAccessToken)
+	s.YandexMusicToken = strings.TrimSpace(s.YandexMusicToken)
+	s.YandexMusicLanguage = strings.ToLower(strings.TrimSpace(s.YandexMusicLanguage))
+
+	if s.TheAudioDBAPIKey == "" {
+		s.TheAudioDBAPIKey = "123"
+	}
+	if s.ITunesCountry == "" {
+		s.ITunesCountry = "US"
+	}
+	if s.SpotifyMarket == "" {
+		s.SpotifyMarket = "US"
+	}
+	if s.AppleMusicStorefront == "" {
+		s.AppleMusicStorefront = "us"
+	}
+	if s.YandexMusicLanguage == "" {
+		s.YandexMusicLanguage = "ru"
+	}
 }
 
 // SystemStatus reports optional runtime dependencies.

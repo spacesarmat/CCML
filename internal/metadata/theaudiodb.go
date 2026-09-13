@@ -2,13 +2,12 @@ package metadata
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spacesarmat/CCML/internal/model"
@@ -16,8 +15,12 @@ import (
 
 // TheAudioDBProvider searches TheAudioDB v1 track endpoint.
 type TheAudioDBProvider struct {
-	client *http.Client
-	apiKey string
+	client      *http.Client
+	apiKey      string
+	baseURL     string
+	mu          sync.Mutex
+	lastCall    time.Time
+	minInterval time.Duration
 }
 
 // NewTheAudioDBProvider creates a provider. The public free key is used when
@@ -28,39 +31,29 @@ func NewTheAudioDBProvider(apiKey string) *TheAudioDBProvider {
 		apiKey = "123"
 	}
 	return &TheAudioDBProvider{
-		client: &http.Client{Timeout: 15 * time.Second},
-		apiKey: apiKey,
+		client:      &http.Client{Timeout: 15 * time.Second},
+		apiKey:      apiKey,
+		baseURL:     "https://www.theaudiodb.com/api/v1/json",
+		minInterval: 2 * time.Second,
 	}
 }
 
-// Name returns the provider name.
 func (p *TheAudioDBProvider) Name() string { return "TheAudioDB" }
 
-// Search searches tracks by artist/title.
-func (p *TheAudioDBProvider) Search(ctx context.Context, query model.MetadataQuery) (items []model.MetadataCandidate, resultErr error) {
+func (p *TheAudioDBProvider) Search(ctx context.Context, query model.MetadataQuery) ([]model.MetadataCandidate, error) {
 	if strings.TrimSpace(query.Artist) == "" || strings.TrimSpace(query.Title) == "" {
 		return nil, fmt.Errorf("artist and title are required")
+	}
+	if err := p.waitForRateLimit(ctx); err != nil {
+		return nil, err
 	}
 	values := url.Values{}
 	values.Set("s", query.Artist)
 	values.Set("t", query.Title)
-	endpoint := "https://www.theaudiodb.com/api/v1/json/" + url.PathEscape(p.apiKey) + "/searchtrack.php?" + values.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	endpoint := strings.TrimRight(p.baseURL, "/") + "/" + url.PathEscape(p.apiKey) + "/searchtrack.php?" + values.Encode()
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create TheAudioDB request: %w", err)
-	}
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request TheAudioDB: %w", err)
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("close TheAudioDB response body: %w", err))
-		}
-	}()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("TheAudioDB returned HTTP %d", resp.StatusCode)
 	}
 
 	var payload struct {
@@ -73,18 +66,19 @@ func (p *TheAudioDBProvider) Search(ctx context.Context, query model.MetadataQue
 			Genre       string `json:"strGenre"`
 			Artwork     string `json:"strTrackThumb"`
 			MusicBrainz string `json:"strMusicBrainzID"`
+			TrackNumber string `json:"intTrackNumber"`
+			Year        string `json:"intYearReleased"`
 		} `json:"track"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return nil, fmt.Errorf("decode TheAudioDB response: %w", err)
+	if err := getJSON(ctx, p.client, req, p.Name(), &payload); err != nil {
+		return nil, err
 	}
 
-	items = make([]model.MetadataCandidate, 0, len(payload.Track))
+	items := make([]model.MetadataCandidate, 0, len(payload.Track))
 	for _, track := range payload.Track {
-		duration, err := strconv.ParseInt(strings.TrimSpace(track.Duration), 10, 64)
-		if err != nil {
-			duration = 0
-		}
+		duration, _ := strconv.ParseInt(strings.TrimSpace(track.Duration), 10, 64)
+		trackNumber, _ := strconv.Atoi(strings.TrimSpace(track.TrackNumber))
+		year, _ := strconv.Atoi(strings.TrimSpace(track.Year))
 		externalID := track.ID
 		if track.MusicBrainz != "" {
 			externalID = track.MusicBrainz
@@ -92,8 +86,26 @@ func (p *TheAudioDBProvider) Search(ctx context.Context, query model.MetadataQue
 		items = append(items, model.MetadataCandidate{
 			Source: p.Name(), ExternalID: externalID,
 			Title: track.Title, Artist: track.Artist, Album: track.Album, Genre: track.Genre,
+			Year: year, TrackNumber: trackNumber,
 			ArtworkURL: track.Artwork, ArtworkEmbeddable: strings.TrimSpace(track.Artwork) != "", DurationMS: duration,
 		})
 	}
 	return items, nil
+}
+
+func (p *TheAudioDBProvider) waitForRateLimit(ctx context.Context) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	wait := p.minInterval - time.Since(p.lastCall)
+	if !p.lastCall.IsZero() && wait > 0 {
+		timer := time.NewTimer(wait)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	p.lastCall = time.Now()
+	return nil
 }

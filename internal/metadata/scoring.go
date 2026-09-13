@@ -13,15 +13,17 @@ import (
 const maxRankedCandidates = 40
 
 // ScoreCandidate computes a normalized 0..1 match score from the local track
-// and a provider candidate. The weights favor title/artist while still using
-// album, duration, identifiers, and metadata completeness as tie-breakers.
+// and a provider candidate. Besides ordinary text similarity it explicitly
+// models mix/version semantics so a Radio Edit, Remix or Live recording cannot
+// outrank the requested Original merely because the artist/title words match.
 func ScoreCandidate(query model.MetadataQuery, candidate model.MetadataCandidate) model.MetadataScore {
-	title := textSimilarity(query.Title, candidate.Title)
-	artist := textSimilarity(query.Artist, candidate.Artist)
+	title := textSimilarity(stripVersionText(query.Title), stripVersionText(candidate.Title))
+	artist := artistSimilarity(query.Artist, candidate.Artist)
 	album := 0.0
 	if strings.TrimSpace(query.Album) != "" && strings.TrimSpace(candidate.Album) != "" {
 		album = textSimilarity(query.Album, candidate.Album)
 	}
+	version := versionSimilarity(query.Title, candidate.Title)
 	duration := durationSimilarity(query.DurationMS, candidate.DurationMS)
 	identifier := 0.0
 	if strings.TrimSpace(query.ISRC) != "" && strings.TrimSpace(candidate.ISRC) != "" {
@@ -31,22 +33,21 @@ func ScoreCandidate(query model.MetadataQuery, candidate model.MetadataCandidate
 	}
 	completeness := candidateCompleteness(candidate)
 
-	// When album/ISRC are unavailable, their weights are redistributed into the
-	// strong text match dimensions so sparse providers are not unfairly punished.
 	weights := map[string]float64{
-		"title": 0.34, "artist": 0.29, "album": 0.12,
-		"duration": 0.10, "identifier": 0.12, "completeness": 0.03,
+		"title": 0.29, "artist": 0.24, "album": 0.09, "version": 0.12,
+		"duration": 0.11, "identifier": 0.13, "completeness": 0.02,
 	}
 	available := map[string]bool{
 		"title":        strings.TrimSpace(query.Title) != "" && strings.TrimSpace(candidate.Title) != "",
 		"artist":       strings.TrimSpace(query.Artist) != "" && strings.TrimSpace(candidate.Artist) != "",
 		"album":        strings.TrimSpace(query.Album) != "" && strings.TrimSpace(candidate.Album) != "",
+		"version":      strings.TrimSpace(query.Title) != "" && strings.TrimSpace(candidate.Title) != "",
 		"duration":     query.DurationMS > 0 && candidate.DurationMS > 0,
 		"identifier":   strings.TrimSpace(query.ISRC) != "" && strings.TrimSpace(candidate.ISRC) != "",
 		"completeness": true,
 	}
 	values := map[string]float64{
-		"title": title, "artist": artist, "album": album,
+		"title": title, "artist": artist, "album": album, "version": version,
 		"duration": duration, "identifier": identifier, "completeness": completeness,
 	}
 
@@ -63,15 +64,32 @@ func ScoreCandidate(query model.MetadataQuery, candidate model.MetadataCandidate
 	}
 	total := clamp01(weighted / totalWeight)
 
-	// Exact ISRC is a very strong signal. Keep text mismatches visible, but do
-	// not let minor punctuation/version differences bury an identifier match.
-	if identifier == 1 && total < 0.92 {
-		total = 0.92
+	// Version mismatches are dangerous for a tagger: a 3:20 Radio Edit should
+	// not be auto-applied to a 6:40 Extended Mix even when the textual stem is
+	// identical. Exact ISRC remains authoritative and bypasses these caps.
+	if identifier != 1 {
+		switch {
+		case version <= 0.05:
+			total *= 0.52
+		case version < 0.5:
+			total *= 0.72
+		case version < 0.8:
+			total *= 0.88
+		}
+		if duration == 0 && query.DurationMS > 0 && candidate.DurationMS > 0 {
+			total *= 0.78
+		}
+	}
+
+	// Exact ISRC is the strongest catalog signal. Keep obvious text errors
+	// visible in the breakdown, but do not bury an exact identifier match.
+	if identifier == 1 && total < 0.96 {
+		total = 0.96
 	}
 
 	return model.MetadataScore{
-		Title: title, Artist: artist, Album: album, Duration: duration,
-		Identifier: identifier, Completeness: completeness, Total: total,
+		Title: title, Artist: artist, Album: album, Version: version, Duration: duration,
+		Identifier: identifier, Completeness: completeness, Total: clamp01(total),
 	}
 }
 
@@ -79,6 +97,8 @@ func rankCandidates(query model.MetadataQuery, items []model.MetadataCandidate) 
 	for i := range items {
 		items[i].Score = ScoreCandidate(query, items[i])
 		items[i].Confidence = items[i].Score.Total
+		items[i].MatchIssues = candidateIssues(query, items[i])
+		items[i].MatchClass = matchClass(items[i])
 	}
 	sort.SliceStable(items, func(i, j int) bool {
 		if items[i].Confidence == items[j].Confidence {
@@ -91,6 +111,44 @@ func rankCandidates(query model.MetadataQuery, items []model.MetadataCandidate) 
 		items = items[:maxRankedCandidates]
 	}
 	return items
+}
+
+func matchClass(candidate model.MetadataCandidate) string {
+	if candidate.Score.Identifier == 1 && candidate.Confidence >= 0.95 {
+		return "exact"
+	}
+	switch {
+	case candidate.Confidence >= 0.94 && candidate.Score.Title >= 0.94 && candidate.Score.Artist >= 0.90 && candidate.Score.Version >= 0.90:
+		return "exact"
+	case candidate.Confidence >= 0.84:
+		return "high"
+	case candidate.Confidence >= 0.70:
+		return "medium"
+	case candidate.Confidence >= 0.55:
+		return "low"
+	default:
+		return "rejected"
+	}
+}
+
+func candidateIssues(query model.MetadataQuery, candidate model.MetadataCandidate) []string {
+	issues := make([]string, 0, 3)
+	if strings.TrimSpace(query.Title) != "" && strings.TrimSpace(candidate.Title) != "" {
+		v := versionSimilarity(query.Title, candidate.Title)
+		if v < 0.5 {
+			issues = append(issues, "version_mismatch")
+		}
+	}
+	if query.DurationMS > 0 && candidate.DurationMS > 0 {
+		delta := int64(math.Abs(float64(query.DurationMS - candidate.DurationMS)))
+		if delta > 10000 {
+			issues = append(issues, "duration_mismatch")
+		}
+	}
+	if strings.TrimSpace(query.ISRC) != "" && strings.TrimSpace(candidate.ISRC) != "" && normalizeIdentifier(query.ISRC) != normalizeIdentifier(candidate.ISRC) {
+		issues = append(issues, "isrc_mismatch")
+	}
+	return issues
 }
 
 func dedupeCandidates(items []model.MetadataCandidate) []model.MetadataCandidate {
@@ -111,6 +169,7 @@ func dedupeCandidates(items []model.MetadataCandidate) []model.MetadataCandidate
 }
 
 func buildSuggested(items []model.MetadataCandidate) model.MetadataCandidate {
+	items = trustedCandidates(items)
 	if len(items) == 0 {
 		return model.MetadataCandidate{}
 	}
@@ -119,35 +178,51 @@ func buildSuggested(items []model.MetadataCandidate) model.MetadataCandidate {
 	base.ExternalID = ""
 	base.SourceURL = ""
 
-	pickString := func(get func(model.MetadataCandidate) string) string {
+	pickString := func(field string, get func(model.MetadataCandidate) string) string {
+		bestValue := ""
+		bestScore := -1.0
 		for _, item := range items {
-			if v := strings.TrimSpace(get(item)); v != "" {
-				return v
+			v := strings.TrimSpace(get(item))
+			if v == "" {
+				continue
+			}
+			score := item.Confidence + sourceFieldBonus(field, item.Source)
+			if score > bestScore {
+				bestScore = score
+				bestValue = v
 			}
 		}
-		return ""
+		return bestValue
 	}
-	pickInt := func(get func(model.MetadataCandidate) int) int {
+	pickInt := func(field string, get func(model.MetadataCandidate) int) int {
+		bestValue := 0
+		bestScore := -1.0
 		for _, item := range items {
-			if v := get(item); v > 0 {
-				return v
+			v := get(item)
+			if v <= 0 {
+				continue
+			}
+			score := item.Confidence + sourceFieldBonus(field, item.Source)
+			if score > bestScore {
+				bestScore = score
+				bestValue = v
 			}
 		}
-		return 0
+		return bestValue
 	}
 
-	base.AlbumArtist = pickString(func(c model.MetadataCandidate) string { return c.AlbumArtist })
-	base.ReleaseDate = pickString(func(c model.MetadataCandidate) string { return c.ReleaseDate })
-	base.Genre = pickString(func(c model.MetadataCandidate) string { return c.Genre })
-	base.Label = pickString(func(c model.MetadataCandidate) string { return c.Label })
-	base.CatalogNumber = pickString(func(c model.MetadataCandidate) string { return c.CatalogNumber })
-	base.ISRC = pickString(func(c model.MetadataCandidate) string { return c.ISRC })
-	base.TrackNumber = pickInt(func(c model.MetadataCandidate) int { return c.TrackNumber })
-	base.TrackTotal = pickInt(func(c model.MetadataCandidate) int { return c.TrackTotal })
-	base.DiscNumber = pickInt(func(c model.MetadataCandidate) int { return c.DiscNumber })
-	base.DiscTotal = pickInt(func(c model.MetadataCandidate) int { return c.DiscTotal })
+	base.AlbumArtist = pickString("albumArtist", func(c model.MetadataCandidate) string { return c.AlbumArtist })
+	base.ReleaseDate = pickString("releaseDate", func(c model.MetadataCandidate) string { return c.ReleaseDate })
+	base.Genre = pickString("genre", func(c model.MetadataCandidate) string { return c.Genre })
+	base.Label = pickString("label", func(c model.MetadataCandidate) string { return c.Label })
+	base.CatalogNumber = pickString("catalogNumber", func(c model.MetadataCandidate) string { return c.CatalogNumber })
+	base.ISRC = pickString("isrc", func(c model.MetadataCandidate) string { return c.ISRC })
+	base.TrackNumber = pickInt("trackNumber", func(c model.MetadataCandidate) int { return c.TrackNumber })
+	base.TrackTotal = pickInt("trackTotal", func(c model.MetadataCandidate) int { return c.TrackTotal })
+	base.DiscNumber = pickInt("discNumber", func(c model.MetadataCandidate) int { return c.DiscNumber })
+	base.DiscTotal = pickInt("discTotal", func(c model.MetadataCandidate) int { return c.DiscTotal })
 	if base.Year == 0 {
-		base.Year = pickInt(func(c model.MetadataCandidate) int { return c.Year })
+		base.Year = pickInt("year", func(c model.MetadataCandidate) int { return c.Year })
 	}
 
 	// Artwork may only be auto-selected from providers that explicitly allow
@@ -181,6 +256,7 @@ func buildSuggested(items []model.MetadataCandidate) model.MetadataCandidate {
 }
 
 func buildFieldOptions(items []model.MetadataCandidate) []model.MetadataFieldOption {
+	items = trustedCandidates(items)
 	type strField struct {
 		name string
 		get  func(model.MetadataCandidate) string
@@ -237,6 +313,133 @@ func buildFieldOptions(items []model.MetadataCandidate) []model.MetadataFieldOpt
 		}
 	}
 	return options
+}
+
+type versionSignature map[string]struct{}
+
+var versionRules = []struct {
+	name  string
+	terms []string
+}{
+	{"extended", []string{"extended", "extended mix", "club mix", "club version", "12 inch", "12inch"}},
+	{"radio", []string{"radio edit", "radio mix", "radio version", "single edit", "single version"}},
+	{"remix", []string{"remix", "rmx", "rework", "bootleg"}},
+	{"remaster", []string{"remaster", "remastered", "remastered version", "digital remaster"}},
+	{"live", []string{"live", "live version", "concert", "live at"}},
+	{"instrumental", []string{"instrumental", "instrumental version"}},
+	{"acoustic", []string{"acoustic", "unplugged"}},
+	{"dub", []string{"dub", "dub mix", "dub version"}},
+	{"edit", []string{"edit", "short edit", "video edit"}},
+}
+
+func versionSignatureFor(title string) versionSignature {
+	norm := " " + normalizeText(title) + " "
+	sig := versionSignature{}
+	for _, rule := range versionRules {
+		for _, term := range rule.terms {
+			needle := " " + normalizeText(term) + " "
+			if strings.Contains(norm, needle) {
+				sig[rule.name] = struct{}{}
+				break
+			}
+		}
+	}
+	// "Original Mix" explicitly describes the unmodified/original version.
+	if strings.Contains(norm, " original mix ") || strings.Contains(norm, " original version ") {
+		for k := range sig {
+			if k == "edit" {
+				delete(sig, k)
+			}
+		}
+		sig["original"] = struct{}{}
+	}
+	return sig
+}
+
+func versionSimilarity(a, b string) float64 {
+	sa := versionSignatureFor(a)
+	sb := versionSignatureFor(b)
+	if len(sa) == 0 && len(sb) == 0 {
+		return 1
+	}
+	if _, ok := sa["original"]; ok && len(sa) == 1 && len(sb) == 0 {
+		return 0.96
+	}
+	if _, ok := sb["original"]; ok && len(sb) == 1 && len(sa) == 0 {
+		return 0.96
+	}
+	if len(sa) == 0 || len(sb) == 0 {
+		return 0.28
+	}
+	common := 0
+	for key := range sa {
+		if _, ok := sb[key]; ok {
+			common++
+		}
+	}
+	if common == 0 {
+		return 0
+	}
+	union := len(sa) + len(sb) - common
+	return float64(common) / float64(union)
+}
+
+func stripVersionText(value string) string {
+	result := strings.ToLower(value)
+	terms := []string{"original version", "original mix"}
+	for _, rule := range versionRules {
+		terms = append(terms, rule.terms...)
+	}
+	sort.SliceStable(terms, func(i, j int) bool { return len(terms[i]) > len(terms[j]) })
+	for _, term := range terms {
+		result = strings.ReplaceAll(result, term, " ")
+	}
+	return strings.Join(strings.Fields(result), " ")
+}
+
+func artistSimilarity(a, b string) float64 {
+	clean := func(value string) string {
+		v := strings.ToLower(value)
+		for _, marker := range []string{" feat. ", " feat ", " featuring ", " ft. ", " ft "} {
+			v = strings.ReplaceAll(v, marker, " & ")
+		}
+		return v
+	}
+	return textSimilarity(clean(a), clean(b))
+}
+
+func sourceFieldBonus(field, source string) float64 {
+	source = strings.ToLower(strings.TrimSpace(source))
+	bonuses := map[string]map[string]float64{
+		"genre":         {"discogs": 0.08, "traxsource": 0.09, "yandex music": 0.03},
+		"label":         {"discogs": 0.10, "traxsource": 0.10, "musicbrainz": 0.04},
+		"catalogNumber": {"discogs": 0.12, "traxsource": 0.12, "musicbrainz": 0.03},
+		"isrc":          {"musicbrainz": 0.10, "spotify": 0.10, "deezer": 0.08, "apple music": 0.08},
+		"releaseDate":   {"musicbrainz": 0.08, "discogs": 0.07, "traxsource": 0.06, "apple music": 0.05},
+		"year":          {"musicbrainz": 0.06, "discogs": 0.06, "traxsource": 0.05},
+		"trackNumber":   {"musicbrainz": 0.05, "spotify": 0.05, "apple music": 0.05, "deezer": 0.04},
+		"trackTotal":    {"musicbrainz": 0.05, "spotify": 0.05, "apple music": 0.05, "deezer": 0.04},
+		"discNumber":    {"musicbrainz": 0.05, "spotify": 0.05, "apple music": 0.05},
+		"discTotal":     {"musicbrainz": 0.05, "spotify": 0.05, "apple music": 0.05},
+		"albumArtist":   {"musicbrainz": 0.05, "discogs": 0.04, "spotify": 0.04},
+	}
+	if bySource, ok := bonuses[field]; ok {
+		return bySource[source]
+	}
+	return 0
+}
+
+func trustedCandidates(items []model.MetadataCandidate) []model.MetadataCandidate {
+	trusted := make([]model.MetadataCandidate, 0, len(items))
+	for _, item := range items {
+		if item.MatchClass != "rejected" {
+			trusted = append(trusted, item)
+		}
+	}
+	if len(trusted) == 0 {
+		return items
+	}
+	return trusted
 }
 
 func textSimilarity(a, b string) float64 {

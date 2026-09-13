@@ -3,6 +3,7 @@ package metadata
 import (
 	"context"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"strings"
@@ -76,13 +77,16 @@ func (p *YouTubeProvider) Search(ctx context.Context, query model.MetadataQuery)
 		if artwork == "" {
 			artwork = video.Snippet.Thumbnails.Default.URL
 		}
+		title := html.UnescapeString(video.Snippet.Title)
+		artist := html.UnescapeString(video.Snippet.ChannelTitle)
 		items = append(items, model.MetadataCandidate{
 			Source:     p.Name(),
 			ExternalID: video.ID.VideoID,
-			Title:      video.Snippet.Title,
-			Artist:     video.Snippet.ChannelTitle,
+			SourceURL:  "https://www.youtube.com/watch?v=" + video.ID.VideoID,
+			Title:      title,
+			Artist:     artist,
 			ArtworkURL: artwork,
-			Confidence: metadataSimilarity(query, video.Snippet.ChannelTitle, video.Snippet.Title, 0),
+			Confidence: metadataSimilarity(query, artist, title, 0),
 		})
 	}
 	return items, nil

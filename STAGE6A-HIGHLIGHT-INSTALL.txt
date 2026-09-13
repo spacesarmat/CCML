@@ -1,0 +1,15 @@
+CCML Stage 6A — batch result highlights
+
+After background metadata enrichment:
+- amber row = processed, but no metadata/tag changes were applied (skipped)
+- red row = enrichment failed for that track
+- a later queued/running job supersedes the previous highlight until it finishes
+
+The state is read from the persistent background job history in SQLite, so it survives application restarts.
+
+Install over the CCML project root, then run:
+  go test ./...
+  cd frontend
+  npm run build
+  cd ..
+  wails dev

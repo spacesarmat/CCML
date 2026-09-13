@@ -1,0 +1,39 @@
+CCML Metadata Stability Update
+==============================
+
+Install over the current Stage 4 + metadata hotfix project.
+
+PowerShell:
+  Ctrl+C
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\CCML-metadata-stability-update.zip" -DestinationPath "C:\Users\ANDYBUM\GolandProjects\CCML" -Force
+  cd C:\Users\ANDYBUM\GolandProjects\CCML
+  go test ./...
+  cd frontend
+  npm run build
+  cd ..
+  wails dev
+
+Default providers requiring no extra credentials:
+  - MusicBrainz
+  - TheAudioDB (free key 123 unless overridden)
+  - Deezer public catalog
+  - Apple iTunes Search
+
+Optional providers:
+  DISCOGS_TOKEN
+  SPOTIFY_ACCESS_TOKEN (temporary developer fallback)
+  or SPOTIFY_CLIENT_ID + SPOTIFY_CLIENT_SECRET (auto-refreshing catalog token)
+  SPOTIFY_MARKET=US
+  APPLE_MUSIC_DEVELOPER_TOKEN
+  APPLE_MUSIC_STOREFRONT=us
+  YOUTUBE_API_KEY
+  SOUNDCLOUD_ACCESS_TOKEN
+
+Apple iTunes country can be changed with:
+  ITUNES_COUNTRY=US
+
+Notes:
+  - One provider failure no longer fails the whole lookup.
+  - 429/5xx/network failures are retried when appropriate.
+  - Search falls back to parsing "Artist - Title" from the filename when tags are missing.
+  - The UI shows per-provider result counts, timing and errors.

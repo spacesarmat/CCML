@@ -34,6 +34,8 @@ export type Track = {
   lra: number
   threshold: number
   scanError: string
+  lastMetadataJobStatus: string
+  lastMetadataJobUpdatedAt: string
 }
 
 export type ScanResult = {
@@ -178,6 +180,20 @@ export type ProcessingResult = {
   filterGraph: string
 }
 
+export type TrackMedia = {
+  audioUrl: string
+  coverUrl: string
+  durationMs: number
+  isPreview: boolean
+}
+
+export type SpectrogramComparison = {
+  beforeUrl: string
+  afterUrl: string
+  beforePath: string
+  afterPath: string
+}
+
 export type BPMKey = {
   bpm: number
   key: string
@@ -189,6 +205,7 @@ export type MetadataScore = {
   title: number
   artist: number
   album: number
+  version: number
   duration: number
   identifier: number
   completeness: number
@@ -219,6 +236,8 @@ export type MetadataCandidate = {
   artworkEmbeddable: boolean
   durationMs: number
   confidence: number
+  matchClass: 'exact' | 'high' | 'medium' | 'low' | 'rejected' | string
+  matchIssues: string[] | null
   score: MetadataScore
 }
 
@@ -231,11 +250,51 @@ export type MetadataFieldOption = {
   confidence: number
 }
 
+export type MetadataProviderReport = {
+  name: string
+  status: 'ok' | 'empty' | 'error' | string
+  candidates: number
+  durationMs: number
+  error: string
+  retryable: boolean
+}
+
 export type MetadataLookupResult = {
   candidates: MetadataCandidate[] | null
   suggested: MetadataCandidate
   fieldOptions: MetadataFieldOption[] | null
+  providerReports: MetadataProviderReport[] | null
   warnings: string[] | null
+  cached: boolean
+  cacheAgeSeconds: number
+}
+
+
+export type MetadataSettings = {
+  musicBrainzEnabled: boolean
+  theAudioDBEnabled: boolean
+  deezerEnabled: boolean
+  iTunesEnabled: boolean
+  discogsEnabled: boolean
+  spotifyEnabled: boolean
+  appleMusicEnabled: boolean
+  youTubeEnabled: boolean
+  soundCloudEnabled: boolean
+  yandexMusicEnabled: boolean
+  traxsourceEnabled: boolean
+  theAudioDBApiKey: string
+  iTunesCountry: string
+  discogsToken: string
+  spotifyAccessToken: string
+  spotifyClientId: string
+  spotifyClientSecret: string
+  spotifyMarket: string
+  appleMusicDeveloperToken: string
+  appleMusicStorefront: string
+  youTubeApiKey: string
+  soundCloudAccessToken: string
+  yandexMusicToken: string
+  yandexMusicLanguage: string
 }
 
 export type MetadataEnrichmentOptions = {
@@ -260,6 +319,41 @@ export type MetadataEnrichmentResult = {
   skipped: number
   failed: number
   items: MetadataEnrichmentItem[] | null
+}
+
+export type BackgroundJob = {
+  id: number
+  type: string
+  title: string
+  status: 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled' | string
+  optionsJson: string
+  createdAt: string
+  startedAt: string
+  finishedAt: string
+  updatedAt: string
+  totalItems: number
+  completedItems: number
+  skippedItems: number
+  failedItems: number
+  cancelledItems: number
+  currentItem: string
+  lastError: string
+  progress: number
+}
+
+export type BackgroundJobItem = {
+  id: number
+  jobId: number
+  trackId: number
+  path: string
+  status: 'queued' | 'running' | 'completed' | 'skipped' | 'failed' | 'cancelled' | string
+  attempts: number
+  error: string
+  resultJson: string
+  createdAt: string
+  startedAt: string
+  finishedAt: string
+  updatedAt: string
 }
 
 export type OrganizeRequest = {

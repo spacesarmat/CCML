@@ -298,7 +298,14 @@ function TagTextField({field, label, patch, disabled, onToggle, onChange}: Field
   return (
     <label className="tag-field">
       <span><input type="checkbox" checked={patch.fields.includes(field)} onChange={() => onToggle(field)} /> {label}</span>
-      <input value={String(value)} onChange={(event) => onChange(field, event.target.value)} disabled={disabled} />
+      <textarea
+        className="tag-textarea"
+        rows={2}
+        value={String(value)}
+        onChange={(event) => onChange(field, event.target.value.replace(/[\r\n]+/g, ' '))}
+        onKeyDown={(event) => { if (event.key === 'Enter') event.preventDefault() }}
+        disabled={disabled}
+      />
     </label>
   )
 }

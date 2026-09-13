@@ -1,0 +1,14 @@
+CCML MusicBrainz HTTP 503 hotfix
+
+Changes:
+- retries HTTP 429/500/502/503/504
+- up to 4 attempts
+- exponential backoff: 1.5s, 3s, 6s (capped at 10s)
+- respects Retry-After header
+- preserves MusicBrainz 1 request/second client rate limit
+- clearer warning after retries are exhausted
+- includes regression test: 503, 503, 200
+
+Apply this archive over the CCML project root, then run:
+  go test ./...
+  wails dev

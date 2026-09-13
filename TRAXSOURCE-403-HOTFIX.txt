@@ -1,0 +1,8 @@
+CCML Traxsource / Cloudflare HTTP 403 hotfix
+
+- Prevents HTML/Cloudflare challenge pages from being dumped into the metadata UI.
+- Traxsource HTTP 403 is reported as a compact Cloudflare anti-bot diagnostic.
+- Provider errors are shown inside the provider card instead of duplicated as a large warning block.
+- Frontend also sanitizes cached/legacy HTML errors already stored by older builds.
+
+This hotfix does not bypass Cloudflare. Traxsource web scraping remains experimental and may be unavailable when Traxsource blocks non-browser requests.

@@ -1,0 +1,20 @@
+CCML Stage 5 — Smart Metadata Matching & Provider Validation
+
+Implemented:
+- version-aware matching for Original / Extended / Radio Edit / Remix / Remaster / Live / Instrumental / Acoustic / Dub
+- Exact / High / Medium / Low / Rejected confidence classes
+- explicit mismatch warnings for version, duration and ISRC
+- smarter source priorities for genre, label, catalog number, ISRC, release date and numbering
+- SQLite metadata lookup cache (12 hours) with manual Refresh
+- provider connection tests from Settings using the currently entered credentials before Save
+- merge preview showing before -> after values
+- Windows settings permissions test fix retained
+
+Install over the current CCML project, then run:
+  go test ./...
+  cd frontend
+  npm run build
+  cd ..
+  wails dev
+
+The existing library.db is migrated automatically. Do not delete it.

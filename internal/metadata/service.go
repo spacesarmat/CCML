@@ -4,7 +4,9 @@ package metadata
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
+	"time"
 
 	"github.com/spacesarmat/CCML/internal/model"
 )
@@ -35,7 +37,8 @@ func (s *Service) ProviderNames() []string {
 }
 
 // Search queries all configured providers concurrently. Provider failures are
-// returned as warnings so a healthy service can still provide useful results.
+// isolated and returned as diagnostics so one unavailable catalog never hides
+// healthy results from the other providers.
 func (s *Service) Search(ctx context.Context, query model.MetadataQuery) (model.MetadataLookupResult, error) {
 	if len(s.providers) == 0 {
 		return model.MetadataLookupResult{}, fmt.Errorf("no metadata providers configured")
@@ -45,6 +48,7 @@ func (s *Service) Search(ctx context.Context, query model.MetadataQuery) (model.
 		provider string
 		items    []model.MetadataCandidate
 		err      error
+		duration time.Duration
 	}
 	responses := make(chan response, len(s.providers))
 	var wg sync.WaitGroup
@@ -53,28 +57,104 @@ func (s *Service) Search(ctx context.Context, query model.MetadataQuery) (model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			items, err := provider.Search(ctx, query)
-			responses <- response{provider: provider.Name(), items: items, err: err}
+			started := time.Now()
+			providerCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
+			defer cancel()
+			items, err := provider.Search(providerCtx, query)
+			responses <- response{provider: provider.Name(), items: items, err: err, duration: time.Since(started)}
 		}()
 	}
-	wg.Wait()
-	close(responses)
+	go func() {
+		wg.Wait()
+		close(responses)
+	}()
 
 	result := model.MetadataLookupResult{}
-	failed := 0
 	for response := range responses {
-		if response.err != nil {
-			failed++
-			result.Warnings = append(result.Warnings, fmt.Sprintf("%s: %v", response.provider, response.err))
-			continue
+		report := model.MetadataProviderReport{
+			Name:       response.provider,
+			Candidates: len(response.items),
+			DurationMS: response.duration.Milliseconds(),
 		}
-		result.Candidates = append(result.Candidates, response.items...)
+		if response.err != nil {
+			if ctx.Err() != nil {
+				return result, ctx.Err()
+			}
+			report.Status = "error"
+			report.Error = response.err.Error()
+			report.Retryable = isRetryableMetadataError(response.err)
+			result.Warnings = append(result.Warnings, fmt.Sprintf("%s: %v", response.provider, response.err))
+		} else if len(response.items) == 0 {
+			report.Status = "empty"
+		} else {
+			report.Status = "ok"
+			result.Candidates = append(result.Candidates, response.items...)
+		}
+		result.ProviderReports = append(result.ProviderReports, report)
 	}
-	if failed == len(s.providers) {
-		return result, fmt.Errorf("all metadata providers failed")
-	}
+
+	sort.Slice(result.ProviderReports, func(i, j int) bool {
+		return result.ProviderReports[i].Name < result.ProviderReports[j].Name
+	})
 	result.Candidates = rankCandidates(query, result.Candidates)
 	result.Suggested = buildSuggested(result.Candidates)
 	result.FieldOptions = buildFieldOptions(result.Candidates)
 	return result, nil
+}
+
+// ValidateProviders performs an explicit connectivity/catalog smoke test against
+// every currently configured provider. It is intended for the Settings screen
+// and is never run automatically during application startup.
+func (s *Service) ValidateProviders(ctx context.Context) []model.MetadataProviderReport {
+	if len(s.providers) == 0 {
+		return nil
+	}
+	query := model.MetadataQuery{
+		Title:      "One More Time",
+		Artist:     "Daft Punk",
+		Album:      "Discovery",
+		DurationMS: 320000,
+	}
+	type response struct {
+		report model.MetadataProviderReport
+	}
+	responses := make(chan response, len(s.providers))
+	var wg sync.WaitGroup
+	for _, provider := range s.providers {
+		provider := provider
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			started := time.Now()
+			providerCtx, cancel := context.WithTimeout(ctx, 18*time.Second)
+			items, err := provider.Search(providerCtx, query)
+			cancel()
+			report := model.MetadataProviderReport{
+				Name:       provider.Name(),
+				Candidates: len(items),
+				DurationMS: time.Since(started).Milliseconds(),
+			}
+			if err != nil {
+				report.Status = "error"
+				report.Error = err.Error()
+				report.Retryable = isRetryableMetadataError(err)
+			} else if len(items) == 0 {
+				report.Status = "empty"
+			} else {
+				report.Status = "ok"
+			}
+			responses <- response{report: report}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(responses)
+	}()
+
+	reports := make([]model.MetadataProviderReport, 0, len(s.providers))
+	for response := range responses {
+		reports = append(reports, response.report)
+	}
+	sort.Slice(reports, func(i, j int) bool { return reports[i].Name < reports[j].Name })
+	return reports
 }

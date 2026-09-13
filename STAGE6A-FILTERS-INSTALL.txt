@@ -1,0 +1,12 @@
+CCML Stage 6A - table filters
+
+Overlay this archive on the CCML project root.
+
+Adds Library filters for the latest batch metadata enrichment result:
+- All
+- No changes / Без изменений
+- Errors / Ошибки
+
+The active filter clears the current selection for safety. "Select all" applies only to rows visible under the current filter.
+
+No database migration and no Go dependency changes are required.

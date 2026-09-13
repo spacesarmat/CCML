@@ -18,6 +18,84 @@ export namespace model {
 	        this.strength = source["strength"];
 	    }
 	}
+	export class BackgroundJob {
+	    id: number;
+	    type: string;
+	    title: string;
+	    status: string;
+	    optionsJson: string;
+	    createdAt: string;
+	    startedAt: string;
+	    finishedAt: string;
+	    updatedAt: string;
+	    totalItems: number;
+	    completedItems: number;
+	    skippedItems: number;
+	    failedItems: number;
+	    cancelledItems: number;
+	    currentItem: string;
+	    lastError: string;
+	    progress: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackgroundJob(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.type = source["type"];
+	        this.title = source["title"];
+	        this.status = source["status"];
+	        this.optionsJson = source["optionsJson"];
+	        this.createdAt = source["createdAt"];
+	        this.startedAt = source["startedAt"];
+	        this.finishedAt = source["finishedAt"];
+	        this.updatedAt = source["updatedAt"];
+	        this.totalItems = source["totalItems"];
+	        this.completedItems = source["completedItems"];
+	        this.skippedItems = source["skippedItems"];
+	        this.failedItems = source["failedItems"];
+	        this.cancelledItems = source["cancelledItems"];
+	        this.currentItem = source["currentItem"];
+	        this.lastError = source["lastError"];
+	        this.progress = source["progress"];
+	    }
+	}
+	export class BackgroundJobItem {
+	    id: number;
+	    jobId: number;
+	    trackId: number;
+	    path: string;
+	    status: string;
+	    attempts: number;
+	    error: string;
+	    resultJson: string;
+	    createdAt: string;
+	    startedAt: string;
+	    finishedAt: string;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackgroundJobItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.jobId = source["jobId"];
+	        this.trackId = source["trackId"];
+	        this.path = source["path"];
+	        this.status = source["status"];
+	        this.attempts = source["attempts"];
+	        this.error = source["error"];
+	        this.resultJson = source["resultJson"];
+	        this.createdAt = source["createdAt"];
+	        this.startedAt = source["startedAt"];
+	        this.finishedAt = source["finishedAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
 	export class Track {
 	    id: number;
 	    path: string;
@@ -54,6 +132,8 @@ export namespace model {
 	    lra: number;
 	    threshold: number;
 	    scanError: string;
+	    lastMetadataJobStatus: string;
+	    lastMetadataJobUpdatedAt: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Track(source);
@@ -96,6 +176,8 @@ export namespace model {
 	        this.lra = source["lra"];
 	        this.threshold = source["threshold"];
 	        this.scanError = source["scanError"];
+	        this.lastMetadataJobStatus = source["lastMetadataJobStatus"];
+	        this.lastMetadataJobUpdatedAt = source["lastMetadataJobUpdatedAt"];
 	    }
 	}
 	export class DuplicateGroup {
@@ -216,6 +298,7 @@ export namespace model {
 	    title: number;
 	    artist: number;
 	    album: number;
+	    version: number;
 	    duration: number;
 	    identifier: number;
 	    completeness: number;
@@ -230,6 +313,7 @@ export namespace model {
 	        this.title = source["title"];
 	        this.artist = source["artist"];
 	        this.album = source["album"];
+	        this.version = source["version"];
 	        this.duration = source["duration"];
 	        this.identifier = source["identifier"];
 	        this.completeness = source["completeness"];
@@ -260,6 +344,8 @@ export namespace model {
 	    artworkEmbeddable: boolean;
 	    durationMs: number;
 	    confidence: number;
+	    matchClass: string;
+	    matchIssues: string[];
 	    score: MetadataScore;
 	
 	    static createFrom(source: any = {}) {
@@ -291,6 +377,8 @@ export namespace model {
 	        this.artworkEmbeddable = source["artworkEmbeddable"];
 	        this.durationMs = source["durationMs"];
 	        this.confidence = source["confidence"];
+	        this.matchClass = source["matchClass"];
+	        this.matchIssues = source["matchIssues"];
 	        this.score = this.convertValues(source["score"], MetadataScore);
 	    }
 	
@@ -412,11 +500,36 @@ export namespace model {
 	        this.confidence = source["confidence"];
 	    }
 	}
+	export class MetadataProviderReport {
+	    name: string;
+	    status: string;
+	    candidates: number;
+	    durationMs: number;
+	    error: string;
+	    retryable: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetadataProviderReport(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.status = source["status"];
+	        this.candidates = source["candidates"];
+	        this.durationMs = source["durationMs"];
+	        this.error = source["error"];
+	        this.retryable = source["retryable"];
+	    }
+	}
 	export class MetadataLookupResult {
 	    candidates: MetadataCandidate[];
 	    suggested: MetadataCandidate;
 	    fieldOptions: MetadataFieldOption[];
+	    providerReports: MetadataProviderReport[];
 	    warnings: string[];
+	    cached: boolean;
+	    cacheAgeSeconds: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new MetadataLookupResult(source);
@@ -427,7 +540,10 @@ export namespace model {
 	        this.candidates = this.convertValues(source["candidates"], MetadataCandidate);
 	        this.suggested = this.convertValues(source["suggested"], MetadataCandidate);
 	        this.fieldOptions = this.convertValues(source["fieldOptions"], MetadataFieldOption);
+	        this.providerReports = this.convertValues(source["providerReports"], MetadataProviderReport);
 	        this.warnings = source["warnings"];
+	        this.cached = source["cached"];
+	        this.cacheAgeSeconds = source["cacheAgeSeconds"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -449,6 +565,65 @@ export namespace model {
 		}
 	}
 	
+	
+	export class MetadataSettings {
+	    musicBrainzEnabled: boolean;
+	    theAudioDBEnabled: boolean;
+	    deezerEnabled: boolean;
+	    iTunesEnabled: boolean;
+	    discogsEnabled: boolean;
+	    spotifyEnabled: boolean;
+	    appleMusicEnabled: boolean;
+	    youtubeEnabled: boolean;
+	    soundCloudEnabled: boolean;
+	    yandexMusicEnabled: boolean;
+	    traxsourceEnabled: boolean;
+	    theAudioDBApiKey: string;
+	    iTunesCountry: string;
+	    discogsToken: string;
+	    spotifyAccessToken: string;
+	    spotifyClientId: string;
+	    spotifyClientSecret: string;
+	    spotifyMarket: string;
+	    appleMusicDeveloperToken: string;
+	    appleMusicStorefront: string;
+	    youTubeApiKey: string;
+	    soundCloudAccessToken: string;
+	    yandexMusicToken: string;
+	    yandexMusicLanguage: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetadataSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.musicBrainzEnabled = source["musicBrainzEnabled"];
+	        this.theAudioDBEnabled = source["theAudioDBEnabled"];
+	        this.deezerEnabled = source["deezerEnabled"];
+	        this.iTunesEnabled = source["iTunesEnabled"];
+	        this.discogsEnabled = source["discogsEnabled"];
+	        this.spotifyEnabled = source["spotifyEnabled"];
+	        this.appleMusicEnabled = source["appleMusicEnabled"];
+	        this.youtubeEnabled = source["youtubeEnabled"];
+	        this.soundCloudEnabled = source["soundCloudEnabled"];
+	        this.yandexMusicEnabled = source["yandexMusicEnabled"];
+	        this.traxsourceEnabled = source["traxsourceEnabled"];
+	        this.theAudioDBApiKey = source["theAudioDBApiKey"];
+	        this.iTunesCountry = source["iTunesCountry"];
+	        this.discogsToken = source["discogsToken"];
+	        this.spotifyAccessToken = source["spotifyAccessToken"];
+	        this.spotifyClientId = source["spotifyClientId"];
+	        this.spotifyClientSecret = source["spotifyClientSecret"];
+	        this.spotifyMarket = source["spotifyMarket"];
+	        this.appleMusicDeveloperToken = source["appleMusicDeveloperToken"];
+	        this.appleMusicStorefront = source["appleMusicStorefront"];
+	        this.youTubeApiKey = source["youTubeApiKey"];
+	        this.soundCloudAccessToken = source["soundCloudAccessToken"];
+	        this.yandexMusicToken = source["yandexMusicToken"];
+	        this.yandexMusicLanguage = source["yandexMusicLanguage"];
+	    }
+	}
 	export class OrganizeRequest {
 	    rootDir: string;
 	    template: string;
@@ -565,6 +740,24 @@ export namespace model {
 	        this.cancelled = source["cancelled"];
 	        this.duration = source["duration"];
 	        this.errors = source["errors"];
+	    }
+	}
+	export class SpectrogramComparison {
+	    beforeUrl: string;
+	    afterUrl: string;
+	    beforePath: string;
+	    afterPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SpectrogramComparison(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.beforeUrl = source["beforeUrl"];
+	        this.afterUrl = source["afterUrl"];
+	        this.beforePath = source["beforePath"];
+	        this.afterPath = source["afterPath"];
 	    }
 	}
 	export class SystemStatus {
@@ -766,6 +959,25 @@ export namespace model {
 		}
 	}
 	
+	
+	export class TrackMedia {
+	    audioUrl: string;
+	    coverUrl: string;
+	    durationMs: number;
+	    isPreview: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new TrackMedia(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.audioUrl = source["audioUrl"];
+	        this.coverUrl = source["coverUrl"];
+	        this.durationMs = source["durationMs"];
+	        this.isPreview = source["isPreview"];
+	    }
+	}
 
 }
 

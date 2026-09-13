@@ -142,6 +142,53 @@ CREATE TABLE IF NOT EXISTS tag_change_items (
     FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_tag_change_items_set ON tag_change_items(change_set_id);
+
+CREATE TABLE IF NOT EXISTS metadata_lookup_cache (
+    cache_key TEXT PRIMARY KEY,
+    result_json TEXT NOT NULL,
+    created_unix INTEGER NOT NULL,
+    expires_unix INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_metadata_lookup_cache_expires ON metadata_lookup_cache(expires_unix);
+
+CREATE TABLE IF NOT EXISTS background_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    options_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    started_at TEXT NOT NULL DEFAULT '',
+    finished_at TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    total_items INTEGER NOT NULL DEFAULT 0,
+    completed_items INTEGER NOT NULL DEFAULT 0,
+    skipped_items INTEGER NOT NULL DEFAULT 0,
+    failed_items INTEGER NOT NULL DEFAULT 0,
+    cancelled_items INTEGER NOT NULL DEFAULT 0,
+    current_item TEXT NOT NULL DEFAULT '',
+    last_error TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_background_jobs_status ON background_jobs(status, id);
+
+CREATE TABLE IF NOT EXISTS background_job_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id INTEGER NOT NULL,
+    track_id INTEGER NOT NULL,
+    path TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    error TEXT NOT NULL DEFAULT '',
+    result_json TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    started_at TEXT NOT NULL DEFAULT '',
+    finished_at TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(job_id) REFERENCES background_jobs(id) ON DELETE CASCADE,
+    FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_background_job_items_job_status ON background_job_items(job_id, status, id);
+CREATE INDEX IF NOT EXISTS idx_background_job_items_track ON background_job_items(track_id, id DESC);
 `
 	if _, err := db.Exec(schema); err != nil {
 		return fmt.Errorf("migrate sqlite schema: %w", err)
@@ -160,6 +207,7 @@ CREATE INDEX IF NOT EXISTS idx_tag_change_items_set ON tag_change_items(change_s
 		{table: "tracks", name: "isrc", ddl: "TEXT NOT NULL DEFAULT ''"},
 		{table: "tracks", name: "release_date", ddl: "TEXT NOT NULL DEFAULT ''"},
 		{table: "tag_change_items", name: "cover_changed", ddl: "INTEGER NOT NULL DEFAULT 0"},
+		{table: "background_jobs", name: "cancelled_items", ddl: "INTEGER NOT NULL DEFAULT 0"},
 	} {
 		if err := ensureColumn(db, column.table, column.name, column.ddl); err != nil {
 			return err
@@ -167,7 +215,7 @@ CREATE INDEX IF NOT EXISTS idx_tag_change_items_set ON tag_change_items(change_s
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?), (4, ?)`, now, now, now, now); err != nil {
+	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?), (4, ?), (5, ?), (6, ?), (7, ?), (8, ?)`, now, now, now, now, now, now, now, now); err != nil {
 		return fmt.Errorf("record sqlite schema version: %w", err)
 	}
 	return nil
@@ -355,7 +403,9 @@ func ensureAffected(res sql.Result, id int64) error {
 const trackColumns = `id, path, file_name, extension, size, modified_unix,
  title, artist, album, album_artist, genre, year, track_number, track_total, disc_number, disc_total, composer, comment, label, catalog_number, isrc, release_date,
  duration_ms, codec, sample_rate, channels, bit_rate,
- bpm, musical_key, key_scale, loudness_i, true_peak, lra, threshold, scan_error`
+ bpm, musical_key, key_scale, loudness_i, true_peak, lra, threshold, scan_error,
+ COALESCE((SELECT bji.status FROM background_job_items bji JOIN background_jobs bj ON bj.id=bji.job_id WHERE bji.track_id=tracks.id AND bj.type='metadata_enrichment' ORDER BY bji.id DESC LIMIT 1), ''),
+ COALESCE((SELECT bji.updated_at FROM background_job_items bji JOIN background_jobs bj ON bj.id=bji.job_id WHERE bji.track_id=tracks.id AND bj.type='metadata_enrichment' ORDER BY bji.id DESC LIMIT 1), '')`
 
 type rowScanner interface {
 	Scan(dest ...any) error
@@ -368,6 +418,7 @@ func scanTrack(row rowScanner) (model.Track, error) {
 		&t.Title, &t.Artist, &t.Album, &t.AlbumArtist, &t.Genre, &t.Year, &t.TrackNumber, &t.TrackTotal, &t.DiscNumber, &t.DiscTotal, &t.Composer, &t.Comment, &t.Label, &t.CatalogNumber, &t.ISRC, &t.ReleaseDate,
 		&t.DurationMS, &t.Codec, &t.SampleRate, &t.Channels, &t.BitRate,
 		&t.BPM, &t.Key, &t.KeyScale, &t.LoudnessI, &t.TruePeak, &t.LRA, &t.Threshold, &t.ScanError,
+		&t.LastMetadataJobStatus, &t.LastMetadataJobUpdatedAt,
 	)
 	if err != nil {
 		return model.Track{}, err

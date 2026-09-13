@@ -18,12 +18,24 @@ export function ApplyTagEdits(arg1, arg2) {
   return window['go']['main']['App']['ApplyTagEdits'](arg1, arg2);
 }
 
+export function CancelBackgroundJob(arg1) {
+  return window['go']['main']['App']['CancelBackgroundJob'](arg1);
+}
+
 export function CancelScan() {
   return window['go']['main']['App']['CancelScan']();
 }
 
 export function Close() {
   return window['go']['main']['App']['Close']();
+}
+
+export function CreateLibraryMetadataEnrichmentJob(arg1) {
+  return window['go']['main']['App']['CreateLibraryMetadataEnrichmentJob'](arg1);
+}
+
+export function CreateMetadataEnrichmentJob(arg1, arg2) {
+  return window['go']['main']['App']['CreateMetadataEnrichmentJob'](arg1, arg2);
 }
 
 export function EnrichMetadata(arg1, arg2) {
@@ -34,8 +46,24 @@ export function FindDuplicates() {
   return window['go']['main']['App']['FindDuplicates']();
 }
 
+export function GenerateSpectrograms(arg1, arg2) {
+  return window['go']['main']['App']['GenerateSpectrograms'](arg1, arg2);
+}
+
+export function GetMetadataSettings() {
+  return window['go']['main']['App']['GetMetadataSettings']();
+}
+
 export function LibraryStatistics() {
   return window['go']['main']['App']['LibraryStatistics']();
+}
+
+export function ListBackgroundJobItems(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ListBackgroundJobItems'](arg1, arg2, arg3);
+}
+
+export function ListBackgroundJobs(arg1) {
+  return window['go']['main']['App']['ListBackgroundJobs'](arg1);
 }
 
 export function ListLibraryRoots() {
@@ -58,8 +86,24 @@ export function NormalizeTrack(arg1, arg2) {
   return window['go']['main']['App']['NormalizeTrack'](arg1, arg2);
 }
 
+export function OpenMetadataLink(arg1) {
+  return window['go']['main']['App']['OpenMetadataLink'](arg1);
+}
+
 export function OrganizeTrack(arg1, arg2) {
   return window['go']['main']['App']['OrganizeTrack'](arg1, arg2);
+}
+
+export function PauseBackgroundJob(arg1) {
+  return window['go']['main']['App']['PauseBackgroundJob'](arg1);
+}
+
+export function PrepareTrackAudioPreview(arg1) {
+  return window['go']['main']['App']['PrepareTrackAudioPreview'](arg1);
+}
+
+export function PrepareTrackMedia(arg1) {
+  return window['go']['main']['App']['PrepareTrackMedia'](arg1);
 }
 
 export function PreviewRename(arg1, arg2) {
@@ -74,12 +118,28 @@ export function ReadTrackTags(arg1) {
   return window['go']['main']['App']['ReadTrackTags'](arg1);
 }
 
+export function RefreshMetadata(arg1) {
+  return window['go']['main']['App']['RefreshMetadata'](arg1);
+}
+
 export function RemoveCoverArt(arg1) {
   return window['go']['main']['App']['RemoveCoverArt'](arg1);
 }
 
 export function RemoveLibraryRoot(arg1, arg2) {
   return window['go']['main']['App']['RemoveLibraryRoot'](arg1, arg2);
+}
+
+export function ResumeBackgroundJob(arg1) {
+  return window['go']['main']['App']['ResumeBackgroundJob'](arg1);
+}
+
+export function RetryFailedBackgroundJob(arg1) {
+  return window['go']['main']['App']['RetryFailedBackgroundJob'](arg1);
+}
+
+export function SaveMetadataSettings(arg1) {
+  return window['go']['main']['App']['SaveMetadataSettings'](arg1);
 }
 
 export function ScanFolder(arg1) {
@@ -100,6 +160,10 @@ export function SetCoverArt(arg1, arg2) {
 
 export function SystemStatus() {
   return window['go']['main']['App']['SystemStatus']();
+}
+
+export function TestMetadataProviders(arg1) {
+  return window['go']['main']['App']['TestMetadataProviders'](arg1);
 }
 
 export function UndoTagChange(arg1) {

@@ -10,15 +10,29 @@ export function ApplyMetadataCandidate(arg1:number,arg2:model.MetadataCandidate,
 
 export function ApplyTagEdits(arg1:Array<number>,arg2:model.TagPatch):Promise<model.TagApplyResult>;
 
+export function CancelBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
+
 export function CancelScan():Promise<boolean>;
 
 export function Close():Promise<void>;
+
+export function CreateLibraryMetadataEnrichmentJob(arg1:model.MetadataEnrichmentOptions):Promise<model.BackgroundJob>;
+
+export function CreateMetadataEnrichmentJob(arg1:Array<number>,arg2:model.MetadataEnrichmentOptions):Promise<model.BackgroundJob>;
 
 export function EnrichMetadata(arg1:Array<number>,arg2:model.MetadataEnrichmentOptions):Promise<model.MetadataEnrichmentResult>;
 
 export function FindDuplicates():Promise<Array<model.DuplicateGroup>>;
 
+export function GenerateSpectrograms(arg1:number,arg2:string):Promise<model.SpectrogramComparison>;
+
+export function GetMetadataSettings():Promise<model.MetadataSettings>;
+
 export function LibraryStatistics():Promise<model.LibraryStats>;
+
+export function ListBackgroundJobItems(arg1:number,arg2:number,arg3:number):Promise<Array<model.BackgroundJobItem>>;
+
+export function ListBackgroundJobs(arg1:number):Promise<Array<model.BackgroundJob>>;
 
 export function ListLibraryRoots():Promise<Array<model.LibraryRoot>>;
 
@@ -30,7 +44,15 @@ export function LookupMetadata(arg1:number):Promise<model.MetadataLookupResult>;
 
 export function NormalizeTrack(arg1:number,arg2:model.ProcessingOptions):Promise<model.ProcessingResult>;
 
+export function OpenMetadataLink(arg1:string):Promise<void>;
+
 export function OrganizeTrack(arg1:number,arg2:model.OrganizeRequest):Promise<string>;
+
+export function PauseBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
+
+export function PrepareTrackAudioPreview(arg1:number):Promise<string>;
+
+export function PrepareTrackMedia(arg1:number):Promise<model.TrackMedia>;
 
 export function PreviewRename(arg1:number,arg2:model.OrganizeRequest):Promise<string>;
 
@@ -38,9 +60,17 @@ export function PreviewTagEdits(arg1:Array<number>,arg2:model.TagPatch):Promise<
 
 export function ReadTrackTags(arg1:number):Promise<model.TagSnapshot>;
 
+export function RefreshMetadata(arg1:number):Promise<model.MetadataLookupResult>;
+
 export function RemoveCoverArt(arg1:Array<number>):Promise<model.TagApplyResult>;
 
 export function RemoveLibraryRoot(arg1:string,arg2:boolean):Promise<void>;
+
+export function ResumeBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
+
+export function RetryFailedBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
+
+export function SaveMetadataSettings(arg1:model.MetadataSettings):Promise<model.MetadataSettings>;
 
 export function ScanFolder(arg1:string):Promise<model.ScanResult>;
 
@@ -51,6 +81,8 @@ export function SelectMusicFolder():Promise<string>;
 export function SetCoverArt(arg1:Array<number>,arg2:string):Promise<model.TagApplyResult>;
 
 export function SystemStatus():Promise<model.SystemStatus>;
+
+export function TestMetadataProviders(arg1:model.MetadataSettings):Promise<Array<model.MetadataProviderReport>>;
 
 export function UndoTagChange(arg1:number):Promise<model.TagApplyResult>;
 

@@ -1,0 +1,20 @@
+CCML Metadata Settings + Detailed Matches
+=========================================
+
+1. Stop `wails dev`.
+2. Extract this ZIP over the CCML project root.
+3. Run:
+     go test ./...
+     cd frontend
+     npm run build
+     cd ..
+     wails dev
+4. Open "Settings / Настройки" in the top bar.
+5. Configure metadata sources and save. Changes apply immediately.
+
+Notes:
+- Metadata credentials are stored in the per-user CCML settings.json.
+- Existing environment variables are used as initial fallback when settings.json does not exist.
+- Free sources are enabled by default: MusicBrainz, Deezer, Apple iTunes, TheAudioDB.
+- Candidate cards now show album artist, year, release date, genre, duration, label,
+  catalog number, ISRC, track/disc numbers, artwork dimensions, source ID and score breakdown.

@@ -52,7 +52,14 @@ func (p *Processor) Analyze(ctx context.Context, input string, opts AnalysisOpti
 		return model.Loudness{}, err
 	}
 	filters = append(filters, "loudnorm=I=-14:TP=-1:LRA=11:print_format=json")
-	return p.runLoudnessPass(ctx, input, strings.Join(filters, ","))
+	measurement, finite, err := p.runLoudnessPass(ctx, input, strings.Join(filters, ","))
+	if err != nil {
+		return model.Loudness{}, err
+	}
+	if !finite {
+		return model.Loudness{}, errors.New("FFmpeg loudnorm returned a non-finite measurement; the track may be silent or the analysis chain may be unstable")
+	}
+	return measurement, nil
 }
 
 // Process creates a processed copy. Originals are preserved by default.
@@ -69,20 +76,14 @@ func (p *Processor) Process(ctx context.Context, input string, opts model.Proces
 		return model.ProcessingResult{}, err
 	}
 
-	firstPass := appendCopy(prefilters,
-		fmt.Sprintf("loudnorm=I=%s:TP=%s:LRA=%s:print_format=json",
-			ff(opts.TargetLUFS), ff(opts.TargetTruePeakDB), ff(opts.TargetLRA)))
-	measurement, err := p.runLoudnessPass(ctx, input, strings.Join(firstPass, ","))
+	firstPass := appendCopy(prefilters, loudnormMeasurementFilter(opts))
+	measurement, _, err := p.runLoudnessPass(ctx, input, strings.Join(firstPass, ","))
 	if err != nil {
 		return model.ProcessingResult{}, err
 	}
 
-	secondPass := appendCopy(prefilters, fmt.Sprintf(
-		"loudnorm=I=%s:TP=%s:LRA=%s:measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s:linear=true:print_format=summary",
-		ff(opts.TargetLUFS), ff(opts.TargetTruePeakDB), ff(opts.TargetLRA),
-		ff(measurement.InputI), ff(measurement.InputTP), ff(measurement.InputLRA),
-		ff(measurement.InputThreshold), ff(measurement.TargetOffset),
-	))
+	loudnormFilter := buildLoudnormRenderFilter(opts, measurement)
+	secondPass := appendCopy(prefilters, loudnormFilter)
 	if opts.Limit {
 		linearLimit := math.Pow(10, opts.TargetTruePeakDB/20)
 		secondPass = append(secondPass, fmt.Sprintf("alimiter=limit=%s:attack=5:release=50:level=false:latency=true", ff(linearLimit)))
@@ -101,9 +102,7 @@ func (p *Processor) Process(ctx context.Context, input string, opts model.Proces
 	if err != nil {
 		return model.ProcessingResult{}, err
 	}
-	args := []string{"-hide_banner", "-y", "-i", input, "-map", "0:a:0", "-map", "0:v?", "-map_metadata", "0", "-c:v", "copy", "-af", filterGraph}
-	args = append(args, codecArgs...)
-	args = append(args, tempOutput)
+	args := processingFFmpegArgs(input, tempOutput, filterGraph, codecArgs)
 
 	cmd := exec.CommandContext(ctx, p.tools.FFmpegPath(), args...)
 	var stderr bytes.Buffer
@@ -124,10 +123,21 @@ func (p *Processor) Process(ctx context.Context, input string, opts model.Proces
 		output = input
 	}
 
+	if err := validateRenderedFile(output); err != nil {
+		return model.ProcessingResult{}, err
+	}
+	verified, finite, err := p.runLoudnessPass(ctx, output, loudnormMeasurementFilter(opts))
+	if err != nil {
+		return model.ProcessingResult{}, fmt.Errorf("verify processed loudness: %w", err)
+	}
+	if !finite {
+		return model.ProcessingResult{}, errors.New("verify processed loudness: FFmpeg returned a non-finite measurement")
+	}
+
 	return model.ProcessingResult{
 		InputPath:   input,
 		OutputPath:  output,
-		Measurement: measurement,
+		Measurement: verified,
 		FilterGraph: filterGraph,
 	}, nil
 }
@@ -176,7 +186,40 @@ func (p *Processor) WriteReplayGain(ctx context.Context, input string, targetLUF
 	return measurement, nil
 }
 
-func (p *Processor) runLoudnessPass(ctx context.Context, input, filterGraph string) (model.Loudness, error) {
+func loudnormMeasurementFilter(opts model.ProcessingOptions) string {
+	return fmt.Sprintf("loudnorm=I=%s:TP=%s:LRA=%s:print_format=json",
+		ff(opts.TargetLUFS), ff(opts.TargetTruePeakDB), ff(opts.TargetLRA))
+}
+
+func processingFFmpegArgs(input, output, filterGraph string, codecArgs []string) []string {
+	args := []string{
+		"-hide_banner", "-y", "-i", input,
+		"-map", "0:a:0",
+		"-map", "0:v?",
+		"-map_metadata", "0",
+		"-map_chapters", "0",
+		"-c:v", "copy",
+		"-af", filterGraph,
+	}
+	args = append(args, codecArgs...)
+	return append(args, output)
+}
+
+func validateRenderedFile(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("verify processed output: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("verify processed output: %q is not a regular file", path)
+	}
+	if info.Size() == 0 {
+		return fmt.Errorf("verify processed output: %q is empty", path)
+	}
+	return nil
+}
+
+func (p *Processor) runLoudnessPass(ctx context.Context, input, filterGraph string) (model.Loudness, bool, error) {
 	cmd := exec.CommandContext(ctx, p.tools.FFmpegPath(),
 		"-hide_banner", "-nostats", "-i", input,
 		"-map", "0:a:0", "-af", filterGraph,
@@ -185,23 +228,61 @@ func (p *Processor) runLoudnessPass(ctx context.Context, input, filterGraph stri
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return model.Loudness{}, fmt.Errorf("ffmpeg loudness analysis: %w: %s", err, tail(stderr.String(), 4000))
+		return model.Loudness{}, false, fmt.Errorf("ffmpeg loudness analysis: %w: %s", err, tail(stderr.String(), 4000))
 	}
 	payload, err := extractLastJSONObject(stderr.String())
 	if err != nil {
-		return model.Loudness{}, fmt.Errorf("parse loudnorm output: %w", err)
+		return model.Loudness{}, false, fmt.Errorf("parse loudnorm output: %w", err)
 	}
 	var raw loudnormJSON
 	if err := json.Unmarshal([]byte(payload), &raw); err != nil {
-		return model.Loudness{}, fmt.Errorf("decode loudnorm JSON: %w", err)
+		return model.Loudness{}, false, fmt.Errorf("decode loudnorm JSON: %w", err)
 	}
-	return model.Loudness{
-		InputI:         parseFloat(raw.InputI),
-		InputTP:        parseFloat(raw.InputTP),
-		InputLRA:       parseFloat(raw.InputLRA),
-		InputThreshold: parseFloat(raw.InputThresh),
-		TargetOffset:   parseFloat(raw.TargetOffset),
-	}, nil
+	inputI, okI := parseLoudnormFloat(raw.InputI, -100)
+	inputTP, okTP := parseLoudnormFloat(raw.InputTP, -100)
+	inputLRA, okLRA := parseLoudnormFloat(raw.InputLRA, -1)
+	inputThreshold, okThreshold := parseLoudnormFloat(raw.InputThresh, -100)
+	targetOffset, okOffset := parseLoudnormFloat(raw.TargetOffset, 100)
+	measurement := model.Loudness{
+		InputI:         inputI,
+		InputTP:        inputTP,
+		InputLRA:       inputLRA,
+		InputThreshold: inputThreshold,
+		TargetOffset:   targetOffset,
+	}
+	return measurement, okI && okTP && okLRA && okThreshold && okOffset, nil
+}
+
+// buildLoudnormRenderFilter returns the render-pass loudnorm filter. FFmpeg's
+// measured_I/measured_thresh options only accept values in -99..0. A first
+// pass can occasionally report values outside those option ranges (for
+// example after pre-filters operating in floating point). In that case the
+// correct fallback is dynamic loudnorm, not clamping the measurements.
+func buildLoudnormRenderFilter(opts model.ProcessingOptions, measurement model.Loudness) string {
+	base := fmt.Sprintf("loudnorm=I=%s:TP=%s:LRA=%s", ff(opts.TargetLUFS), ff(opts.TargetTruePeakDB), ff(opts.TargetLRA))
+	if !validLoudnormTwoPassMeasurement(measurement) {
+		return base + ":linear=false:print_format=summary"
+	}
+	return fmt.Sprintf(
+		"%s:measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s:linear=true:print_format=summary",
+		base,
+		ff(measurement.InputI), ff(measurement.InputTP), ff(measurement.InputLRA),
+		ff(measurement.InputThreshold), ff(measurement.TargetOffset),
+	)
+}
+
+func validLoudnormTwoPassMeasurement(m model.Loudness) bool {
+	values := []float64{m.InputI, m.InputTP, m.InputLRA, m.InputThreshold, m.TargetOffset}
+	for _, value := range values {
+		if math.IsNaN(value) || math.IsInf(value, 0) {
+			return false
+		}
+	}
+	return m.InputI >= -99 && m.InputI <= 0 &&
+		m.InputTP >= -99 && m.InputTP <= 99 &&
+		m.InputLRA >= 0 && m.InputLRA <= 99 &&
+		m.InputThreshold >= -99 && m.InputThreshold <= 0 &&
+		m.TargetOffset >= -99 && m.TargetOffset <= 99
 }
 
 func (p *Processor) prefilters(preGainDB float64, repair, multiband bool, pitchSemitones float64) ([]string, error) {
@@ -390,12 +471,12 @@ func extractLastJSONObject(text string) (string, error) {
 	return text[start : end+1], nil
 }
 
-func parseFloat(raw string) float64 {
+func parseLoudnormFloat(raw string, invalidFallback float64) (float64, bool) {
 	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
-	if err != nil {
-		return 0
+	if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
+		return invalidFallback, false
 	}
-	return value
+	return value, true
 }
 
 func ff(value float64) string {

@@ -53,6 +53,7 @@ func (p *SoundCloudProvider) Search(ctx context.Context, query model.MetadataQue
 		Genre          string `json:"genre"`
 		ArtworkURL     string `json:"artwork_url"`
 		MetadataArtist string `json:"metadata_artist"`
+		PermalinkURL   string `json:"permalink_url"`
 		User           struct {
 			Username string `json:"username"`
 		} `json:"user"`
@@ -73,6 +74,7 @@ func (p *SoundCloudProvider) Search(ctx context.Context, query model.MetadataQue
 		items = append(items, model.MetadataCandidate{
 			Source:     p.Name(),
 			ExternalID: strconv.FormatInt(result.ID, 10),
+			SourceURL:  result.PermalinkURL,
 			Title:      result.Title,
 			Artist:     artist,
 			Genre:      result.Genre,

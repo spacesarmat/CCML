@@ -1,0 +1,24 @@
+CCML Inspector Media + Spectrogram update
+
+Install over the current CCML project root.
+
+PowerShell:
+  Expand-Archive `
+    -Path "$env:USERPROFILE\Downloads\CCML-inspector-player-spectrogram-update.zip" `
+    -DestinationPath "C:\Users\ANDYBUM\GolandProjects\CCML" `
+    -Force
+
+Then:
+  cd C:\Users\ANDYBUM\GolandProjects\CCML
+  go test ./...
+  cd frontend
+  npm run build
+  cd ..
+  wails dev
+
+Features:
+- Inspector embedded cover art, duration and audio player.
+- Private tokenized loopback media stream with seek support.
+- OGG/AIFF compatibility previews are generated with managed FFmpeg and cached.
+- Before/after full-track spectrograms in Analysis; after image appears after processing/normalization.
+- Long tag text fields wrap inside the Inspector.

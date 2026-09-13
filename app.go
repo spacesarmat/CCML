@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,31 +15,38 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/spacesarmat/CCML/internal/audio"
+	jobqueue "github.com/spacesarmat/CCML/internal/jobs"
 	"github.com/spacesarmat/CCML/internal/library"
 	"github.com/spacesarmat/CCML/internal/metadata"
 	"github.com/spacesarmat/CCML/internal/model"
 	"github.com/spacesarmat/CCML/internal/organize"
+	"github.com/spacesarmat/CCML/internal/settings"
 	"github.com/spacesarmat/CCML/internal/store"
 	"github.com/spacesarmat/CCML/internal/tagging"
 )
 
 // App is the Wails binding exposed to the React frontend.
 type App struct {
-	ctx           context.Context
-	store         *store.Store
-	scanMu        sync.Mutex
-	scanCancel    context.CancelFunc
-	tools         *audio.Toolchain
-	scanner       *library.Scanner
-	processor     *audio.Processor
-	bpmKey        *audio.EssentiaAnalyzer
-	metadata      *metadata.Service
-	organizer     *organize.Service
-	tagEditor     *tagging.Service
-	toolUpdater   *audio.ToolUpdater
-	toolUpdateMu  sync.Mutex
-	toolUpdating  bool
-	toolUpdateErr string
+	ctx            context.Context
+	store          *store.Store
+	scanMu         sync.Mutex
+	scanCancel     context.CancelFunc
+	tools          *audio.Toolchain
+	scanner        *library.Scanner
+	processor      *audio.Processor
+	bpmKey         *audio.EssentiaAnalyzer
+	metadataMu     sync.RWMutex
+	metadata       *metadata.Service
+	settings       *settings.Service
+	metadataConfig model.MetadataSettings
+	organizer      *organize.Service
+	tagEditor      *tagging.Service
+	media          *mediaService
+	jobs           *jobqueue.Manager
+	toolUpdater    *audio.ToolUpdater
+	toolUpdateMu   sync.Mutex
+	toolUpdating   bool
+	toolUpdateErr  string
 }
 
 // NewApp creates all backend services and opens the media-library database.
@@ -60,28 +69,16 @@ func NewApp() (*App, error) {
 	tools := audio.DiscoverToolchain()
 	probe := audio.NewProbe(tools)
 	processor := audio.NewProcessor(tools)
-	const metadataUserAgent = "CCML/0.4 (https://github.com/spacesarmat/CCML)"
-	providers := []metadata.Provider{
-		metadata.NewMusicBrainzProvider(metadataUserAgent),
-		metadata.NewTheAudioDBProvider(os.Getenv("THEAUDIODB_API_KEY")),
-		metadata.NewDeezerProvider(),
+	settingsService := settings.New(appDir)
+	metadataConfig, err := settingsService.Load()
+	if err != nil {
+		closeErr := db.Close()
+		if closeErr != nil {
+			return nil, errors.Join(err, fmt.Errorf("close database after settings failure: %w", closeErr))
+		}
+		return nil, err
 	}
-	if token := strings.TrimSpace(os.Getenv("DISCOGS_TOKEN")); token != "" {
-		providers = append(providers, metadata.NewDiscogsProvider(token, metadataUserAgent))
-	}
-	if token := strings.TrimSpace(os.Getenv("SPOTIFY_ACCESS_TOKEN")); token != "" {
-		providers = append(providers, metadata.NewSpotifyProvider(token, os.Getenv("SPOTIFY_MARKET")))
-	}
-	if token := strings.TrimSpace(os.Getenv("APPLE_MUSIC_DEVELOPER_TOKEN")); token != "" {
-		providers = append(providers, metadata.NewAppleMusicProvider(token, os.Getenv("APPLE_MUSIC_STOREFRONT")))
-	}
-	if key := strings.TrimSpace(os.Getenv("YOUTUBE_API_KEY")); key != "" {
-		providers = append(providers, metadata.NewYouTubeProvider(key))
-	}
-	if token := strings.TrimSpace(os.Getenv("SOUNDCLOUD_ACCESS_TOKEN")); token != "" {
-		providers = append(providers, metadata.NewSoundCloudProvider(token))
-	}
-	metaService := metadata.NewService(providers...)
+	metaService := buildMetadataService(metadataConfig)
 	tagEditor, err := tagging.NewService(db, appDir)
 	if err != nil {
 		closeErr := db.Close()
@@ -91,22 +88,46 @@ func NewApp() (*App, error) {
 		return nil, err
 	}
 
+	media, err := newMediaService(db, tools, appDir)
+	if err != nil {
+		closeErr := db.Close()
+		if closeErr != nil {
+			return nil, errors.Join(err, fmt.Errorf("close database after media-service failure: %w", closeErr))
+		}
+		return nil, err
+	}
+
 	app := &App{
-		store:     db,
-		tools:     tools,
-		scanner:   library.NewScanner(db, probe),
-		processor: processor,
-		bpmKey:    audio.NewEssentiaAnalyzer(),
-		metadata:  metaService,
-		organizer: organize.NewService(db),
-		tagEditor: tagEditor,
+		store:          db,
+		tools:          tools,
+		scanner:        library.NewScanner(db, probe),
+		processor:      processor,
+		bpmKey:         audio.NewEssentiaAnalyzer(),
+		metadata:       metaService,
+		settings:       settingsService,
+		metadataConfig: metadataConfig,
+		organizer:      organize.NewService(db),
+		tagEditor:      tagEditor,
+		media:          media,
 	}
 	app.toolUpdater = audio.NewToolUpdater(appDir, tools)
+	app.jobs = jobqueue.New(db)
+	app.jobs.Register("metadata_enrichment", app.runMetadataJobItem)
+	app.jobs.SetEmitter(func(name string, payload any) {
+		if app.ctx != nil {
+			runtime.EventsEmit(app.ctx, name, payload)
+		}
+	})
 	return app, nil
 }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if a.jobs != nil {
+		if err := a.jobs.Start(ctx); err != nil {
+			runtime.LogErrorf(ctx, "start background jobs: %v", err)
+		}
+	}
 	if a.toolUpdater == nil {
 		return
 	}
@@ -143,14 +164,25 @@ func (a *App) startup(ctx context.Context) {
 
 func (a *App) shutdown(_ context.Context) {
 	a.CancelScan()
+	if a.jobs != nil {
+		a.jobs.Stop()
+	}
 }
 
 // Close releases application resources.
 func (a *App) Close() error {
-	if a.store == nil {
-		return nil
+	var errs []error
+	if a.media != nil {
+		if err := a.media.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return a.store.Close()
+	if a.store != nil {
+		if err := a.store.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // SystemStatus reports availability of optional external audio tools.
@@ -172,8 +204,153 @@ func (a *App) SystemStatus() model.SystemStatus {
 		FFmpegAutoUpdateSupported: autoUpdateSupported,
 		EssentiaPath:              a.bpmKey.Path(),
 		EssentiaReady:             a.bpmKey.Available(),
-		MetadataProviders:         a.metadata.ProviderNames(),
+		MetadataProviders:         a.metadataService().ProviderNames(),
 	}
+}
+
+// GetMetadataSettings returns the locally stored metadata provider configuration.
+func (a *App) GetMetadataSettings() model.MetadataSettings {
+	a.metadataMu.RLock()
+	defer a.metadataMu.RUnlock()
+	return a.metadataConfig
+}
+
+// SaveMetadataSettings stores provider configuration and activates it immediately.
+func (a *App) SaveMetadataSettings(config model.MetadataSettings) (model.MetadataSettings, error) {
+	config.Normalize()
+	if err := validateMetadataSettings(config); err != nil {
+		return model.MetadataSettings{}, err
+	}
+	if a.settings == nil {
+		return model.MetadataSettings{}, errors.New("settings service is not available")
+	}
+	if err := a.settings.Save(config); err != nil {
+		return model.MetadataSettings{}, err
+	}
+
+	service := buildMetadataService(config)
+	a.metadataMu.Lock()
+	a.metadataConfig = config
+	a.metadata = service
+	a.metadataMu.Unlock()
+
+	if a.store != nil {
+		if err := a.store.ClearMetadataLookupCache(a.context()); err != nil && a.ctx != nil {
+			runtime.LogWarningf(a.ctx, "clear metadata cache after settings change: %v", err)
+		}
+	}
+
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "metadata:settings-updated", service.ProviderNames())
+	}
+	return config, nil
+}
+
+// OpenMetadataLink opens a trusted provider documentation or credential page in the system browser.
+// The caller supplies a symbolic key rather than an arbitrary URL so the Wails binding cannot be
+// used as a generic URL launcher.
+func (a *App) OpenMetadataLink(key string) error {
+	if a.ctx == nil {
+		return errors.New("application is not ready")
+	}
+	links := map[string]string{
+		"musicbrainz": "https://musicbrainz.org/doc/MusicBrainz_API",
+		"deezer":      "https://developers.deezer.com/api",
+		"itunes":      "https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/index.html",
+		"theaudiodb":  "https://www.theaudiodb.com/free_music_api",
+		"discogs":     "https://www.discogs.com/settings/developers",
+		"spotify":     "https://developer.spotify.com/dashboard",
+		"applemusic":  "https://developer.apple.com/account/resources/authkeys/list",
+		"youtube":     "https://console.cloud.google.com/apis/credentials",
+		"soundcloud":  "https://developers.soundcloud.com/docs/api/register-app",
+		"yandexmusic": "https://yandex.ru/dev/id/doc/ru/register-api",
+		"traxsource":  "https://www.traxsource.com/terms-of-service",
+	}
+	url, ok := links[strings.ToLower(strings.TrimSpace(key))]
+	if !ok {
+		return fmt.Errorf("unknown metadata help link: %s", key)
+	}
+	runtime.BrowserOpenURL(a.ctx, url)
+	return nil
+}
+
+// TestMetadataProviders checks the settings currently entered in the Settings
+// dialog without persisting them first. This lets a user verify new credentials
+// before pressing Save.
+func (a *App) TestMetadataProviders(config model.MetadataSettings) ([]model.MetadataProviderReport, error) {
+	config.Normalize()
+	if err := validateMetadataSettings(config); err != nil {
+		return nil, err
+	}
+	service := buildMetadataService(config)
+	if len(service.ProviderNames()) == 0 {
+		return nil, errors.New("no metadata providers enabled")
+	}
+	return service.ValidateProviders(a.context()), nil
+}
+
+func (a *App) metadataService() *metadata.Service {
+	a.metadataMu.RLock()
+	defer a.metadataMu.RUnlock()
+	return a.metadata
+}
+
+func validateMetadataSettings(config model.MetadataSettings) error {
+	if config.DiscogsEnabled && config.DiscogsToken == "" {
+		return errors.New("Discogs is enabled but its token is empty")
+	}
+	if config.SpotifyEnabled && config.SpotifyAccessToken == "" && (config.SpotifyClientID == "" || config.SpotifyClientSecret == "") {
+		return errors.New("Spotify is enabled but neither an access token nor client ID + client secret are configured")
+	}
+	if config.AppleMusicEnabled && config.AppleMusicDeveloperToken == "" {
+		return errors.New("Apple Music is enabled but its developer token is empty")
+	}
+	if config.YouTubeEnabled && config.YouTubeAPIKey == "" {
+		return errors.New("YouTube is enabled but its API key is empty")
+	}
+	if config.SoundCloudEnabled && config.SoundCloudAccessToken == "" {
+		return errors.New("SoundCloud is enabled but its access token is empty")
+	}
+	return nil
+}
+
+func buildMetadataService(config model.MetadataSettings) *metadata.Service {
+	const metadataUserAgent = "CCML/0.6 (https://github.com/spacesarmat/CCML)"
+	providers := make([]metadata.Provider, 0, 11)
+	if config.MusicBrainzEnabled {
+		providers = append(providers, metadata.NewMusicBrainzProvider(metadataUserAgent))
+	}
+	if config.TheAudioDBEnabled {
+		providers = append(providers, metadata.NewTheAudioDBProvider(config.TheAudioDBAPIKey))
+	}
+	if config.DeezerEnabled {
+		providers = append(providers, metadata.NewDeezerProvider())
+	}
+	if config.ITunesEnabled {
+		providers = append(providers, metadata.NewITunesProvider(config.ITunesCountry))
+	}
+	if config.DiscogsEnabled && config.DiscogsToken != "" {
+		providers = append(providers, metadata.NewDiscogsProvider(config.DiscogsToken, metadataUserAgent))
+	}
+	if config.SpotifyEnabled && (config.SpotifyAccessToken != "" || (config.SpotifyClientID != "" && config.SpotifyClientSecret != "")) {
+		providers = append(providers, metadata.NewSpotifyProvider(config.SpotifyAccessToken, config.SpotifyClientID, config.SpotifyClientSecret, config.SpotifyMarket))
+	}
+	if config.AppleMusicEnabled && config.AppleMusicDeveloperToken != "" {
+		providers = append(providers, metadata.NewAppleMusicProvider(config.AppleMusicDeveloperToken, config.AppleMusicStorefront))
+	}
+	if config.YouTubeEnabled && config.YouTubeAPIKey != "" {
+		providers = append(providers, metadata.NewYouTubeProvider(config.YouTubeAPIKey))
+	}
+	if config.SoundCloudEnabled && config.SoundCloudAccessToken != "" {
+		providers = append(providers, metadata.NewSoundCloudProvider(config.SoundCloudAccessToken))
+	}
+	if config.YandexMusicEnabled {
+		providers = append(providers, metadata.NewYandexMusicProvider(config.YandexMusicToken, config.YandexMusicLanguage, metadataUserAgent))
+	}
+	if config.TraxsourceEnabled {
+		providers = append(providers, metadata.NewTraxsourceProvider(metadataUserAgent))
+	}
+	return metadata.NewService(providers...)
 }
 
 // UpdateFFmpeg checks for and installs the latest supported managed FFmpeg build.
@@ -387,6 +564,31 @@ func (a *App) UndoTagChange(changeSetID int64) (model.TagApplyResult, error) {
 	return a.tagEditor.Undo(a.context(), changeSetID)
 }
 
+// PrepareTrackMedia prepares a browser-compatible audio preview and embedded cover art.
+func (a *App) PrepareTrackMedia(trackID int64) (model.TrackMedia, error) {
+	if a.media == nil {
+		return model.TrackMedia{}, errors.New("media service is not available")
+	}
+	return a.media.PrepareTrack(a.context(), trackID)
+}
+
+// PrepareTrackAudioPreview creates a compatibility MP3 only when native WebView playback fails.
+func (a *App) PrepareTrackAudioPreview(trackID int64) (string, error) {
+	if a.media == nil {
+		return "", errors.New("media service is not available")
+	}
+	return a.media.PrepareAudioPreview(a.context(), trackID)
+}
+
+// GenerateSpectrograms creates cached before/after full-track spectrogram images.
+// processedPath may be empty before the first render.
+func (a *App) GenerateSpectrograms(trackID int64, processedPath string) (model.SpectrogramComparison, error) {
+	if a.media == nil {
+		return model.SpectrogramComparison{}, errors.New("media service is not available")
+	}
+	return a.media.Spectrograms(a.context(), trackID, processedPath)
+}
+
 // AnalyzeLoudness runs EBU R128 loudness analysis and stores the result.
 func (a *App) AnalyzeLoudness(trackID int64) (model.Loudness, error) {
 	track, err := a.store.TrackByID(a.context(), trackID)
@@ -448,8 +650,18 @@ func (a *App) AnalyzeBPMKey(trackID int64) (model.BPMKey, error) {
 	return result, nil
 }
 
-// LookupMetadata searches configured metadata providers for a track.
+// LookupMetadata searches configured metadata providers for a track, reusing a
+// short-lived SQLite cache when the query and provider configuration are unchanged.
 func (a *App) LookupMetadata(trackID int64) (model.MetadataLookupResult, error) {
+	return a.lookupMetadataTrack(trackID, false)
+}
+
+// RefreshMetadata bypasses the lookup cache and asks the providers again.
+func (a *App) RefreshMetadata(trackID int64) (model.MetadataLookupResult, error) {
+	return a.lookupMetadataTrack(trackID, true)
+}
+
+func (a *App) lookupMetadataTrack(trackID int64, force bool) (model.MetadataLookupResult, error) {
 	track, err := a.store.TrackByID(a.context(), trackID)
 	if err != nil {
 		return model.MetadataLookupResult{}, err
@@ -459,26 +671,77 @@ func (a *App) LookupMetadata(trackID int64) (model.MetadataLookupResult, error) 
 	if tagErr == nil && strings.TrimSpace(tags.ISRC) != "" {
 		isrc = tags.ISRC
 	}
-	return a.metadata.Search(a.context(), model.MetadataQuery{
-		Title: track.Title, Artist: track.Artist, Album: track.Album,
-		DurationMS: track.DurationMS, ISRC: isrc,
-	})
+	return a.lookupMetadataQuery(a.context(), metadata.QueryFromTrack(track, isrc), force)
+}
+
+func (a *App) lookupMetadataQuery(ctx context.Context, query model.MetadataQuery, force bool) (model.MetadataLookupResult, error) {
+	key, err := a.metadataCacheKey(query)
+	if err != nil {
+		return model.MetadataLookupResult{}, err
+	}
+	if !force && a.store != nil {
+		if cached, age, ok, cacheErr := a.store.MetadataLookupCache(ctx, key); cacheErr != nil {
+			if a.ctx != nil {
+				runtime.LogWarningf(a.ctx, "read metadata lookup cache: %v", cacheErr)
+			}
+		} else if ok {
+			cached.Cached = true
+			cached.CacheAgeSeconds = int64(age.Seconds())
+			return cached, nil
+		}
+	}
+
+	result, err := a.metadataService().Search(ctx, query)
+	if err != nil {
+		return result, err
+	}
+	if a.store != nil && metadataLookupCacheable(result) {
+		if cacheErr := a.store.PutMetadataLookupCache(ctx, key, result, 12*time.Hour); cacheErr != nil && a.ctx != nil {
+			runtime.LogWarningf(a.ctx, "write metadata lookup cache: %v", cacheErr)
+		}
+	}
+	return result, nil
+}
+
+func metadataLookupCacheable(result model.MetadataLookupResult) bool {
+	if len(result.Candidates) == 0 {
+		return false
+	}
+	for _, report := range result.ProviderReports {
+		if report.Status == "error" {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *App) metadataCacheKey(query model.MetadataQuery) (string, error) {
+	a.metadataMu.RLock()
+	config := a.metadataConfig
+	a.metadataMu.RUnlock()
+	raw, err := json.Marshal(struct {
+		Query  model.MetadataQuery    `json:"query"`
+		Config model.MetadataSettings `json:"config"`
+	}{Query: query, Config: config})
+	if err != nil {
+		return "", fmt.Errorf("encode metadata cache key: %w", err)
+	}
+	sum := sha256.Sum256(raw)
+	return fmt.Sprintf("%x", sum[:]), nil
 }
 
 // EnrichMetadata automatically looks up and applies the best high-confidence
-// metadata match for each selected track. Failures are isolated per track.
+// metadata match for each selected track. This synchronous API remains useful for
+// small selections; large library operations should use CreateMetadataEnrichmentJob.
 func (a *App) EnrichMetadata(trackIDs []int64, opts model.MetadataEnrichmentOptions) (model.MetadataEnrichmentResult, error) {
 	if len(trackIDs) == 0 {
 		return model.MetadataEnrichmentResult{}, errors.New("no tracks selected")
 	}
 	if len(trackIDs) > 100 {
-		return model.MetadataEnrichmentResult{}, fmt.Errorf("metadata enrichment is limited to 100 tracks per batch")
+		return model.MetadataEnrichmentResult{}, fmt.Errorf("metadata enrichment is limited to 100 tracks per synchronous batch; use the background queue for larger selections")
 	}
-	if opts.MinimumConfidence <= 0 {
-		opts.MinimumConfidence = 0.86
-	}
-	if opts.MinimumConfidence < 0.5 || opts.MinimumConfidence > 1 {
-		return model.MetadataEnrichmentResult{}, fmt.Errorf("minimum confidence must be between 0.5 and 1.0")
+	if err := normalizeEnrichmentOptions(&opts); err != nil {
+		return model.MetadataEnrichmentResult{}, err
 	}
 
 	result := model.MetadataEnrichmentResult{Items: make([]model.MetadataEnrichmentItem, 0, len(trackIDs))}
@@ -486,54 +749,11 @@ func (a *App) EnrichMetadata(trackIDs []int64, opts model.MetadataEnrichmentOpti
 		if err := a.context().Err(); err != nil {
 			return result, err
 		}
-		item := model.MetadataEnrichmentItem{TrackID: trackID}
-		track, err := a.store.TrackByID(a.context(), trackID)
+		item, err := a.enrichMetadataTrack(a.context(), trackID, opts)
 		if err != nil {
 			item.Error = err.Error()
 			result.Failed++
-			result.Processed++
-			result.Items = append(result.Items, item)
-			continue
-		}
-		item.Path = track.Path
-		tags, tagErr := a.tagEditor.Read(a.context(), trackID)
-		isrc := track.ISRC
-		if tagErr == nil && strings.TrimSpace(tags.ISRC) != "" {
-			isrc = tags.ISRC
-		}
-		lookup, err := a.metadata.Search(a.context(), model.MetadataQuery{
-			Title: track.Title, Artist: track.Artist, Album: track.Album, DurationMS: track.DurationMS, ISRC: isrc,
-		})
-		if err != nil || len(lookup.Candidates) == 0 {
-			if err != nil {
-				item.Error = err.Error()
-				result.Failed++
-			} else {
-				item.Skipped = true
-				result.Skipped++
-			}
-			result.Processed++
-			result.Items = append(result.Items, item)
-			continue
-		}
-		candidate := lookup.Suggested
-		if candidate.Confidence == 0 {
-			candidate = lookup.Candidates[0]
-		}
-		item.Source, item.Confidence = candidate.Source, candidate.Confidence
-		if candidate.Confidence < opts.MinimumConfidence {
-			item.Skipped = true
-			result.Skipped++
-			result.Processed++
-			result.Items = append(result.Items, item)
-			continue
-		}
-		applyResult, err := a.tagEditor.ApplyMetadataCandidateWithPolicy(a.context(), trackID, candidate, opts.IncludeArtwork, opts.OnlyMissing)
-		if err != nil {
-			item.Error = err.Error()
-			result.Failed++
-		} else if applyResult.Changed > 0 {
-			item.Applied = true
+		} else if item.Applied {
 			result.Applied++
 		} else {
 			item.Skipped = true
@@ -543,6 +763,172 @@ func (a *App) EnrichMetadata(trackIDs []int64, opts model.MetadataEnrichmentOpti
 		result.Items = append(result.Items, item)
 	}
 	return result, nil
+}
+
+// CreateMetadataEnrichmentJob queues metadata enrichment without blocking the UI.
+// Jobs and item progress are persisted in SQLite and survive application restarts.
+func (a *App) CreateMetadataEnrichmentJob(trackIDs []int64, opts model.MetadataEnrichmentOptions) (model.BackgroundJob, error) {
+	if a.jobs == nil {
+		return model.BackgroundJob{}, errors.New("background job manager is not available")
+	}
+	if len(trackIDs) == 0 {
+		return model.BackgroundJob{}, errors.New("no tracks selected")
+	}
+	if err := normalizeEnrichmentOptions(&opts); err != nil {
+		return model.BackgroundJob{}, err
+	}
+	raw, err := json.Marshal(opts)
+	if err != nil {
+		return model.BackgroundJob{}, fmt.Errorf("encode metadata enrichment job options: %w", err)
+	}
+	job, err := a.store.CreateBackgroundJob(a.context(), "metadata_enrichment", "Metadata enrichment", string(raw), trackIDs)
+	if err != nil {
+		return model.BackgroundJob{}, err
+	}
+	a.jobs.Wake()
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "jobs:created", job)
+	}
+	return job, nil
+}
+
+// CreateLibraryMetadataEnrichmentJob queues metadata enrichment for the whole library.
+func (a *App) CreateLibraryMetadataEnrichmentJob(opts model.MetadataEnrichmentOptions) (model.BackgroundJob, error) {
+	if a.jobs == nil {
+		return model.BackgroundJob{}, errors.New("background job manager is not available")
+	}
+	if err := normalizeEnrichmentOptions(&opts); err != nil {
+		return model.BackgroundJob{}, err
+	}
+	raw, err := json.Marshal(opts)
+	if err != nil {
+		return model.BackgroundJob{}, fmt.Errorf("encode metadata enrichment job options: %w", err)
+	}
+	job, err := a.store.CreateBackgroundJobForLibrary(a.context(), "metadata_enrichment", "Metadata enrichment — entire library", string(raw), 100000)
+	if err != nil {
+		return model.BackgroundJob{}, err
+	}
+	a.jobs.Wake()
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "jobs:created", job)
+	}
+	return job, nil
+}
+
+// ListBackgroundJobs returns persistent job summaries, newest first.
+func (a *App) ListBackgroundJobs(limit int) ([]model.BackgroundJob, error) {
+	return a.store.ListBackgroundJobs(a.context(), limit)
+}
+
+// ListBackgroundJobItems returns track-level details for a job.
+func (a *App) ListBackgroundJobItems(jobID int64, limit, offset int) ([]model.BackgroundJobItem, error) {
+	return a.store.ListBackgroundJobItems(a.context(), jobID, limit, offset)
+}
+
+func (a *App) PauseBackgroundJob(jobID int64) (model.BackgroundJob, error) {
+	if a.jobs == nil {
+		return model.BackgroundJob{}, errors.New("background job manager is not available")
+	}
+	return a.jobs.Pause(a.context(), jobID)
+}
+
+func (a *App) ResumeBackgroundJob(jobID int64) (model.BackgroundJob, error) {
+	if a.jobs == nil {
+		return model.BackgroundJob{}, errors.New("background job manager is not available")
+	}
+	return a.jobs.Resume(a.context(), jobID)
+}
+
+func (a *App) CancelBackgroundJob(jobID int64) (model.BackgroundJob, error) {
+	if a.jobs == nil {
+		return model.BackgroundJob{}, errors.New("background job manager is not available")
+	}
+	return a.jobs.Cancel(a.context(), jobID)
+}
+
+func (a *App) RetryFailedBackgroundJob(jobID int64) (model.BackgroundJob, error) {
+	if a.jobs == nil {
+		return model.BackgroundJob{}, errors.New("background job manager is not available")
+	}
+	return a.jobs.RetryFailed(a.context(), jobID)
+}
+
+func normalizeEnrichmentOptions(opts *model.MetadataEnrichmentOptions) error {
+	if opts.MinimumConfidence <= 0 {
+		opts.MinimumConfidence = 0.86
+	}
+	if opts.MinimumConfidence < 0.5 || opts.MinimumConfidence > 1 {
+		return fmt.Errorf("minimum confidence must be between 0.5 and 1.0")
+	}
+	return nil
+}
+
+func (a *App) enrichMetadataTrack(ctx context.Context, trackID int64, opts model.MetadataEnrichmentOptions) (model.MetadataEnrichmentItem, error) {
+	item := model.MetadataEnrichmentItem{TrackID: trackID}
+	track, err := a.store.TrackByID(ctx, trackID)
+	if err != nil {
+		return item, err
+	}
+	item.Path = track.Path
+	tags, tagErr := a.tagEditor.Read(ctx, trackID)
+	isrc := track.ISRC
+	if tagErr == nil && strings.TrimSpace(tags.ISRC) != "" {
+		isrc = tags.ISRC
+	}
+	lookup, err := a.lookupMetadataQuery(ctx, metadata.QueryFromTrack(track, isrc), false)
+	if err != nil {
+		return item, err
+	}
+	if len(lookup.Candidates) == 0 {
+		item.Skipped = true
+		return item, nil
+	}
+	candidate := lookup.Suggested
+	if candidate.Confidence == 0 {
+		candidate = lookup.Candidates[0]
+	}
+	item.Source, item.Confidence = candidate.Source, candidate.Confidence
+	if candidate.MatchClass == "rejected" || candidate.Confidence < opts.MinimumConfidence {
+		item.Skipped = true
+		return item, nil
+	}
+	applyResult, err := a.tagEditor.ApplyMetadataCandidateWithPolicy(ctx, trackID, candidate, opts.IncludeArtwork, opts.OnlyMissing)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "no applicable fields") {
+			item.Skipped = true
+			return item, nil
+		}
+		return item, err
+	}
+	if applyResult.Changed > 0 {
+		item.Applied = true
+	} else {
+		item.Skipped = true
+	}
+	return item, nil
+}
+
+func (a *App) runMetadataJobItem(ctx context.Context, job model.BackgroundJob, work model.BackgroundJobItem) (jobqueue.ItemResult, error) {
+	var opts model.MetadataEnrichmentOptions
+	if err := json.Unmarshal([]byte(job.OptionsJSON), &opts); err != nil {
+		return jobqueue.ItemResult{}, fmt.Errorf("decode metadata enrichment job options: %w", err)
+	}
+	if err := normalizeEnrichmentOptions(&opts); err != nil {
+		return jobqueue.ItemResult{}, err
+	}
+	item, err := a.enrichMetadataTrack(ctx, work.TrackID, opts)
+	raw, marshalErr := json.Marshal(item)
+	if marshalErr != nil {
+		return jobqueue.ItemResult{}, fmt.Errorf("encode metadata enrichment item result: %w", marshalErr)
+	}
+	if err != nil {
+		return jobqueue.ItemResult{ResultJSON: string(raw)}, err
+	}
+	status := "completed"
+	if item.Skipped {
+		status = "skipped"
+	}
+	return jobqueue.ItemResult{Status: status, ResultJSON: string(raw)}, nil
 }
 
 // PreviewRename renders a safe target path from track metadata and a template.

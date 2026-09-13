@@ -1,0 +1,23 @@
+CCML Stage 6A — Persistent Background Jobs
+
+Adds:
+- persistent SQLite job queue
+- metadata enrichment as the first background job type
+- Tasks / Задачи panel
+- Pause / Resume / Cancel / Retry failed
+- per-file status, attempts, errors and result summary
+- recovery of interrupted jobs after application restart
+- selected-track and whole-library metadata enrichment
+- optimized whole-library queue creation with INSERT ... SELECT
+- cancelled-item accounting and pause/cancel race handling
+
+Install over the current CCML project, then run:
+
+  go test ./...
+  cd frontend
+  npm run build
+  cd ..
+  wails dev
+
+The existing library.db must NOT be deleted. Schema migration is automatic.
+One job is currently limited to 100000 tracks.
