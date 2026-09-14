@@ -2,19 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import type { AppLanguage } from './i18n'
 import type { Track } from './types'
 import {nextTableSort, type TableColumnID, type TableSort} from './tableSort'
-import type {LibraryFilters} from './libraryFilters'
-import {
-  addCustomTableView,
-  builtInTableView,
-  BUILTIN_TABLE_VIEW_IDS,
-  loadCustomTableViews,
-  removeCustomTableView,
-  replaceCustomTableView,
-  saveCustomTableViews,
-  type CustomTableView,
-  type MetadataStatusFilter,
-  type TableViewSnapshot,
-} from './tableViews'
+import {tablePreset, TABLE_PRESET_IDS, type TablePreset} from './tablePresets'
 import TrackCoverCell from './TrackCoverCell'
 
 type TableLayout = {
@@ -30,10 +18,6 @@ type Props = {
   selectedIDs: number[]
   sort: TableSort[]
   onSortChange: (sort: TableSort[]) => void
-  libraryFilters: LibraryFilters
-  metadataFilter: MetadataStatusFilter
-  onLibraryFiltersChange: (filters: LibraryFilters) => void
-  onMetadataFilterChange: (filter: MetadataStatusFilter) => void
   onToggleAllVisible: () => void
   onRowClick: (trackID: number, extendSelection: boolean, toggleSelection: boolean) => void
   onToggleTrackSelection: (trackID: number) => void
@@ -146,10 +130,6 @@ function ConfigurableTrackTable({
   selectedIDs,
   sort,
   onSortChange,
-  libraryFilters,
-  metadataFilter,
-  onLibraryFiltersChange,
-  onMetadataFilterChange,
   onToggleAllVisible,
   onRowClick,
   onToggleTrackSelection,
@@ -161,8 +141,6 @@ function ConfigurableTrackTable({
   emptyLabel,
 }: Props) {
   const [layout, setLayout] = useState<TableLayout>(() => loadLayout())
-  const [customViews, setCustomViews] = useState<CustomTableView[]>(() => loadCustomTableViews())
-  const [viewName, setViewName] = useState('')
   const [dragging, setDragging] = useState<TableColumnID | null>(null)
   const [resizingColumn, setResizingColumn] = useState<TableColumnID | null>(null)
   const visibleColumns = useMemo(
@@ -185,23 +163,12 @@ function ConfigurableTrackTable({
         sort: 'Клик — сортировка; Shift+клик — добавить уровень сортировки',
         drag: 'Перетащите маркер для изменения порядка колонок',
         resize: 'Тяните для изменения ширины; двойной клик — автоширина',
-        views: 'Виды',
-        viewsTitle: 'Сохранённые представления',
-        viewsHint: 'Вид сохраняет колонки, ширины, сортировку, фильтры и статус метаданных. Строка поиска не сохраняется.',
-        builtIn: 'Готовые',
-        custom: 'Мои виды',
+        presets: 'Пресеты',
+        presetHint: 'Пресет меняет только колонки, ширины и сортировку. Поиск и фильтры сохраняются.',
         dj: 'DJ',
         metadata: 'Метаданные',
         technical: 'Технический',
         compact: 'Компактный',
-        namePlaceholder: 'Название вида…',
-        saveCurrent: 'Сохранить текущий',
-        apply: 'Применить',
-        replace: 'Обновить',
-        remove: 'Удалить',
-        noCustomViews: 'Пользовательских видов пока нет',
-        replaceConfirm: 'Перезаписать этот вид текущими настройками?',
-        removeConfirm: 'Удалить сохранённый вид?',
       }
     : {
         columns: 'Columns',
@@ -213,23 +180,12 @@ function ConfigurableTrackTable({
         sort: 'Click to sort; Shift+click adds another sort level',
         drag: 'Drag the handle to reorder columns',
         resize: 'Drag to resize; double-click to auto-fit',
-        views: 'Views',
-        viewsTitle: 'Saved views',
-        viewsHint: 'A view stores columns, widths, sorting, filters and metadata status. The search query is not stored.',
-        builtIn: 'Built-in',
-        custom: 'My views',
+        presets: 'Presets',
+        presetHint: 'A preset changes only columns, widths and sorting. Search and filters stay unchanged.',
         dj: 'DJ',
         metadata: 'Metadata',
         technical: 'Technical',
         compact: 'Compact',
-        namePlaceholder: 'View name…',
-        saveCurrent: 'Save current',
-        apply: 'Apply',
-        replace: 'Update',
-        remove: 'Delete',
-        noCustomViews: 'No custom views yet',
-        replaceConfirm: 'Replace this view with the current settings?',
-        removeConfirm: 'Delete this saved view?',
       }
 
   function commit(next: TableLayout) {
@@ -238,54 +194,9 @@ function ConfigurableTrackTable({
     saveLayout(normalized)
   }
 
-  function currentViewSnapshot(): TableViewSnapshot {
-    return {
-      layout: {
-        order: [...layout.order],
-        visible: [...layout.visible],
-        widths: {...layout.widths},
-      },
-      sort: sort.map((rule) => ({...rule})),
-      filters: {
-        ...libraryFilters,
-        artists: [...libraryFilters.artists],
-        genres: [...libraryFilters.genres],
-        labels: [...libraryFilters.labels],
-        codecs: [...libraryFilters.codecs],
-        keys: [...libraryFilters.keys],
-      },
-      metadataFilter,
-    }
-  }
-
-  function applyView(snapshot: TableViewSnapshot) {
-    commit(snapshot.layout)
-    onSortChange(snapshot.sort)
-    onLibraryFiltersChange(snapshot.filters)
-    onMetadataFilterChange(snapshot.metadataFilter)
-  }
-
-  function persistCustomViews(next: CustomTableView[]) {
-    setCustomViews(next)
-    saveCustomTableViews(next)
-  }
-
-  function saveCurrentView() {
-    const name = viewName.trim()
-    if (!name) return
-    const next = addCustomTableView(customViews, name, currentViewSnapshot())
-    persistCustomViews(next)
-    setViewName('')
-  }
-
-  function replaceView(view: CustomTableView) {
-    if (!window.confirm(copy.replaceConfirm)) return
-    persistCustomViews(replaceCustomTableView(customViews, view.id, currentViewSnapshot()))
-  }
-
-  function removeView(view: CustomTableView) {
-    if (!window.confirm(copy.removeConfirm)) return
-    persistCustomViews(removeCustomTableView(customViews, view.id))
+  function applyPreset(preset: TablePreset) {
+    commit(preset.layout)
+    onSortChange(preset.sort)
   }
 
   function toggleColumn(id: TableColumnID) {
@@ -391,72 +302,19 @@ function ConfigurableTrackTable({
   return (
     <div className="workspace-table-wrap configurable-track-table">
       <div className="table-columns-toolbar">
-        <details className="table-view-picker">
-          <summary>
+        <div className="table-preset-toolbar" title={copy.presetHint}>
+          <span className="table-preset-label">
             <span aria-hidden="true">▦</span>
-            <strong>{copy.views}</strong>
-            {customViews.length > 0 && <b>{customViews.length}</b>}
-          </summary>
-
-          <div className="table-view-panel">
-            <header>
-              <div>
-                <strong>{copy.viewsTitle}</strong>
-                <span>{copy.viewsHint}</span>
-              </div>
-            </header>
-
-            <section className="table-view-section">
-              <strong>{copy.builtIn}</strong>
-              <div className="table-view-presets">
-                {BUILTIN_TABLE_VIEW_IDS.map((id) => (
-                  <button type="button" key={id} onClick={() => applyView(builtInTableView(id))}>
-                    {copy[id]}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="table-view-section">
-              <strong>{copy.custom}</strong>
-
-              <div className="table-view-save-row">
-                <input
-                  value={viewName}
-                  maxLength={48}
-                  placeholder={copy.namePlaceholder}
-                  onChange={(event) => setViewName(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter') return
-                    event.preventDefault()
-                    saveCurrentView()
-                  }}
-                />
-                <button type="button" onClick={saveCurrentView} disabled={!viewName.trim()}>
-                  {copy.saveCurrent}
-                </button>
-              </div>
-
-              <div className="table-view-custom-list">
-                {customViews.length === 0 && <span className="table-view-empty">{copy.noCustomViews}</span>}
-                {customViews.map((view) => (
-                  <div className="table-view-custom-row" key={view.id}>
-                    <button
-                      type="button"
-                      className="table-view-name"
-                      title={copy.apply}
-                      onClick={() => applyView(view.snapshot)}
-                    >
-                      {view.name}
-                    </button>
-                    <button type="button" onClick={() => replaceView(view)}>{copy.replace}</button>
-                    <button type="button" className="danger-lite" onClick={() => removeView(view)}>{copy.remove}</button>
-                  </div>
-                ))}
-              </div>
-            </section>
+            <strong>{copy.presets}</strong>
+          </span>
+          <div className="table-preset-buttons">
+            {TABLE_PRESET_IDS.map((id) => (
+              <button type="button" key={id} onClick={() => applyPreset(tablePreset(id))}>
+                {copy[id]}
+              </button>
+            ))}
           </div>
-        </details>
+        </div>
 
         <details className="table-column-picker">
           <summary>

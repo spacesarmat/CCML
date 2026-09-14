@@ -1182,10 +1182,6 @@ function App() {
                 selectedIDs={selectedIDs}
                 sort={tableSort}
                 onSortChange={changeTableSort}
-                libraryFilters={libraryFilters}
-                metadataFilter={metadataFilter}
-                onLibraryFiltersChange={changeLibraryFilters}
-                onMetadataFilterChange={changeMetadataFilter}
                 onToggleAllVisible={toggleAllVisible}
                 onRowClick={handleTrackRowClick}
                 onToggleTrackSelection={toggleTrackSelection}

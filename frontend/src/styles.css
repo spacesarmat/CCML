@@ -4177,3 +4177,106 @@ button:disabled:hover {
     max-height: 160px;
   }
 }
+/* Stage 14.1 — table presets redesign */
+.table-columns-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 44px;
+  overflow: visible;
+}
+
+.table-preset-toolbar {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-md);
+  background: var(--ccml-surface-1);
+}
+
+.table-preset-label {
+  min-height: 28px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.table-preset-buttons {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.table-preset-buttons button {
+  min-width: 0;
+  min-height: 28px;
+  padding: 5px 8px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.table-preset-buttons button:hover:not(:disabled),
+.table-preset-buttons button:focus-visible {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-hover);
+  color: var(--ccml-text-strong);
+}
+
+.table-column-picker {
+  flex: 0 0 auto;
+}
+
+:root[data-ccml-theme='light'] .table-preset-toolbar {
+  background: #ffffff;
+}
+
+@media (max-width: 1180px) {
+  .table-columns-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .table-preset-toolbar {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 980px) {
+  .table-preset-label strong {
+    display: none;
+  }
+
+  .table-preset-buttons button {
+    padding-inline: 6px;
+  }
+}
+
+@media (max-width: 900px) {
+  .table-preset-toolbar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .table-preset-buttons {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .table-preset-buttons button {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
