@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { translate, type AppLanguage, type TranslateParams, type TranslationKey } from './i18n'
 import type { TagHistory, TagPatch, TagPreview, TagSnapshot, Track } from './types'
-import BatchTagFields from './BatchTagFields'
-import BatchTagTransforms from './BatchTagTransforms'
+
 
 type Props = {
   language: AppLanguage
@@ -212,31 +211,23 @@ export default function TagEditor({
         </button>
       </div>
 
-      <p className="tag-help">{multi ? t('tags.batchHint') : t('tags.singleHint')}</p>
+      <p className="tag-help">
+        {multi
+          ? (language === 'ru'
+              ? 'Для массовой работы используйте инструменты над таблицей.'
+              : 'Use the tools above the table for batch editing.')
+          : t('tags.singleHint')}
+      </p>
 
       {multi ? (
-        <>
-          <BatchTagFields
-            language={language}
-            tracks={tracks}
-            patch={patch}
-            disabled={disabled || localBusy}
-            onToggle={toggleField}
-            onChange={updateField}
-          />
-          <BatchTagTransforms
-            language={language}
-            tracks={tracks}
-            disabled={disabled || localBusy}
-            onBusyChange={(busy) => {
-              setLocalBusy(busy)
-              onBusyChange(busy)
-            }}
-            onMessage={onMessage}
-            onPreview={setPreview}
-            onChanged={onChanged}
-          />
-        </>
+        <div className="tag-batch-moved">
+          <strong>{language === 'ru' ? 'Массовые инструменты вынесены к таблице' : 'Batch tools moved to the table'}</strong>
+          <span>
+            {language === 'ru'
+              ? 'Используйте «Массовые теги» или «Преобразования» рядом с «Пресеты / Колонки». Здесь остаются обложка и история изменений.'
+              : 'Use Batch tags or Transforms next to Presets / Columns. Cover actions and change history remain here.'}
+          </span>
+        </div>
       ) : (
         <>
           <div className="tag-grid">
@@ -269,10 +260,12 @@ export default function TagEditor({
         </>
       )}
 
-      <div className="tag-actions">
-        <button type="button" onClick={previewChanges} disabled={disabled || localBusy || patch.fields.length === 0}>{t('tags.preview')}</button>
-        <button type="button" className="primary" onClick={applyChanges} disabled={disabled || localBusy || patch.fields.length === 0}>{t('tags.apply')}</button>
-      </div>
+      {!multi && (
+        <div className="tag-actions">
+          <button type="button" onClick={previewChanges} disabled={disabled || localBusy || patch.fields.length === 0}>{t('tags.preview')}</button>
+          <button type="button" className="primary" onClick={applyChanges} disabled={disabled || localBusy || patch.fields.length === 0}>{t('tags.apply')}</button>
+        </div>
+      )}
 
       <div className="cover-row">
         <div><strong>{t('tags.cover')}</strong><span>{coverText}</span></div>

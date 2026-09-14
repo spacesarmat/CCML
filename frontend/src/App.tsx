@@ -1168,7 +1168,7 @@ function App() {
               {selectedIDs.length > 0 && (
                 <div className="selection-toolbar">
                   <strong>{t('workspace.selectedCount', {count: selectedIDs.length})}</strong>
-                  <button onClick={() => setInspectorTab('tags')}>{t('workspace.editTags')}</button>
+                  {selectedIDs.length === 1 && <button onClick={() => setInspectorTab('tags')}>{t('workspace.editTags')}</button>}
                   <button onClick={() => void openMetadataInspector()} disabled={selectedIDs.length !== 1 || busy}>{t('actions.findMetadata')}</button>
                   <button className="primary" onClick={() => void enrichSelected()} disabled={busy || scanning}>{t('metadata.enrichSelected')}</button>
                   <button onClick={clearTrackSelection}>{t('workspace.clearSelection')}</button>
@@ -1180,6 +1180,12 @@ function App() {
                 tracks={visibleTracks}
                 coverRevision={tagRevision}
                 selectedIDs={selectedIDs}
+                selectedTracks={selectedTracks}
+                batchToolsRevision={tagRevision}
+                batchToolsDisabled={busy || scanning}
+                onBatchBusyChange={setBusy}
+                onBatchMessage={setMessage}
+                onBatchChanged={tagDataChanged}
                 sort={tableSort}
                 onSortChange={changeTableSort}
                 onToggleAllVisible={toggleAllVisible}

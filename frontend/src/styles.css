@@ -5033,3 +5033,239 @@ button:disabled:hover {
     grid-column: 1;
   }
 }
+/* Stage 15.3 — batch tools toolbar */
+
+.batch-tools-toolbar {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.batch-tools-trigger {
+  min-height: var(--ccml-control-h-sm);
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-md);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.batch-tools-trigger:hover:not(:disabled),
+.batch-tools-trigger.active {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+  color: var(--ccml-text-strong);
+}
+
+.batch-tools-trigger b {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--ccml-accent-soft);
+  color: var(--ccml-text-strong);
+  font-size: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.batch-tools-popover {
+  position: absolute;
+  z-index: 98;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(700px, calc(100vw - 40px));
+  max-height: min(690px, 74vh);
+  overflow: hidden;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-xl);
+  background: var(--ccml-bg-elevated);
+  box-shadow: var(--ccml-shadow-lg);
+}
+
+.batch-tools-toolbar::after {
+  content: '';
+  position: absolute;
+  z-index: 97;
+  top: 100%;
+  right: 0;
+  width: 100%;
+  height: 8px;
+}
+
+.batch-tools-popover-head {
+  min-width: 0;
+  padding: 10px 12px;
+  display: grid;
+  gap: 2px;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+  background: var(--ccml-surface-2);
+}
+
+.batch-tools-popover-head strong {
+  color: var(--ccml-text-strong);
+  font-size: 10px;
+}
+
+.batch-tools-popover-head span {
+  color: var(--ccml-text-muted);
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.batch-tools-scroll {
+  min-width: 0;
+  max-height: calc(min(690px, 74vh) - 58px);
+  padding: 10px;
+  display: grid;
+  gap: 9px;
+  overflow: auto;
+}
+
+.batch-tools-popover .batch-tag-editor {
+  gap: 7px;
+}
+
+.batch-tools-popover .batch-tag-group-body {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.batch-tools-popover .batch-tag-field.comment {
+  grid-column: 1 / -1;
+}
+
+.batch-tools-actions {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.batch-tools-actions button {
+  min-width: 0;
+  min-height: 32px;
+  font-size: 8px;
+}
+
+.batch-tools-preview {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ccml-border-subtle);
+}
+
+.batch-tools-preview > strong {
+  color: var(--ccml-text-strong);
+  font-size: 9px;
+}
+
+.batch-tools-preview-item {
+  min-width: 0;
+  padding: 6px 7px;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: var(--ccml-radius-md);
+  background: var(--ccml-surface-1);
+}
+
+.batch-tools-preview-item span,
+.batch-tools-preview-item small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.batch-tools-preview-item span {
+  color: var(--ccml-text);
+  font-size: 7px;
+  white-space: nowrap;
+}
+
+.batch-tools-preview-item small {
+  color: var(--ccml-text-muted);
+  font-size: 7px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.batch-tools-popover .batch-tag-transforms {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.tag-batch-moved {
+  min-width: 0;
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-lg);
+  background: var(--ccml-surface-1);
+}
+
+.tag-batch-moved strong {
+  color: var(--ccml-text-strong);
+  font-size: 9px;
+}
+
+.tag-batch-moved span {
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+:root[data-ccml-theme='light'] .batch-tools-popover,
+:root[data-ccml-theme='light'] .batch-tools-preview-item,
+:root[data-ccml-theme='light'] .tag-batch-moved {
+  background: #ffffff;
+}
+
+@media (max-width: 1180px) {
+  .table-columns-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .batch-tools-popover {
+    width: min(620px, calc(100vw - 30px));
+  }
+}
+
+@media (max-width: 860px) {
+  .batch-tools-trigger strong {
+    display: none;
+  }
+
+  .batch-tools-popover {
+    width: min(520px, calc(100vw - 20px));
+  }
+
+  .batch-tools-popover .batch-tag-group-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .batch-tools-popover .batch-tag-field.comment {
+    grid-column: 1;
+  }
+}
+
+@media (max-height: 720px) {
+  .batch-tools-popover {
+    max-height: 62vh;
+  }
+
+  .batch-tools-scroll {
+    max-height: calc(62vh - 58px);
+  }
+}

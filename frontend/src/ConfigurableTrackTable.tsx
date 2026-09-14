@@ -14,6 +14,7 @@ import {
   type TablePreset,
 } from './tablePresets'
 import TrackCoverCell from './TrackCoverCell'
+import BatchTagTools from './BatchTagTools'
 
 type TableLayout = {
   order: TableColumnID[]
@@ -26,6 +27,12 @@ type Props = {
   tracks: Track[]
   coverRevision: number
   selectedIDs: number[]
+  selectedTracks: Track[]
+  batchToolsRevision: number
+  batchToolsDisabled: boolean
+  onBatchBusyChange: (busy: boolean) => void
+  onBatchMessage: (message: string) => void
+  onBatchChanged: () => Promise<void>
   sort: TableSort[]
   onSortChange: (sort: TableSort[]) => void
   onToggleAllVisible: () => void
@@ -138,6 +145,12 @@ function ConfigurableTrackTable({
   tracks,
   coverRevision,
   selectedIDs,
+  selectedTracks,
+  batchToolsRevision,
+  batchToolsDisabled,
+  onBatchBusyChange,
+  onBatchMessage,
+  onBatchChanged,
   sort,
   onSortChange,
   onToggleAllVisible,
@@ -154,6 +167,7 @@ function ConfigurableTrackTable({
   const [customPresets, setCustomPresets] = useState<CustomTablePreset[]>(() => loadCustomTablePresets())
   const [presetName, setPresetName] = useState('')
   const [presetOpen, setPresetOpen] = useState(false)
+  const [batchToolsCloseSignal, setBatchToolsCloseSignal] = useState(0)
   const columnPickerRef = useRef<HTMLDetailsElement | null>(null)
   const overlayCloseTimer = useRef<number | null>(null)
   const [dragging, setDragging] = useState<TableColumnID | null>(null)
@@ -293,14 +307,24 @@ function ConfigurableTrackTable({
   function togglePresetPopup() {
     cancelOverlayClose()
     const next = !presetOpen
-    if (next && columnPickerRef.current) columnPickerRef.current.open = false
+    if (next) {
+      if (columnPickerRef.current) columnPickerRef.current.open = false
+      setBatchToolsCloseSignal((value) => value + 1)
+    }
     setPresetOpen(next)
+  }
+
+  function openBatchToolsExclusively() {
+    cancelOverlayClose()
+    setPresetOpen(false)
+    if (columnPickerRef.current) columnPickerRef.current.open = false
   }
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape') return
       setPresetOpen(false)
+      setBatchToolsCloseSignal((value) => value + 1)
       if (columnPickerRef.current) columnPickerRef.current.open = false
     }
 
@@ -414,6 +438,18 @@ function ConfigurableTrackTable({
   return (
     <div className="workspace-table-wrap configurable-track-table">
       <div className="table-columns-toolbar">
+        <BatchTagTools
+          language={language}
+          tracks={selectedTracks}
+          revision={batchToolsRevision}
+          disabled={batchToolsDisabled}
+          closeSignal={batchToolsCloseSignal}
+          onRequestOpen={openBatchToolsExclusively}
+          onBusyChange={onBatchBusyChange}
+          onMessage={onBatchMessage}
+          onChanged={onBatchChanged}
+        />
+
         <div
           className="table-preset-picker"
           onMouseEnter={cancelOverlayClose}
@@ -496,7 +532,10 @@ function ConfigurableTrackTable({
           onMouseEnter={cancelOverlayClose}
           onMouseLeave={scheduleColumnClose}
           onToggle={(event) => {
-            if (event.currentTarget.open) setPresetOpen(false)
+            if (event.currentTarget.open) {
+              setPresetOpen(false)
+              setBatchToolsCloseSignal((value) => value + 1)
+            }
           }}
         >
           <summary>
