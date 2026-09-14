@@ -703,14 +703,14 @@ function DJMixPlannerModal({
                   <div className="mix-planner-preview-cover">
                     {previewMedia?.coverUrl
                       ? <img src={previewMedia.coverUrl} alt="" />
-                      : <span>в™Є</span>}
+                      : <span>♪</span>}
                   </div>
                   <div className="mix-planner-preview-title">
-                    <strong>{previewStep.track.artist || 'вЂ”'} вЂ” {previewStep.track.title || previewStep.track.fileName}</strong>
+                    <strong>{previewStep.track.artist || '—'} — {previewStep.track.title || previewStep.track.fileName}</strong>
                     <span>{previewStep.track.genre || previewStep.track.album || previewStep.track.path}</span>
                     <div className="mix-planner-preview-meta">
                       <em>{formatBPM(previewStep.adjustedBpm || previewStep.track.bpm)} BPM</em>
-                      <em>{previewStep.camelot || previewStep.openKey || 'вЂ”'}</em>
+                      <em>{previewStep.camelot || previewStep.openKey || '—'}</em>
                       <em>{formatDuration(previewStep.track.durationMs)}</em>
                       {previewMedia?.isPreview && <em className="is-preview">{t('media.preview')}</em>}
                     </div>
@@ -737,7 +737,7 @@ function DJMixPlannerModal({
                       ? <span className="mix-planner-preview-status">{previewFallbackLoading ? t('media.compatibilityPreview') : t('media.preparing')}</span>
                       : previewError
                         ? <span className="mix-planner-preview-status is-error" title={previewError}>{t('media.unavailable')}: {previewError}</span>
-                        : <span className="mix-planner-preview-status">{previewPlaying ? t('media.pause') : t('media.play')} В· Space В· в†‘в†“ track</span>}
+                        : <span className="mix-planner-preview-status">{previewPlaying ? t('media.pause') : t('media.play')} · Space · ↑↓ track</span>}
                     <span className="mix-planner-preview-position">
                       {previewStepIndex >= 0 ? `${previewStepIndex + 1} / ${plan.steps?.length ?? 0}` : `0 / ${plan.steps?.length ?? 0}`}
                     </span>
@@ -760,10 +760,10 @@ function DJMixPlannerModal({
                       className="mix-preview-nav"
                       onClick={() => selectRelativePreview(-1)}
                       disabled={!previewPreviousStep}
-                      title={previewPreviousStep ? `${previewPreviousStep.track.artist || 'вЂ”'} вЂ” ${previewPreviousStep.track.title || previewPreviousStep.track.fileName}` : 'Previous track'}
+                      title={previewPreviousStep ? `${previewPreviousStep.track.artist || '—'} — ${previewPreviousStep.track.title || previewPreviousStep.track.fileName}` : 'Previous track'}
                       aria-label="Previous track"
                     >
-                      вЏ®
+                      ⏮
                     </button>
                     <button
                       type="button"
@@ -773,18 +773,18 @@ function DJMixPlannerModal({
                       title={previewPlaying ? t('media.pause') : t('media.play')}
                       aria-label={previewPlaying ? t('media.pause') : t('media.play')}
                     >
-                      {previewPlaying ? 'в…Ў' : 'в–¶'}
+                      {previewPlaying ? 'Ⅱ' : '▶'}
                     </button>
-                    <button type="button" onClick={stopPreviewPlayback} disabled={!previewMedia?.audioUrl} title="Stop" aria-label="Stop">в– </button>
+                    <button type="button" onClick={stopPreviewPlayback} disabled={!previewMedia?.audioUrl} title="Stop" aria-label="Stop">■</button>
                     <button
                       type="button"
                       className="mix-preview-nav"
                       onClick={() => selectRelativePreview(1)}
                       disabled={!previewNextStep}
-                      title={previewNextStep ? `${previewNextStep.track.artist || 'вЂ”'} вЂ” ${previewNextStep.track.title || previewNextStep.track.fileName}` : 'Next track'}
+                      title={previewNextStep ? `${previewNextStep.track.artist || '—'} — ${previewNextStep.track.title || previewNextStep.track.fileName}` : 'Next track'}
                       aria-label="Next track"
                     >
-                      вЏ­
+                      ⏭
                     </button>
                     <button
                       type="button"
@@ -796,7 +796,7 @@ function DJMixPlannerModal({
                     >
                       AUTO
                     </button>
-                    <button type="button" onClick={() => skipPreview(-10)} disabled={!previewMedia?.audioUrl} title="в€’10 s">в€’10</button>
+                    <button type="button" onClick={() => skipPreview(-10)} disabled={!previewMedia?.audioUrl} title="−10 s">−10</button>
                     <span className="mix-planner-preview-time">{formatPlayerTime(previewCurrentTime)}</span>
                     <input
                       className="mix-planner-preview-seek"
@@ -1227,7 +1227,7 @@ function DJMixTimeline({
     <div className="mix-planner-flow">
       <div className="mix-planner-flow-head">
         <strong>{t('mixPlanner.timeline')}</strong>
-        <span>{steps.length} tracks В· {formatTimeline(totalMS)}</span>
+        <span>{steps.length} tracks · {formatTimeline(totalMS)}</span>
       </div>
       <div className="mix-planner-flow-scroll">
         <div className="mix-planner-flow-track">
@@ -1253,10 +1253,10 @@ function DJMixTimeline({
                 {index > 0 && (
                   <div
                     className="mix-planner-flow-transition"
-                    title={`${t('mixPlanner.transition')}: ${formatSigned(step.tempoDeltaPct)}% В· ${relation}`}
+                    title={`${t('mixPlanner.transition')}: ${formatSigned(step.tempoDeltaPct)}% · ${relation}`}
                   >
                     <strong>{Math.round(step.score * 100)}%</strong>
-                    <span>{formatSigned(step.tempoDeltaPct)}% В· {step.camelot || relation || 'вЂ”'}</span>
+                    <span>{formatSigned(step.tempoDeltaPct)}% · {step.camelot || relation || '—'}</span>
                   </div>
                 )}
                 <button
@@ -1272,18 +1272,18 @@ function DJMixTimeline({
                   onClick={() => onSelectTrack(step.track.id)}
                   onDoubleClick={() => onPlayTrack(step.track.id)}
                   aria-pressed={step.track.id === selectedTrackID}
-                  title={`${step.track.artist || 'вЂ”'} вЂ” ${step.track.title || step.track.fileName}`}
+                  title={`${step.track.artist || '—'} — ${step.track.title || step.track.fileName}`}
                 >
                   <span className="mix-planner-flow-card-top">
                     <b className="mix-planner-flow-position">#{step.position}</b>
                     <span className="mix-planner-flow-time">{formatTimeline(startMS)}</span>
                   </span>
                   <span className="mix-planner-flow-title">
-                    {step.track.artist || 'вЂ”'} вЂ” {step.track.title || step.track.fileName}
+                    {step.track.artist || '—'} — {step.track.title || step.track.fileName}
                   </span>
                   <span className="mix-planner-flow-card-meta">
                     <b>{formatBPM(step.adjustedBpm || step.track.bpm)} BPM</b>
-                    <span>{step.camelot || step.openKey || 'вЂ”'}</span>
+                    <span>{step.camelot || step.openKey || '—'}</span>
                     <span>{formatDuration(step.track.durationMs)}</span>
                   </span>
                   <span className="mix-planner-flow-energy" title={`Energy ${energyPct}%`}>
@@ -1407,7 +1407,7 @@ function WaveformOverview({
           {formatPlayerTime(hoverRatio * safeDuration)}
         </span>
       )}
-      <span className="mix-planner-waveform-hint">click / drag seek В· в†ђ в†’ 5s</span>
+      <span className="mix-planner-waveform-hint">click / drag seek · ← → 5s</span>
     </div>
   )
 }

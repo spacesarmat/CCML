@@ -1647,7 +1647,7 @@
 }
 
 .mix-planner-preview-controls .mix-preview-auto.is-active::before {
-  content: "вЂў";
+  content: "•";
   margin-right: 2px;
   color: var(--ccml-accent);
 }
