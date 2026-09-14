@@ -743,6 +743,15 @@ function DJMixPlannerModal({
               </div>
             )}
 
+            <DJMixTimeline
+              steps={plan.steps ?? []}
+              selectedTrackID={previewTrackID}
+              startTrackID={plan.startTrackId}
+              t={t}
+              onSelectTrack={(trackID) => selectPreviewTrack(trackID)}
+              onPlayTrack={(trackID) => selectPreviewTrack(trackID, true)}
+            />
+
             <div className="mix-planner-summary">
               <Summary value={plan.steps?.length ?? 0} label={t('mixPlanner.planTracks')} />
               <Summary value={`${Math.round((plan.averageScore || 0) * 100)}%`} label={t('mixPlanner.avgScore')} />
@@ -1070,6 +1079,101 @@ function formatPlayerTime(valueSeconds: number): string {
   return hours > 0
     ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
     : `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+function DJMixTimeline({
+  steps,
+  selectedTrackID,
+  startTrackID,
+  t,
+  onSelectTrack,
+  onPlayTrack,
+}: {
+  steps: DJMixPlanStep[]
+  selectedTrackID: number
+  startTrackID: number
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string
+  onSelectTrack: (trackID: number) => void
+  onPlayTrack: (trackID: number) => void
+}) {
+  if (steps.length === 0) return null
+
+  const lastIndex = steps.length - 1
+  const totalMS = effectiveTimelineStartMS(steps, lastIndex) + Math.max(0, steps[lastIndex]?.track.durationMs || 0)
+
+  return (
+    <div className="mix-planner-flow">
+      <div className="mix-planner-flow-head">
+        <strong>{t('mixPlanner.timeline')}</strong>
+        <span>{steps.length} tracks В· {formatTimeline(totalMS)}</span>
+      </div>
+      <div className="mix-planner-flow-scroll">
+        <div className="mix-planner-flow-track">
+          {steps.map((step, index) => {
+            const warning = (step.warnings ?? []).length > 0
+            const laneClass = index % 2 === 0 ? 'is-lane-a' : 'is-lane-b'
+            const classes = [
+              'mix-planner-flow-segment',
+              laneClass,
+              warning ? 'has-warning' : '',
+            ].filter(Boolean).join(' ')
+            const startMS = effectiveTimelineStartMS(steps, index)
+            const energyPct = Math.max(0, Math.min(100, Math.round((step.energy || 0) * 100)))
+            const relation = step.keyRelation === 'start' ? '' : relationLabel(step.keyRelation, t)
+
+            return (
+              <div className={classes} key={`flow-${step.position}-${step.track.id}`}>
+                {index > 0 && (
+                  <div
+                    className="mix-planner-flow-transition"
+                    title={`${t('mixPlanner.transition')}: ${formatSigned(step.tempoDeltaPct)}% В· ${relation}`}
+                  >
+                    <strong>{Math.round(step.score * 100)}%</strong>
+                    <span>{formatSigned(step.tempoDeltaPct)}% В· {step.camelot || relation || 'вЂ”'}</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className={[
+                    'mix-planner-flow-card',
+                    step.track.id === selectedTrackID ? 'is-selected' : '',
+                    step.track.id === startTrackID ? 'is-start' : '',
+                  ].filter(Boolean).join(' ')}
+                  style={{width: `${mixTimelineTrackWidth(step.track.durationMs)}px`}}
+                  onClick={() => onSelectTrack(step.track.id)}
+                  onDoubleClick={() => onPlayTrack(step.track.id)}
+                  aria-pressed={step.track.id === selectedTrackID}
+                  title={`${step.track.artist || 'вЂ”'} вЂ” ${step.track.title || step.track.fileName}`}
+                >
+                  <span className="mix-planner-flow-card-top">
+                    <b className="mix-planner-flow-position">#{step.position}</b>
+                    <span className="mix-planner-flow-time">{formatTimeline(startMS)}</span>
+                  </span>
+                  <span className="mix-planner-flow-title">
+                    {step.track.artist || 'вЂ”'} вЂ” {step.track.title || step.track.fileName}
+                  </span>
+                  <span className="mix-planner-flow-card-meta">
+                    <b>{formatBPM(step.adjustedBpm || step.track.bpm)} BPM</b>
+                    <span>{step.camelot || step.openKey || 'вЂ”'}</span>
+                    <span>{formatDuration(step.track.durationMs)}</span>
+                  </span>
+                  <span className="mix-planner-flow-energy" title={`Energy ${energyPct}%`}>
+                    <span style={{width: `${energyPct}%`}} />
+                  </span>
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function mixTimelineTrackWidth(durationMS: number): number {
+  if (!Number.isFinite(durationMS) || durationMS <= 0) return 190
+  const minutes = durationMS / 60000
+  return Math.round(Math.max(170, Math.min(280, 158 + minutes * 18)))
 }
 
 function WaveformOverview({

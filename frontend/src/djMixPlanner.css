@@ -1221,3 +1221,259 @@
     display: none;
   }
 }
+
+/* Stage 20.4: visual DJ mix timeline */
+
+.mix-planner-flow {
+  flex: 0 0 auto;
+  min-width: 0;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: 8px;
+  background: var(--ccml-surface-1);
+  overflow: hidden;
+}
+
+.mix-planner-flow-head {
+  min-height: 27px;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+}
+
+.mix-planner-flow-head strong {
+  color: var(--ccml-text-strong);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mix-planner-flow-head span {
+  color: var(--ccml-text-muted);
+  font-size: 6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mix-planner-flow-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.mix-planner-flow-track {
+  min-width: max-content;
+  height: 102px;
+  padding: 7px 10px 8px;
+  display: flex;
+  align-items: stretch;
+}
+
+.mix-planner-flow-segment {
+  position: relative;
+  flex: 0 0 auto;
+  height: 86px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.mix-planner-flow-segment + .mix-planner-flow-segment {
+  margin-left: -18px;
+  padding-left: 18px;
+}
+
+.mix-planner-flow-segment.is-lane-b {
+  align-items: flex-end;
+}
+
+.mix-planner-flow-card {
+  position: relative;
+  z-index: 2;
+  min-width: 170px;
+  max-width: 280px;
+  height: 50px;
+  padding: 5px 7px 6px;
+  display: grid;
+  grid-template-rows: auto auto auto 3px;
+  gap: 2px;
+  overflow: hidden;
+  border: 1px solid var(--ccml-border);
+  border-radius: 7px;
+  background: var(--ccml-bg-elevated);
+  box-shadow: 0 2px 8px color-mix(in srgb, #000 18%, transparent);
+  color: var(--ccml-text);
+  text-align: left;
+}
+
+.mix-planner-flow-card:hover {
+  z-index: 5;
+  border-color: var(--ccml-accent-border);
+  transform: translateY(-1px);
+}
+
+.mix-planner-flow-segment.is-lane-b .mix-planner-flow-card:hover {
+  transform: translateY(1px);
+}
+
+.mix-planner-flow-card.is-selected {
+  border-color: var(--ccml-accent);
+  box-shadow:
+    0 0 0 1px var(--ccml-accent-soft),
+    0 3px 10px color-mix(in srgb, #000 22%, transparent);
+}
+
+.mix-planner-flow-card.is-start {
+  background:
+    linear-gradient(90deg, var(--ccml-accent-soft), transparent 45%),
+    var(--ccml-bg-elevated);
+}
+
+.mix-planner-flow-card-top,
+.mix-planner-flow-card-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mix-planner-flow-position {
+  flex: 0 0 auto;
+  color: var(--ccml-accent);
+  font-size: 6px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.mix-planner-flow-time {
+  margin-left: auto;
+  color: var(--ccml-text-muted);
+  font-size: 5.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mix-planner-flow-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ccml-text-strong);
+  font-size: 7px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mix-planner-flow-card-meta {
+  color: var(--ccml-text-muted);
+  font-size: 5.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mix-planner-flow-card-meta b {
+  color: var(--ccml-text);
+  font-weight: 650;
+}
+
+.mix-planner-flow-energy {
+  position: relative;
+  align-self: end;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ccml-border-subtle);
+}
+
+.mix-planner-flow-energy > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ccml-accent);
+  opacity: 0.72;
+}
+
+.mix-planner-flow-transition {
+  position: absolute;
+  z-index: 4;
+  left: -5px;
+  top: 34px;
+  width: 46px;
+  min-height: 23px;
+  padding: 2px 3px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ccml-border);
+  border-radius: 6px;
+  background: var(--ccml-bg-elevated);
+  box-shadow: 0 2px 7px color-mix(in srgb, #000 24%, transparent);
+  pointer-events: none;
+}
+
+.mix-planner-flow-transition::before,
+.mix-planner-flow-transition::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 1px;
+  background: var(--ccml-border);
+}
+
+.mix-planner-flow-transition::before {
+  right: 100%;
+}
+
+.mix-planner-flow-transition::after {
+  left: 100%;
+}
+
+.mix-planner-flow-transition strong,
+.mix-planner-flow-transition span {
+  display: block;
+  line-height: 1.05;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mix-planner-flow-transition strong {
+  color: var(--ccml-text-strong);
+  font-size: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mix-planner-flow-transition span {
+  max-width: 40px;
+  overflow: hidden;
+  color: var(--ccml-text-muted);
+  font-size: 5px;
+  text-overflow: ellipsis;
+}
+
+.mix-planner-flow-segment.has-warning .mix-planner-flow-transition {
+  border-color: color-mix(in srgb, var(--ccml-danger) 58%, var(--ccml-border));
+}
+
+.mix-planner-flow-segment.has-warning .mix-planner-flow-transition strong {
+  color: var(--ccml-danger);
+}
+
+@media (max-width: 760px) {
+  .mix-planner-flow-track {
+    height: 92px;
+  }
+
+  .mix-planner-flow-segment {
+    height: 76px;
+  }
+
+  .mix-planner-flow-card {
+    min-width: 150px;
+    height: 46px;
+  }
+
+  .mix-planner-flow-transition {
+    top: 29px;
+  }
+}
