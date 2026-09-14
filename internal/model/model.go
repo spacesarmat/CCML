@@ -597,6 +597,12 @@ func (s *MetadataSettings) Normalize() {
 }
 
 // SystemStatus reports optional runtime dependencies.
+type EssentiaPerformance struct {
+	Mode        string `json:"mode"`
+	Workers     int    `json:"workers"`
+	FastSeconds int    `json:"fastSeconds"`
+}
+
 type SystemStatus struct {
 	FFmpegPath                string   `json:"ffmpegPath"`
 	FFprobePath               string   `json:"ffprobePath"`
@@ -609,6 +615,9 @@ type SystemStatus struct {
 	EssentiaPath              string   `json:"essentiaPath"`
 	EssentiaSource            string   `json:"essentiaSource"`
 	EssentiaReady             bool     `json:"essentiaReady"`
+	EssentiaMode              string   `json:"essentiaMode"`
+	EssentiaWorkers           int      `json:"essentiaWorkers"`
+	EssentiaFastSeconds       int      `json:"essentiaFastSeconds"`
 	MetadataProviders         []string `json:"metadataProviders"`
 }
 

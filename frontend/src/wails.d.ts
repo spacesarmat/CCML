@@ -5,6 +5,7 @@ import type {
   DuplicateActionResult,
   DuplicateAudioVerification,
   DuplicateGroup,
+  EssentiaPerformance,
   FFmpegUpdateResult,
   LibraryRoot,
   LibraryStats,
@@ -70,8 +71,10 @@ declare global {
           SelectEssentiaExecutable(): Promise<SystemStatus>
           ResetEssentiaExecutable(): Promise<SystemStatus>
           OpenEssentiaDownloadPage(): Promise<void>
-          CreateEssentiaAnalysisJob(trackIDs: number[], writeTags: boolean, onlyMissing: boolean): Promise<BackgroundJob>
-          CreateLibraryEssentiaAnalysisJob(writeTags: boolean, onlyMissing: boolean): Promise<BackgroundJob>
+          GetEssentiaPerformance(): Promise<EssentiaPerformance>
+          SaveEssentiaPerformance(settings: EssentiaPerformance): Promise<EssentiaPerformance>
+          CreateEssentiaAnalysisJob(trackIDs: number[], writeTags: boolean, onlyMissing: boolean, skipUnchanged: boolean): Promise<BackgroundJob>
+          CreateLibraryEssentiaAnalysisJob(writeTags: boolean, onlyMissing: boolean, skipUnchanged: boolean): Promise<BackgroundJob>
           LookupMetadata(trackID: number): Promise<MetadataLookupResult>
           RefreshMetadata(trackID: number): Promise<MetadataLookupResult>
           TestMetadataProviders(settings: MetadataSettings): Promise<import('./types').MetadataProviderReport[]>

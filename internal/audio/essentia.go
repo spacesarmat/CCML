@@ -26,11 +26,15 @@ type essentiaConfig struct {
 // executable path is persisted inside the CCML config directory; environment
 // and PATH discovery remain available as fallbacks.
 type EssentiaAnalyzer struct {
-	mu         sync.RWMutex
-	path       string
-	source     string
-	configPath string
-	tools      *Toolchain
+	mu              sync.RWMutex
+	path            string
+	source          string
+	configPath      string
+	performancePath string
+	mode            string
+	workers         int
+	fastSeconds     int
+	tools           *Toolchain
 }
 
 // NewEssentiaAnalyzer discovers Essentia from a saved CCML path, CCML_ESSENTIA,
@@ -39,8 +43,10 @@ func NewEssentiaAnalyzer(appDir ...string) *EssentiaAnalyzer {
 	a := &EssentiaAnalyzer{}
 	if len(appDir) > 0 && strings.TrimSpace(appDir[0]) != "" {
 		a.configPath = filepath.Join(appDir[0], essentiaConfigFileName)
+		a.performancePath = filepath.Join(appDir[0], essentiaPerformanceConfigFileName)
 	}
 	a.Refresh()
+	a.loadPerformance()
 	return a
 }
 
@@ -198,6 +204,20 @@ func (a *EssentiaAnalyzer) Analyze(ctx context.Context, input string) (model.BPM
 	path := a.Path()
 	if path == "" {
 		return model.BPMKey{}, errors.New("Essentia is not configured; choose essentia_streaming_extractor_music in Settings, set CCML_ESSENTIA, or install it on PATH")
+	}
+
+	if a.Performance().Mode == "fast" {
+		fastPath, cleanup, used, prepErr := a.prepareEssentiaFastWAV(ctx, input)
+		if prepErr == nil && used {
+			fastResult, _, fastErr := runEssentiaExtractor(ctx, path, fastPath)
+			cleanup()
+			if fastErr == nil {
+				return fastResult, nil
+			}
+			if ctx.Err() != nil {
+				return model.BPMKey{}, ctx.Err()
+			}
+		}
 	}
 
 	result, output, err := runEssentiaExtractor(ctx, path, input)

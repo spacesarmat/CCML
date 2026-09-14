@@ -488,6 +488,12 @@ export type OrganizeRequest = {
   move: boolean
 }
 
+export type EssentiaPerformance = {
+  mode: 'fast' | 'accurate' | string
+  workers: number
+  fastSeconds: number
+}
+
 export type SystemStatus = {
   ffmpegPath: string
   ffprobePath: string
@@ -500,6 +506,9 @@ export type SystemStatus = {
   essentiaPath: string
   essentiaSource: string
   essentiaReady: boolean
+  essentiaMode: string
+  essentiaWorkers: number
+  essentiaFastSeconds: number
   metadataProviders: string[]
 }
 

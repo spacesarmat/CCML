@@ -277,6 +277,9 @@ type EssentiaItemResult = {
   key?: string
   scale?: string
   strength?: number
+  mode?: string
+  cached?: boolean
+  durationMs?: number
   writeTags?: boolean
   written?: boolean
   skipped?: boolean
@@ -300,9 +303,15 @@ function formatEssentiaResult(result: EssentiaItemResult, t: (key: TranslationKe
     scale: result.scale || '—',
     confidence: Math.round(Math.max(0, Math.min(1, result.strength ?? 0)) * 100),
   })
-  if (!result.writeTags) return `${summary} · ${t('jobs.essentiaStored')}`
-  if (result.written) return `${summary} · ${t('jobs.essentiaWritten')}`
-  return `${summary} · ${t('jobs.essentiaNoChanges')}`
+  const performance = result.cached
+    ? t('jobs.essentiaCached')
+    : t('jobs.essentiaTiming', {
+        mode: result.mode || 'accurate',
+        seconds: ((result.durationMs ?? 0) / 1000).toFixed(1),
+      })
+  if (!result.writeTags) return `${summary} · ${performance} · ${t('jobs.essentiaStored')}`
+  if (result.written) return `${summary} · ${performance} · ${t('jobs.essentiaWritten')}`
+  return `${summary} · ${performance} · ${t('jobs.essentiaNoChanges')}`
 }
 
 export default JobsPanel

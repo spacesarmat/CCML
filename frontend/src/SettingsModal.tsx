@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { translate, type AppLanguage, type TranslationKey } from './i18n'
 import {APP_THEMES, type AppTheme} from './theme'
 import {UI_SCALES, type AppUIScale} from './uiScale'
-import type { MetadataProviderReport, MetadataSettings, SystemStatus } from './types'
+import type { EssentiaPerformance, MetadataProviderReport, MetadataSettings, SystemStatus } from './types'
 
 type Props = {
   language: AppLanguage
@@ -21,6 +21,7 @@ type Props = {
 function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved, onStatusChanged, onMessage, onThemeChange, onUIScaleChange}: Props) {
   const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(language, key, params)
   const [settings, setSettings] = useState<MetadataSettings | null>(null)
+  const [essentiaPerformance, setEssentiaPerformance] = useState<EssentiaPerformance | null>(null)
   const [loading, setLoading] = useState(false)
   const [essentiaBusy, setEssentiaBusy] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -33,9 +34,14 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
     let cancelled = false
     setLoading(true)
     setError('')
-    void window.go.main.App.GetMetadataSettings()
-      .then((value) => {
-        if (!cancelled) setSettings(value)
+    void Promise.all([
+      window.go.main.App.GetMetadataSettings(),
+      window.go.main.App.GetEssentiaPerformance(),
+    ])
+      .then(([metadata, performance]) => {
+        if (cancelled) return
+        setSettings(metadata)
+        setEssentiaPerformance(performance)
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err))
@@ -50,6 +56,10 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
 
   function change<K extends keyof MetadataSettings>(key: K, value: MetadataSettings[K]) {
     setSettings((current) => current ? {...current, [key]: value} : current)
+  }
+
+  function changeEssentia<K extends keyof EssentiaPerformance>(key: K, value: EssentiaPerformance[K]) {
+    setEssentiaPerformance((current) => current ? {...current, [key]: value} : current)
   }
 
   async function openProviderPage(key: string) {
@@ -116,14 +126,17 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
   }
 
   async function save() {
-    if (!settings) return
+    if (!settings || !essentiaPerformance) return
     setSaving(true)
     setError('')
     try {
+      const savedPerformance = await window.go.main.App.SaveEssentiaPerformance(essentiaPerformance)
+      setEssentiaPerformance(savedPerformance)
       const saved = await window.go.main.App.SaveMetadataSettings(settings)
       setSettings(saved)
       await onSaved(saved)
       const refreshed = await window.go.main.App.SystemStatus()
+      onStatusChanged(refreshed)
       onMessage(t('settings.saved', {count: refreshed.metadataProviders?.length ?? 0}))
       onClose()
     } catch (err) {
@@ -225,6 +238,33 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
                 <button type="button" onClick={() => void openEssentiaDownload()} disabled={essentiaBusy}>{t('settings.essentiaDownload')}</button>
               </div>
             </div>
+
+            {essentiaPerformance && (
+              <div className="settings-concurrency-row">
+                <label>
+                  <span>{t('settings.essentiaMode')}</span>
+                  <select value={essentiaPerformance.mode} onChange={(event) => changeEssentia('mode', event.target.value)}>
+                    <option value="fast">{t('settings.essentiaModeFast')}</option>
+                    <option value="accurate">{t('settings.essentiaModeAccurate')}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{t('settings.essentiaWorkers')}</span>
+                  <input type="number" min={1} max={4} step={1} value={essentiaPerformance.workers} onChange={(event) => {
+                    const value = Number(event.target.value)
+                    changeEssentia('workers', Number.isFinite(value) ? Math.min(4, Math.max(1, Math.round(value))) : 2)
+                  }} />
+                </label>
+                <label>
+                  <span>{t('settings.essentiaFastSeconds')}</span>
+                  <input type="number" min={30} max={300} step={15} disabled={essentiaPerformance.mode !== 'fast'} value={essentiaPerformance.fastSeconds} onChange={(event) => {
+                    const value = Number(event.target.value)
+                    changeEssentia('fastSeconds', Number.isFinite(value) ? Math.min(300, Math.max(30, Math.round(value))) : 120)
+                  }} />
+                </label>
+                <small>{t('settings.essentiaPerformanceHint')}</small>
+              </div>
+            )}
           </section>
 
           <div className="settings-section-divider" />
@@ -322,7 +362,7 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
 
         <div className="settings-footer">
           <button onClick={onClose} disabled={saving}>{t('settings.cancel')}</button>
-          <button className="primary" onClick={() => void save()} disabled={!settings || loading || saving}>{saving ? t('settings.saving') : t('settings.save')}</button>
+          <button className="primary" onClick={() => void save()} disabled={!settings || !essentiaPerformance || loading || saving}>{saving ? t('settings.saving') : t('settings.save')}</button>
         </div>
       </section>
     </div>

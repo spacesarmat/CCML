@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -18,8 +19,9 @@ import (
 const essentiaAnalysisJobType = "essentia_analysis"
 
 type essentiaAnalysisJobOptions struct {
-	WriteTags   bool `json:"writeTags"`
-	OnlyMissing bool `json:"onlyMissing"`
+	WriteTags     bool `json:"writeTags"`
+	OnlyMissing   bool `json:"onlyMissing"`
+	SkipUnchanged bool `json:"skipUnchanged"`
 }
 
 type essentiaAnalysisItemResult struct {
@@ -31,6 +33,9 @@ type essentiaAnalysisItemResult struct {
 	Strength    float64 `json:"strength"`
 	Camelot     string  `json:"camelot"`
 	OpenKey     string  `json:"openKey"`
+	Mode        string  `json:"mode"`
+	Cached      bool    `json:"cached"`
+	DurationMS  int64   `json:"durationMs"`
 	WriteTags   bool    `json:"writeTags"`
 	OnlyMissing bool    `json:"onlyMissing"`
 	Written     bool    `json:"written"`
@@ -39,7 +44,7 @@ type essentiaAnalysisItemResult struct {
 }
 
 // CreateEssentiaAnalysisJob queues BPM/key analysis for selected tracks.
-func (a *App) CreateEssentiaAnalysisJob(trackIDs []int64, writeTags, onlyMissing bool) (model.BackgroundJob, error) {
+func (a *App) CreateEssentiaAnalysisJob(trackIDs []int64, writeTags, onlyMissing, skipUnchanged bool) (model.BackgroundJob, error) {
 	if a.jobs == nil {
 		return model.BackgroundJob{}, errors.New("background job manager is not available")
 	}
@@ -49,7 +54,7 @@ func (a *App) CreateEssentiaAnalysisJob(trackIDs []int64, writeTags, onlyMissing
 	if len(trackIDs) == 0 {
 		return model.BackgroundJob{}, errors.New("no tracks selected")
 	}
-	opts := essentiaAnalysisJobOptions{WriteTags: writeTags, OnlyMissing: writeTags && onlyMissing}
+	opts := essentiaAnalysisJobOptions{WriteTags: writeTags, OnlyMissing: writeTags && onlyMissing, SkipUnchanged: skipUnchanged}
 	raw, err := json.Marshal(opts)
 	if err != nil {
 		return model.BackgroundJob{}, fmt.Errorf("encode Essentia analysis options: %w", err)
@@ -66,14 +71,14 @@ func (a *App) CreateEssentiaAnalysisJob(trackIDs []int64, writeTags, onlyMissing
 }
 
 // CreateLibraryEssentiaAnalysisJob queues BPM/key analysis for the entire library.
-func (a *App) CreateLibraryEssentiaAnalysisJob(writeTags, onlyMissing bool) (model.BackgroundJob, error) {
+func (a *App) CreateLibraryEssentiaAnalysisJob(writeTags, onlyMissing, skipUnchanged bool) (model.BackgroundJob, error) {
 	if a.jobs == nil {
 		return model.BackgroundJob{}, errors.New("background job manager is not available")
 	}
 	if a.bpmKey == nil || !a.bpmKey.Available() {
 		return model.BackgroundJob{}, errors.New("Essentia is not configured")
 	}
-	opts := essentiaAnalysisJobOptions{WriteTags: writeTags, OnlyMissing: writeTags && onlyMissing}
+	opts := essentiaAnalysisJobOptions{WriteTags: writeTags, OnlyMissing: writeTags && onlyMissing, SkipUnchanged: skipUnchanged}
 	raw, err := json.Marshal(opts)
 	if err != nil {
 		return model.BackgroundJob{}, fmt.Errorf("encode Essentia analysis options: %w", err)
@@ -102,14 +107,39 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 	if err != nil {
 		return jobqueue.ItemResult{}, err
 	}
-	result, err := a.bpmKey.Analyze(ctx, track.Path)
-	if err != nil {
-		return jobqueue.ItemResult{}, err
+	performance := a.bpmKey.Performance()
+	analysisStarted := time.Now()
+	cached := false
+	var result model.BPMKey
+
+	if opts.SkipUnchanged {
+		stored, ok, loadErr := a.store.EssentiaAnalysis(ctx, track.ID)
+		if loadErr != nil {
+			return jobqueue.ItemResult{}, loadErr
+		}
+		if ok && essentiaAnalysisFreshForTrack(stored, track) {
+			result = model.BPMKey{
+				BPM: stored.BPM, Key: stored.Key, Scale: stored.Scale, Strength: stored.Strength,
+				Camelot: stored.Camelot, OpenKey: stored.OpenKey,
+			}
+			if result.Camelot == "" && result.Key != "" {
+				result.Camelot, result.OpenKey, _ = audio.DJKeyFormats(result.Key, result.Scale)
+			}
+			cached = true
+		}
 	}
-	result, err = normalizeEssentiaAnalysisResult(result)
-	if err != nil {
-		return jobqueue.ItemResult{}, err
+
+	if !cached {
+		result, err = a.bpmKey.Analyze(ctx, track.Path)
+		if err != nil {
+			return jobqueue.ItemResult{}, err
+		}
+		result, err = normalizeEssentiaAnalysisResult(result)
+		if err != nil {
+			return jobqueue.ItemResult{}, err
+		}
 	}
+	analysisDuration := time.Since(analysisStarted).Milliseconds()
 
 	item := essentiaAnalysisItemResult{
 		TrackID:     track.ID,
@@ -120,6 +150,9 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 		Strength:    result.Strength,
 		Camelot:     result.Camelot,
 		OpenKey:     result.OpenKey,
+		Mode:        performance.Mode,
+		Cached:      cached,
+		DurationMS:  analysisDuration,
 		WriteTags:   opts.WriteTags,
 		OnlyMissing: opts.OnlyMissing,
 	}
@@ -137,6 +170,7 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 		if err := a.store.UpdateBPMKey(ctx, track.ID, result); err != nil {
 			return jobqueue.ItemResult{}, err
 		}
+		item.Skipped = cached
 	}
 	if err := a.store.PutEssentiaAnalysis(ctx, track.ID, result); err != nil {
 		return jobqueue.ItemResult{}, err
@@ -151,6 +185,17 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 		status = "skipped"
 	}
 	return jobqueue.ItemResult{Status: status, ResultJSON: string(raw)}, nil
+}
+
+func essentiaAnalysisFreshForTrack(analysis model.EssentiaAnalysis, track model.Track) bool {
+	if strings.TrimSpace(analysis.AnalyzedAt) == "" || track.ModifiedUnix <= 0 {
+		return false
+	}
+	analyzedAt, err := time.Parse(time.RFC3339Nano, analysis.AnalyzedAt)
+	if err != nil {
+		return false
+	}
+	return analyzedAt.Unix() >= track.ModifiedUnix
 }
 
 func normalizeEssentiaAnalysisResult(result model.BPMKey) (model.BPMKey, error) {

@@ -116,7 +116,7 @@ func NewApp() (*App, error) {
 	app.toolUpdater = audio.NewToolUpdater(appDir, tools)
 	app.jobs = jobqueue.New(db)
 	app.jobs.RegisterConcurrent("metadata_enrichment", metadataConfig.MetadataEnrichmentConcurrency, app.runMetadataJobItem)
-	app.jobs.Register(essentiaAnalysisJobType, app.runEssentiaJobItem)
+	app.jobs.RegisterConcurrent(essentiaAnalysisJobType, app.bpmKey.Performance().Workers, app.runEssentiaJobItem)
 	app.jobs.SetEmitter(func(name string, payload any) {
 		if app.ctx != nil {
 			runtime.EventsEmit(app.ctx, name, payload)
@@ -197,6 +197,7 @@ func (a *App) SystemStatus() model.SystemStatus {
 	updateErr := a.toolUpdateErr
 	a.toolUpdateMu.Unlock()
 	autoUpdateSupported := a.toolUpdater != nil && a.toolUpdater.AutoUpdateSupported()
+	essentiaPerformance := a.bpmKey.Performance()
 	return model.SystemStatus{
 		FFmpegPath:                snapshot.FFmpeg,
 		FFprobePath:               snapshot.FFprobe,
@@ -209,6 +210,9 @@ func (a *App) SystemStatus() model.SystemStatus {
 		EssentiaPath:              a.bpmKey.Path(),
 		EssentiaSource:            a.bpmKey.Source(),
 		EssentiaReady:             a.bpmKey.Available(),
+		EssentiaMode:              essentiaPerformance.Mode,
+		EssentiaWorkers:           essentiaPerformance.Workers,
+		EssentiaFastSeconds:       essentiaPerformance.FastSeconds,
 		MetadataProviders:         a.metadataService().ProviderNames(),
 	}
 }
@@ -248,6 +252,24 @@ func (a *App) OpenEssentiaDownloadPage() error {
 	}
 	runtime.BrowserOpenURL(a.ctx, "https://essentia.upf.edu/download.html")
 	return nil
+}
+
+// GetEssentiaPerformance returns local analysis performance settings.
+func (a *App) GetEssentiaPerformance() model.EssentiaPerformance {
+	return a.bpmKey.Performance()
+}
+
+// SaveEssentiaPerformance persists analysis mode/concurrency and applies worker
+// concurrency to subsequently started Essentia jobs.
+func (a *App) SaveEssentiaPerformance(config model.EssentiaPerformance) (model.EssentiaPerformance, error) {
+	saved, err := a.bpmKey.ConfigurePerformance(config)
+	if err != nil {
+		return model.EssentiaPerformance{}, err
+	}
+	if a.jobs != nil {
+		a.jobs.RegisterConcurrent(essentiaAnalysisJobType, saved.Workers, a.runEssentiaJobItem)
+	}
+	return saved, nil
 }
 
 // GetMetadataSettings returns the locally stored metadata provider configuration.
