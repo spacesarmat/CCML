@@ -277,6 +277,7 @@ func (a *App) OpenMetadataLink(key string) error {
 		"muzvizor":         "https://muzvizor.com/tracks",
 		"remixpool":        "https://remixpool.ru/new-releases/",
 		"bananastreet":     "https://bananastreet.ru/search?q=",
+		"mixcloud":         "https://www.mixcloud.com/developers/",
 	}
 	url, ok := links[strings.ToLower(strings.TrimSpace(key))]
 	if !ok {
@@ -328,7 +329,7 @@ func validateMetadataSettings(config model.MetadataSettings) error {
 
 func buildMetadataService(config model.MetadataSettings) *metadata.Service {
 	const metadataUserAgent = "CCML/0.6 (https://github.com/spacesarmat/CCML)"
-	providers := make([]metadata.Provider, 0, 14)
+	providers := make([]metadata.Provider, 0, 15)
 	if config.MusicBrainzEnabled {
 		providers = append(providers, metadata.NewMusicBrainzProvider(metadataUserAgent))
 	}
@@ -370,6 +371,9 @@ func buildMetadataService(config model.MetadataSettings) *metadata.Service {
 	}
 	if config.BananaStreetEnabled {
 		providers = append(providers, metadata.NewBananaStreetProvider(metadataUserAgent))
+	}
+	if config.MixcloudEnabled {
+		providers = append(providers, metadata.NewMixcloudProvider(metadataUserAgent))
 	}
 	return metadata.NewService(providers...)
 }
@@ -806,7 +810,7 @@ func (a *App) metadataCacheKey(query model.MetadataQuery) (string, error) {
 		Version int                    `json:"version"`
 		Query   model.MetadataQuery    `json:"query"`
 		Config  model.MetadataSettings `json:"config"`
-	}{Version: 9, Query: query, Config: config})
+	}{Version: 10, Query: query, Config: config})
 	if err != nil {
 		return "", fmt.Errorf("encode metadata cache key: %w", err)
 	}

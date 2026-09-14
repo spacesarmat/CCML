@@ -98,6 +98,7 @@ func DefaultsFromEnvironment() model.MetadataSettings {
 		MuzvizorEnabled:     false,
 		RemixPoolEnabled:    false,
 		BananaStreetEnabled: false,
+		MixcloudEnabled:     false,
 
 		TraxsourceAPIKey: strings.TrimSpace(os.Getenv("TRAXSOURCE_API_KEY")),
 

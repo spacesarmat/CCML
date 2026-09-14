@@ -488,6 +488,7 @@ type MetadataSettings struct {
 	MuzvizorEnabled     bool `json:"muzvizorEnabled"`
 	RemixPoolEnabled    bool `json:"remixPoolEnabled"`
 	BananaStreetEnabled bool `json:"bananaStreetEnabled"`
+	MixcloudEnabled     bool `json:"mixcloudEnabled"`
 
 	TraxsourceAPIKey string `json:"traxsourceApiKey"`
 
