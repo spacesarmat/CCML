@@ -4,12 +4,6 @@ import {model} from '../models';
 
 export function AnalyzeBPMKey(arg1:number):Promise<model.BPMKey>;
 
-export function SelectEssentiaExecutable():Promise<model.SystemStatus>;
-
-export function ResetEssentiaExecutable():Promise<model.SystemStatus>;
-
-export function OpenEssentiaDownloadPage():Promise<void>;
-
 export function AnalyzeLoudness(arg1:number):Promise<model.Loudness>;
 
 export function ApplyMetadataCandidate(arg1:number,arg2:model.MetadataCandidate,arg3:boolean):Promise<model.TagApplyResult>;
@@ -56,6 +50,8 @@ export function LookupMetadata(arg1:number):Promise<model.MetadataLookupResult>;
 
 export function NormalizeTrack(arg1:number,arg2:model.ProcessingOptions):Promise<model.ProcessingResult>;
 
+export function OpenEssentiaDownloadPage():Promise<void>;
+
 export function OpenMetadataLink(arg1:string):Promise<void>;
 
 export function OrganizeTrack(arg1:number,arg2:model.OrganizeRequest):Promise<string>;
@@ -84,6 +80,8 @@ export function RemoveCoverArt(arg1:Array<number>):Promise<model.TagApplyResult>
 
 export function RemoveLibraryRoot(arg1:string,arg2:boolean):Promise<void>;
 
+export function ResetEssentiaExecutable():Promise<model.SystemStatus>;
+
 export function ResumeBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
 
 export function RetryFailedBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
@@ -95,6 +93,8 @@ export function ScanFolder(arg1:string):Promise<model.ScanResult>;
 export function SelectCoverArt():Promise<string>;
 
 export function SelectDuplicateQuarantineFolder():Promise<string>;
+
+export function SelectEssentiaExecutable():Promise<model.SystemStatus>;
 
 export function SelectMusicFolder():Promise<string>;
 

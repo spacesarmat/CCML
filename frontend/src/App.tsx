@@ -6,6 +6,7 @@ import SettingsModal from './SettingsModal'
 import JobsPanel from './JobsPanel'
 import HelpModal from './HelpModal'
 import DuplicateGroupsView from './DuplicateGroupsView'
+import EssentiaBatchControls from './EssentiaBatchControls'
 import {
   detectInitialLanguage,
   localeFor,
@@ -416,10 +417,13 @@ function App() {
       setStatus((current) => current ? {...current, ffmpegUpdating: false, ffmpegUpdateError: error} : current)
       setMessage(t('message.ffmpegUpdateFailed', {error}))
     })
-    const offJobsUpdated = EventsOn('jobs:updated', (job: {status?: string}) => {
+    const offJobsUpdated = EventsOn('jobs:updated', (job: {status?: string; type?: string}) => {
       if (job?.status === 'completed' || job?.status === 'failed' || job?.status === 'cancelled') {
         void refreshTracks(search)
         void refreshStats()
+        if (job.type === 'metadata_enrichment' || job.type === 'essentia_analysis') {
+          setTagRevision((current) => current + 1)
+        }
       }
     })
 
@@ -929,6 +933,7 @@ function App() {
         bpm: result.bpm.toFixed(1),
         key: result.key,
         scale: result.scale,
+        confidence: Math.round(Math.max(0, Math.min(1, result.strength ?? 0)) * 100),
       }))
       await refreshTracks(search)
     }
@@ -1450,6 +1455,15 @@ function App() {
 
             {inspectorTab === 'analysis' && (
               <div className="inspector-section">
+                <EssentiaBatchControls
+                  language={language}
+                  selectedIDs={selectedIDs}
+                  libraryCount={stats?.tracks ?? 0}
+                  essentiaReady={Boolean(status?.essentiaReady)}
+                  disabled={busy || scanning}
+                  onMessage={setMessage}
+                  onQueued={() => setJobsOpen(true)}
+                />
                 {!selected ? <div className="workspace-empty-state">{t('workspace.analysisHint')}</div> : <>
                   <dl className="facts inspector-facts"><dt>{t('details.path')}</dt><dd title={selected.path}>{selected.path}</dd><dt>{t('details.format')}</dt><dd>{selected.codec} · {selected.sampleRate || '–'} Hz · {selected.channels || '–'} {t('details.channelsShort')}</dd><dt>{t('details.loudness')}</dt><dd>{selected.loudnessI ? `${selected.loudnessI.toFixed(1)} LUFS / ${selected.truePeak.toFixed(1)} dBTP` : t('details.notAnalyzed')}</dd></dl>
                   <div className="inspector-action-grid"><button onClick={analyzeLoudness} disabled={busy}>{t('actions.loudnessAnalysis')}</button><button onClick={analyzeBPMKey} disabled={busy || !status?.essentiaReady}>{t('actions.bpmKey')}</button><button onClick={writeReplayGain} disabled={busy}>{t('actions.replayGain')}</button></div>

@@ -6,18 +6,6 @@ export function AnalyzeBPMKey(arg1) {
   return window['go']['main']['App']['AnalyzeBPMKey'](arg1);
 }
 
-export function SelectEssentiaExecutable() {
-  return window['go']['main']['App']['SelectEssentiaExecutable']();
-}
-
-export function ResetEssentiaExecutable() {
-  return window['go']['main']['App']['ResetEssentiaExecutable']();
-}
-
-export function OpenEssentiaDownloadPage() {
-  return window['go']['main']['App']['OpenEssentiaDownloadPage']();
-}
-
 export function AnalyzeLoudness(arg1) {
   return window['go']['main']['App']['AnalyzeLoudness'](arg1);
 }
@@ -110,6 +98,10 @@ export function NormalizeTrack(arg1, arg2) {
   return window['go']['main']['App']['NormalizeTrack'](arg1, arg2);
 }
 
+export function OpenEssentiaDownloadPage() {
+  return window['go']['main']['App']['OpenEssentiaDownloadPage']();
+}
+
 export function OpenMetadataLink(arg1) {
   return window['go']['main']['App']['OpenMetadataLink'](arg1);
 }
@@ -166,6 +158,10 @@ export function RemoveLibraryRoot(arg1, arg2) {
   return window['go']['main']['App']['RemoveLibraryRoot'](arg1, arg2);
 }
 
+export function ResetEssentiaExecutable() {
+  return window['go']['main']['App']['ResetEssentiaExecutable']();
+}
+
 export function ResumeBackgroundJob(arg1) {
   return window['go']['main']['App']['ResumeBackgroundJob'](arg1);
 }
@@ -188,6 +184,10 @@ export function SelectCoverArt() {
 
 export function SelectDuplicateQuarantineFolder() {
   return window['go']['main']['App']['SelectDuplicateQuarantineFolder']();
+}
+
+export function SelectEssentiaExecutable() {
+  return window['go']['main']['App']['SelectEssentiaExecutable']();
 }
 
 export function SelectMusicFolder() {

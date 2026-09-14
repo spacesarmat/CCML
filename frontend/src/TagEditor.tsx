@@ -412,8 +412,10 @@ function describeChanges(item: TagPreview, language: AppLanguage): string {
 }
 
 function historyLabel(label: string, language: AppLanguage): string {
-  const key: TranslationKey = label === 'tags.metadata'
-    ? 'tags.history.metadata'
+  const key: TranslationKey = label === 'tags.essentia'
+    ? 'tags.history.essentia'
+    : label === 'tags.metadata'
+      ? 'tags.history.metadata'
     : label === 'tags.cover'
       ? 'tags.history.cover'
       : label === 'tags.removeCover'

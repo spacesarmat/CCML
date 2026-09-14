@@ -185,9 +185,14 @@ function JobsPanel({language, open, onClose, onMessage, onRevealTrack}: Props) {
                   {expanded[job.id] && (
                     <div className="job-items">
                       {(items[job.id] ?? []).filter((item) => !failedOnly || item.status === 'failed').map((item) => {
-                        const result = parseEnrichmentResult(item.resultJson)
-                        const resultText = result ? formatEnrichmentResult(result, t) : ''
-                        const pipelineText = result ? formatEnrichmentPipeline(result, t) : ''
+                        const enrichmentResult = job.type === 'metadata_enrichment' ? parseEnrichmentResult(item.resultJson) : null
+                        const essentiaResult = job.type === 'essentia_analysis' ? parseEssentiaResult(item.resultJson) : null
+                        const resultText = enrichmentResult
+                          ? formatEnrichmentResult(enrichmentResult, t)
+                          : essentiaResult
+                            ? formatEssentiaResult(essentiaResult, t)
+                            : ''
+                        const pipelineText = enrichmentResult ? formatEnrichmentPipeline(enrichmentResult, t) : ''
                         return (
                           <div className={`job-item ${item.status}`} key={item.id}>
                             <span>{t((`jobs.item.${item.status}`) as TranslationKey)}</span>
@@ -202,7 +207,7 @@ function JobsPanel({language, open, onClose, onMessage, onRevealTrack}: Props) {
                             <small>{t('jobs.attempts')}: {item.attempts}</small>
                             {resultText && <small className="job-item-result">{resultText}</small>}
                             {pipelineText && <small className="job-item-pipeline">{pipelineText}</small>}
-                            {result?.warning && <small className="job-item-warning">{t('jobs.warning', {message: result.warning})}</small>}
+                            {enrichmentResult?.warning && <small className="job-item-warning">{t('jobs.warning', {message: enrichmentResult.warning})}</small>}
                             {item.error && <small className="job-item-error">{item.error}</small>}
                           </div>
                         )
@@ -265,6 +270,39 @@ function formatEnrichmentPipeline(result: EnrichmentItemResult, t: (key: Transla
     skipped: result.providersSkipped ?? 0,
   })
   return result.earlyStopped ? `${base} · ${t('jobs.earlyStop')}` : base
+}
+
+type EssentiaItemResult = {
+  bpm?: number
+  key?: string
+  scale?: string
+  strength?: number
+  writeTags?: boolean
+  written?: boolean
+  skipped?: boolean
+  changeSetId?: number
+}
+
+function parseEssentiaResult(raw: string): EssentiaItemResult | null {
+  if (!raw) return null
+  try {
+    const value = JSON.parse(raw) as EssentiaItemResult
+    return value && typeof value === 'object' ? value : null
+  } catch {
+    return null
+  }
+}
+
+function formatEssentiaResult(result: EssentiaItemResult, t: (key: TranslationKey, params?: Record<string, string | number>) => string): string {
+  const summary = t('jobs.essentiaMeasurement', {
+    bpm: Number(result.bpm ?? 0).toFixed(1),
+    key: result.key || '—',
+    scale: result.scale || '—',
+    confidence: Math.round(Math.max(0, Math.min(1, result.strength ?? 0)) * 100),
+  })
+  if (!result.writeTags) return `${summary} · ${t('jobs.essentiaStored')}`
+  if (result.written) return `${summary} · ${t('jobs.essentiaWritten')}`
+  return `${summary} · ${t('jobs.essentiaNoChanges')}`
 }
 
 export default JobsPanel

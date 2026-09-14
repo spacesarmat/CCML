@@ -115,6 +115,7 @@ func NewApp() (*App, error) {
 	app.toolUpdater = audio.NewToolUpdater(appDir, tools)
 	app.jobs = jobqueue.New(db)
 	app.jobs.RegisterConcurrent("metadata_enrichment", metadataConfig.MetadataEnrichmentConcurrency, app.runMetadataJobItem)
+	app.jobs.Register(essentiaAnalysisJobType, app.runEssentiaJobItem)
 	app.jobs.SetEmitter(func(name string, payload any) {
 		if app.ctx != nil {
 			runtime.EventsEmit(app.ctx, name, payload)
