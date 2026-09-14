@@ -588,6 +588,11 @@ function DuplicateGroupsView({
     for (let offset = 1; offset <= groups.length; offset++) {
       const group = groups[(start + offset) % groups.length]
       if (!validDecisions[group.key]) {
+        // Navigation is defined over the complete duplicate-group list, not the
+        // current search subset. Clear the search in the same state update so
+        // the filtered-list effect cannot replace this target with a different
+        // visible group.
+        setQuery('')
         setFilter('all')
         setActiveGroupKey(group.key)
         return
