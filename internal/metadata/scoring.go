@@ -321,15 +321,20 @@ var versionRules = []struct {
 	name  string
 	terms []string
 }{
-	{"extended", []string{"extended", "extended mix", "club mix", "club version", "12 inch", "12inch"}},
+	{"extended", []string{"extended", "extended mix", "extended version", "club mix", "club version", "12 inch", "12inch"}},
 	{"radio", []string{"radio edit", "radio mix", "radio version", "single edit", "single version"}},
-	{"remix", []string{"remix", "rmx", "rework", "bootleg"}},
+	{"remix", []string{"remix", "rmx", "rework", "bootleg", "mashup"}},
 	{"remaster", []string{"remaster", "remastered", "remastered version", "digital remaster"}},
 	{"live", []string{"live", "live version", "concert", "live at"}},
 	{"instrumental", []string{"instrumental", "instrumental version"}},
 	{"acoustic", []string{"acoustic", "unplugged"}},
+	{"acapella", []string{"acapella", "acappella", "a cappella", "a capella"}},
 	{"dub", []string{"dub", "dub mix", "dub version"}},
 	{"edit", []string{"edit", "short edit", "video edit"}},
+	{"clean", []string{"clean", "clean edit", "clean mix", "clean version"}},
+	{"dirty", []string{"dirty", "dirty edit", "dirty mix", "dirty version", "explicit", "explicit version"}},
+	{"intro", []string{"intro", "intro edit", "intro mix", "intro version"}},
+	{"outro", []string{"outro", "outro edit", "outro mix", "outro version"}},
 }
 
 func versionSignatureFor(title string) versionSignature {

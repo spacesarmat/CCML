@@ -39,7 +39,34 @@ func (s *Service) ProviderNames() []string {
 // Search queries all configured providers concurrently. Provider failures are
 // isolated and returned as diagnostics so one unavailable catalog never hides
 // healthy results from the other providers.
+//
+// If the original title yields no usable candidate and ends in recognized
+// version qualifiers, CCML automatically retries once without those qualifiers.
 func (s *Service) Search(ctx context.Context, query model.MetadataQuery) (model.MetadataLookupResult, error) {
+	primary, err := s.searchOnce(ctx, query)
+	if err != nil || !metadataLookupNeedsTitleFallback(primary) {
+		return primary, err
+	}
+
+	fallbackQuery, ok := titleFallbackQuery(query)
+	if !ok {
+		return primary, nil
+	}
+
+	fallback, fallbackErr := s.searchOnce(ctx, fallbackQuery)
+	if fallbackErr != nil {
+		if ctx.Err() != nil {
+			return fallback, fallbackErr
+		}
+		return primary, nil
+	}
+	if len(fallback.Candidates) == 0 {
+		return primary, nil
+	}
+	return markTitleFallbackResult(query.Title, fallback), nil
+}
+
+func (s *Service) searchOnce(ctx context.Context, query model.MetadataQuery) (model.MetadataLookupResult, error) {
 	if len(s.providers) == 0 {
 		return model.MetadataLookupResult{}, fmt.Errorf("no metadata providers configured")
 	}

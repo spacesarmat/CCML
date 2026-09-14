@@ -44,13 +44,55 @@ func NormalizeEnrichmentSearchMode(value string) string {
 
 // SearchEnrichment is optimized for automatic batch enrichment.
 //
+// If the exact local title produces no usable candidate, recognized trailing
+// version qualifiers are removed for one fallback provider pass.
+func (s *Service) SearchEnrichment(
+	ctx context.Context,
+	query model.MetadataQuery,
+	mode string,
+	minimumConfidence float64,
+) (model.MetadataLookupResult, EnrichmentSearchDiagnostics, error) {
+	primary, primaryDiagnostics, err := s.searchEnrichmentOnce(ctx, query, mode, minimumConfidence)
+	if err != nil || !metadataLookupNeedsTitleFallback(primary) {
+		return primary, primaryDiagnostics, err
+	}
+
+	fallbackQuery, ok := titleFallbackQuery(query)
+	if !ok {
+		return primary, primaryDiagnostics, nil
+	}
+
+	fallback, fallbackDiagnostics, fallbackErr := s.searchEnrichmentOnce(ctx, fallbackQuery, mode, minimumConfidence)
+	fallbackDiagnostics.DurationMS += primaryDiagnostics.DurationMS
+	if primaryDiagnostics.ProvidersResponded > fallbackDiagnostics.ProvidersResponded {
+		fallbackDiagnostics.ProvidersResponded = primaryDiagnostics.ProvidersResponded
+	}
+	if primaryDiagnostics.ProvidersSkipped < fallbackDiagnostics.ProvidersSkipped {
+		fallbackDiagnostics.ProvidersSkipped = primaryDiagnostics.ProvidersSkipped
+	}
+	fallbackDiagnostics.EarlyStopped = primaryDiagnostics.EarlyStopped || fallbackDiagnostics.EarlyStopped
+
+	if fallbackErr != nil {
+		if ctx.Err() != nil {
+			return fallback, fallbackDiagnostics, fallbackErr
+		}
+		return primary, primaryDiagnostics, nil
+	}
+	if len(fallback.Candidates) == 0 {
+		return primary, primaryDiagnostics, nil
+	}
+	return markTitleFallbackResult(query.Title, fallback), fallbackDiagnostics, nil
+}
+
+// searchEnrichmentOnce performs one provider pass for the exact supplied query.
+//
 // Full preserves the old behavior and waits for every configured provider.
 // Fast queries only the providers that do not have CCML-side serialized request
 // pacing. Auto queries those providers first and only escalates to deferred
 // providers when the fast group cannot produce an exact high-confidence match.
 //
 // Provider-specific rate limiters remain authoritative inside each adapter.
-func (s *Service) SearchEnrichment(
+func (s *Service) searchEnrichmentOnce(
 	ctx context.Context,
 	query model.MetadataQuery,
 	mode string,
@@ -76,7 +118,7 @@ func (s *Service) SearchEnrichment(
 	}
 
 	if mode == EnrichmentSearchFull {
-		result, err := s.Search(ctx, query)
+		result, err := s.searchOnce(ctx, query)
 		return finish(result, len(result.ProviderReports), false, err)
 	}
 

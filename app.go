@@ -602,7 +602,18 @@ func (a *App) RemoveCoverArt(trackIDs []int64) (model.TagApplyResult, error) {
 }
 
 // ApplyMetadataCandidate writes a provider candidate to the file and optionally embeds its artwork.
+// A recognized local version suffix is preserved even when the provider search
+// had to fall back to the base title.
 func (a *App) ApplyMetadataCandidate(trackID int64, candidate model.MetadataCandidate, includeArtwork bool) (model.TagApplyResult, error) {
+	track, err := a.store.TrackByID(a.context(), trackID)
+	if err != nil {
+		return model.TagApplyResult{}, err
+	}
+	localTitle := track.Title
+	if tags, readErr := a.tagEditor.Read(a.context(), trackID); readErr == nil && strings.TrimSpace(tags.Title) != "" {
+		localTitle = tags.Title
+	}
+	candidate.Title = metadata.PreserveLocalVersionTitle(localTitle, candidate.Title)
 	return a.tagEditor.ApplyMetadataCandidate(a.context(), trackID, candidate, includeArtwork)
 }
 
@@ -780,9 +791,10 @@ func (a *App) metadataCacheKey(query model.MetadataQuery) (string, error) {
 	config := a.metadataConfig
 	a.metadataMu.RUnlock()
 	raw, err := json.Marshal(struct {
-		Query  model.MetadataQuery    `json:"query"`
-		Config model.MetadataSettings `json:"config"`
-	}{Query: query, Config: config})
+		Version int                    `json:"version"`
+		Query   model.MetadataQuery    `json:"query"`
+		Config  model.MetadataSettings `json:"config"`
+	}{Version: 2, Query: query, Config: config})
 	if err != nil {
 		return "", fmt.Errorf("encode metadata cache key: %w", err)
 	}
@@ -965,8 +977,14 @@ func (a *App) enrichMetadataTrack(ctx context.Context, trackID int64, opts model
 	item.Path = track.Path
 	tags, tagErr := a.tagEditor.Read(ctx, trackID)
 	isrc := track.ISRC
-	if tagErr == nil && strings.TrimSpace(tags.ISRC) != "" {
-		isrc = tags.ISRC
+	localTitle := track.Title
+	if tagErr == nil {
+		if strings.TrimSpace(tags.ISRC) != "" {
+			isrc = tags.ISRC
+		}
+		if strings.TrimSpace(tags.Title) != "" {
+			localTitle = tags.Title
+		}
 	}
 	lookup, searchDiagnostics, err := a.metadataService().SearchEnrichment(
 		ctx,
@@ -995,6 +1013,7 @@ func (a *App) enrichMetadataTrack(ctx context.Context, trackID int64, opts model
 		item.Skipped = true
 		return item, nil
 	}
+	candidate.Title = metadata.PreserveLocalVersionTitle(localTitle, candidate.Title)
 	applyResult, err := a.tagEditor.ApplyMetadataCandidateWithPolicy(ctx, trackID, candidate, opts.IncludeArtwork, opts.OnlyMissing)
 	if err != nil && opts.IncludeArtwork && ctx.Err() == nil && isArtworkFetchError(err) {
 		item.Warning = fmt.Sprintf("artwork skipped: %v", err)
