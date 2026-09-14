@@ -161,7 +161,7 @@ const HELP: Record<AppLanguage, HelpCopy> = {
         bullets: [
           'Кнопка Задачи открывает очередь фоновых операций CCML.',
           'Задачи могут продолжаться независимо от текущей вкладки интерфейса.',
-          'Дополнение метаданных обрабатывает до четырёх треков одновременно; внутренние ограничения провайдеров продолжают соблюдать их rate limits.',
+          'Дополнение метаданных обрабатывает несколько треков одновременно. В Настройках можно выбрать 1–16 параллельных треков; значение по умолчанию — 10. Ограничения отдельных провайдеров продолжают соблюдать их rate limits.',
           'Для поддерживаемых задач доступны пауза, продолжение, отмена и повтор ошибок.',
           'После завершения задачи медиатека автоматически обновляет связанные данные.',
         ],
@@ -319,7 +319,7 @@ const HELP: Record<AppLanguage, HelpCopy> = {
         bullets: [
           'Jobs opens the persistent CCML background-work queue.',
           'Supported work can continue independently of the currently visible screen.',
-          'Metadata enrichment processes up to four tracks concurrently while provider-specific rate limits remain enforced.',
+          'Metadata enrichment processes multiple tracks concurrently. Settings lets you choose 1–16 parallel tracks; the default is 10. Provider-specific rate limits remain enforced.',
           'Supported jobs provide pause, resume, cancel and retry-failed controls.',
           'Related library data is refreshed after jobs finish.',
         ],

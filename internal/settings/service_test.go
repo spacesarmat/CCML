@@ -16,16 +16,17 @@ func TestSaveLoadMetadataSettings(t *testing.T) {
 	service := New(dir)
 
 	cfg := model.MetadataSettings{
-		MusicBrainzEnabled:  true,
-		DeezerEnabled:       true,
-		DiscogsEnabled:      true,
-		DiscogsToken:        " secret ",
-		ITunesCountry:       " gb ",
-		SpotifyMarket:       " de ",
-		YandexMusicEnabled:  true,
-		YandexMusicToken:    " yandex-secret ",
-		YandexMusicLanguage: " RU ",
-		TraxsourceEnabled:   true,
+		MusicBrainzEnabled:            true,
+		DeezerEnabled:                 true,
+		DiscogsEnabled:                true,
+		DiscogsToken:                  " secret ",
+		ITunesCountry:                 " gb ",
+		SpotifyMarket:                 " de ",
+		YandexMusicEnabled:            true,
+		YandexMusicToken:              " yandex-secret ",
+		YandexMusicLanguage:           " RU ",
+		TraxsourceEnabled:             true,
+		MetadataEnrichmentConcurrency: 12,
 	}
 	if err := service.Save(cfg); err != nil {
 		t.Fatalf("save: %v", err)
@@ -53,6 +54,9 @@ func TestSaveLoadMetadataSettings(t *testing.T) {
 	if !got.TraxsourceEnabled {
 		t.Fatal("traxsource setting was not preserved")
 	}
+	if got.MetadataEnrichmentConcurrency != 12 {
+		t.Fatalf("metadata enrichment concurrency = %d, want 12", got.MetadataEnrichmentConcurrency)
+	}
 
 	info, err := os.Stat(filepath.Join(dir, fileName))
 	if err != nil {
@@ -78,6 +82,9 @@ func TestMalformedSettingsFallsBackToDefaults(t *testing.T) {
 	}
 	if !cfg.MusicBrainzEnabled || !cfg.DeezerEnabled || cfg.ITunesCountry == "" {
 		t.Fatalf("unexpected fallback config: %+v", cfg)
+	}
+	if cfg.MetadataEnrichmentConcurrency != 10 {
+		t.Fatalf("fallback metadata enrichment concurrency = %d, want 10", cfg.MetadataEnrichmentConcurrency)
 	}
 	if _, err := os.Stat(path + ".invalid"); err != nil {
 		t.Fatalf("invalid file was not preserved: %v", err)

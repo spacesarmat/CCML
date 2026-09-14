@@ -283,6 +283,7 @@ export type MetadataSettings = {
   yandexMusicEnabled: boolean
   traxsourceEnabled: boolean
   traxsourceApiKey: string
+  metadataEnrichmentConcurrency: number
   theAudioDBApiKey: string
   iTunesCountry: string
   discogsToken: string

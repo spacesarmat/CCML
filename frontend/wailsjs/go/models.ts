@@ -579,6 +579,7 @@ export namespace model {
 	    yandexMusicEnabled: boolean;
 	    traxsourceEnabled: boolean;
 	    traxsourceApiKey: string;
+	    metadataEnrichmentConcurrency: number;
 	    theAudioDBApiKey: string;
 	    iTunesCountry: string;
 	    discogsToken: string;
@@ -611,6 +612,7 @@ export namespace model {
 	        this.yandexMusicEnabled = source["yandexMusicEnabled"];
 	        this.traxsourceEnabled = source["traxsourceEnabled"];
 	        this.traxsourceApiKey = source["traxsourceApiKey"];
+	        this.metadataEnrichmentConcurrency = source["metadataEnrichmentConcurrency"];
 	        this.theAudioDBApiKey = source["theAudioDBApiKey"];
 	        this.iTunesCountry = source["iTunesCountry"];
 	        this.discogsToken = source["discogsToken"];

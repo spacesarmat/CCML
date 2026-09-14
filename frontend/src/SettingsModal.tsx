@@ -108,6 +108,25 @@ function SettingsModal({language, open, status, onClose, onSaved, onMessage}: Pr
               <button type="button" onClick={() => void testProviders()} disabled={testing || saving || loading}>{testing ? t('settings.testingProviders') : t('settings.testProviders')}</button>
               <span>{t('settings.testProvidersHint')}</span>
             </div>
+            {settings && (
+              <div className="settings-concurrency-row">
+                <label>
+                  <span>{t('settings.metadataConcurrency')}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={16}
+                    step={1}
+                    value={settings.metadataEnrichmentConcurrency}
+                    onChange={(event) => {
+                      const value = Number(event.target.value)
+                      change('metadataEnrichmentConcurrency', Number.isFinite(value) ? Math.min(16, Math.max(1, Math.round(value))) : 10)
+                    }}
+                  />
+                </label>
+                <small>{t('settings.metadataConcurrencyHint')}</small>
+              </div>
+            )}
           </div>
 
           {loading && <p className="settings-state">{t('settings.loading')}</p>}

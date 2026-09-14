@@ -112,7 +112,7 @@ func NewApp() (*App, error) {
 	}
 	app.toolUpdater = audio.NewToolUpdater(appDir, tools)
 	app.jobs = jobqueue.New(db)
-	app.jobs.RegisterConcurrent("metadata_enrichment", 4, app.runMetadataJobItem)
+	app.jobs.RegisterConcurrent("metadata_enrichment", metadataConfig.MetadataEnrichmentConcurrency, app.runMetadataJobItem)
 	app.jobs.SetEmitter(func(name string, payload any) {
 		if app.ctx != nil {
 			runtime.EventsEmit(app.ctx, name, payload)
@@ -233,6 +233,12 @@ func (a *App) SaveMetadataSettings(config model.MetadataSettings) (model.Metadat
 	a.metadataConfig = config
 	a.metadata = service
 	a.metadataMu.Unlock()
+
+	// New metadata-enrichment jobs use the updated worker count immediately.
+	// A job that is already running keeps the worker pool it started with.
+	if a.jobs != nil {
+		a.jobs.RegisterConcurrent("metadata_enrichment", config.MetadataEnrichmentConcurrency, a.runMetadataJobItem)
+	}
 
 	if a.store != nil {
 		if err := a.store.ClearMetadataLookupCache(a.context()); err != nil && a.ctx != nil {

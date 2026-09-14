@@ -400,6 +400,11 @@ type MetadataSettings struct {
 
 	TraxsourceAPIKey string `json:"traxsourceApiKey"`
 
+	// MetadataEnrichmentConcurrency controls how many tracks a background
+	// metadata-enrichment job may search/apply concurrently. Provider-specific
+	// rate limiters still apply inside each track lookup.
+	MetadataEnrichmentConcurrency int `json:"metadataEnrichmentConcurrency"`
+
 	TheAudioDBAPIKey         string `json:"theAudioDBApiKey"`
 	ITunesCountry            string `json:"iTunesCountry"`
 	DiscogsToken             string `json:"discogsToken"`
@@ -431,6 +436,15 @@ func (s *MetadataSettings) Normalize() {
 	s.YandexMusicToken = strings.TrimSpace(s.YandexMusicToken)
 	s.YandexMusicLanguage = strings.ToLower(strings.TrimSpace(s.YandexMusicLanguage))
 	s.TraxsourceAPIKey = strings.TrimSpace(s.TraxsourceAPIKey)
+
+	// Zero migrates settings files created before this option existed.
+	if s.MetadataEnrichmentConcurrency == 0 {
+		s.MetadataEnrichmentConcurrency = 10
+	} else if s.MetadataEnrichmentConcurrency < 1 {
+		s.MetadataEnrichmentConcurrency = 1
+	} else if s.MetadataEnrichmentConcurrency > 16 {
+		s.MetadataEnrichmentConcurrency = 16
+	}
 
 	if s.TheAudioDBAPIKey == "" {
 		s.TheAudioDBAPIKey = "123"
