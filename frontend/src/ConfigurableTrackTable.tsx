@@ -1,8 +1,18 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AppLanguage } from './i18n'
 import type { Track } from './types'
 import {nextTableSort, type TableColumnID, type TableSort} from './tableSort'
-import {tablePreset, TABLE_PRESET_IDS, type TablePreset} from './tablePresets'
+import {
+  addCustomTablePreset,
+  loadCustomTablePresets,
+  removeCustomTablePreset,
+  saveCustomTablePresets,
+  tablePreset,
+  TABLE_PRESET_IDS,
+  updateCustomTablePreset,
+  type CustomTablePreset,
+  type TablePreset,
+} from './tablePresets'
 import TrackCoverCell from './TrackCoverCell'
 
 type TableLayout = {
@@ -141,6 +151,11 @@ function ConfigurableTrackTable({
   emptyLabel,
 }: Props) {
   const [layout, setLayout] = useState<TableLayout>(() => loadLayout())
+  const [customPresets, setCustomPresets] = useState<CustomTablePreset[]>(() => loadCustomTablePresets())
+  const [presetName, setPresetName] = useState('')
+  const [presetOpen, setPresetOpen] = useState(false)
+  const columnPickerRef = useRef<HTMLDetailsElement | null>(null)
+  const overlayCloseTimer = useRef<number | null>(null)
   const [dragging, setDragging] = useState<TableColumnID | null>(null)
   const [resizingColumn, setResizingColumn] = useState<TableColumnID | null>(null)
   const visibleColumns = useMemo(
@@ -165,6 +180,15 @@ function ConfigurableTrackTable({
         resize: 'Тяните для изменения ширины; двойной клик — автоширина',
         presets: 'Пресеты',
         presetHint: 'Пресет меняет только колонки, ширины и сортировку. Поиск и фильтры сохраняются.',
+        builtInPresets: 'Готовые пресеты',
+        customPresets: 'Мои пресеты',
+        presetName: 'Название пресета…',
+        savePreset: 'Сохранить текущий',
+        updatePreset: 'Обновить',
+        deletePreset: 'Удалить',
+        noCustomPresets: 'Пользовательских пресетов пока нет',
+        updatePresetConfirm: 'Перезаписать этот пресет текущими колонками и сортировкой?',
+        deletePresetConfirm: 'Удалить этот пресет?',
         dj: 'DJ',
         metadata: 'Метаданные',
         technical: 'Технический',
@@ -182,6 +206,15 @@ function ConfigurableTrackTable({
         resize: 'Drag to resize; double-click to auto-fit',
         presets: 'Presets',
         presetHint: 'A preset changes only columns, widths and sorting. Search and filters stay unchanged.',
+        builtInPresets: 'Built-in presets',
+        customPresets: 'My presets',
+        presetName: 'Preset name…',
+        savePreset: 'Save current',
+        updatePreset: 'Update',
+        deletePreset: 'Delete',
+        noCustomPresets: 'No custom presets yet',
+        updatePresetConfirm: 'Replace this preset with the current columns and sorting?',
+        deletePresetConfirm: 'Delete this preset?',
         dj: 'DJ',
         metadata: 'Metadata',
         technical: 'Technical',
@@ -194,10 +227,89 @@ function ConfigurableTrackTable({
     saveLayout(normalized)
   }
 
+  function cancelOverlayClose() {
+    if (overlayCloseTimer.current !== null) {
+      window.clearTimeout(overlayCloseTimer.current)
+      overlayCloseTimer.current = null
+    }
+  }
+
+  function schedulePresetClose() {
+    cancelOverlayClose()
+    overlayCloseTimer.current = window.setTimeout(() => {
+      setPresetOpen(false)
+      overlayCloseTimer.current = null
+    }, 420)
+  }
+
+  function scheduleColumnClose() {
+    cancelOverlayClose()
+    overlayCloseTimer.current = window.setTimeout(() => {
+      if (columnPickerRef.current) columnPickerRef.current.open = false
+      overlayCloseTimer.current = null
+    }, 420)
+  }
+
+  function currentPreset(): TablePreset {
+    return {
+      layout: {
+        order: [...layout.order],
+        visible: [...layout.visible],
+        widths: {...layout.widths},
+      },
+      sort: sort.map((rule) => ({...rule})),
+    }
+  }
+
   function applyPreset(preset: TablePreset) {
     commit(preset.layout)
     onSortChange(preset.sort)
+    setPresetOpen(false)
   }
+
+  function persistCustomPresets(next: CustomTablePreset[]) {
+    setCustomPresets(next)
+    saveCustomTablePresets(next)
+  }
+
+  function saveCurrentPreset() {
+    const name = presetName.trim()
+    if (!name) return
+
+    persistCustomPresets(addCustomTablePreset(customPresets, name, currentPreset()))
+    setPresetName('')
+  }
+
+  function updatePreset(item: CustomTablePreset) {
+    if (!window.confirm(copy.updatePresetConfirm)) return
+    persistCustomPresets(updateCustomTablePreset(customPresets, item.id, currentPreset()))
+  }
+
+  function deletePreset(item: CustomTablePreset) {
+    if (!window.confirm(copy.deletePresetConfirm)) return
+    persistCustomPresets(removeCustomTablePreset(customPresets, item.id))
+  }
+
+  function togglePresetPopup() {
+    cancelOverlayClose()
+    const next = !presetOpen
+    if (next && columnPickerRef.current) columnPickerRef.current.open = false
+    setPresetOpen(next)
+  }
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      setPresetOpen(false)
+      if (columnPickerRef.current) columnPickerRef.current.open = false
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      cancelOverlayClose()
+    }
+  }, [])
 
   function toggleColumn(id: TableColumnID) {
     const shown = layout.visible.includes(id)
@@ -302,21 +414,91 @@ function ConfigurableTrackTable({
   return (
     <div className="workspace-table-wrap configurable-track-table">
       <div className="table-columns-toolbar">
-        <div className="table-preset-toolbar" title={copy.presetHint}>
-          <span className="table-preset-label">
+        <div
+          className="table-preset-picker"
+          onMouseEnter={cancelOverlayClose}
+          onMouseLeave={schedulePresetClose}
+        >
+          <button
+            type="button"
+            className={`table-preset-trigger${presetOpen ? ' active' : ''}`}
+            title={copy.presetHint}
+            aria-expanded={presetOpen}
+            onClick={togglePresetPopup}
+          >
             <span aria-hidden="true">▦</span>
             <strong>{copy.presets}</strong>
-          </span>
-          <div className="table-preset-buttons">
-            {TABLE_PRESET_IDS.map((id) => (
-              <button type="button" key={id} onClick={() => applyPreset(tablePreset(id))}>
-                {copy[id]}
-              </button>
-            ))}
-          </div>
+            {customPresets.length > 0 && <b>{customPresets.length}</b>}
+          </button>
+
+          {presetOpen && (
+            <div className="table-preset-popover">
+              <section className="table-preset-section">
+                <strong>{copy.builtInPresets}</strong>
+                <div className="table-preset-builtins">
+                  {TABLE_PRESET_IDS.map((id) => (
+                    <button type="button" key={id} onClick={() => applyPreset(tablePreset(id))}>
+                      {copy[id]}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="table-preset-section">
+                <strong>{copy.customPresets}</strong>
+
+                <div className="table-preset-save">
+                  <input
+                    value={presetName}
+                    maxLength={48}
+                    placeholder={copy.presetName}
+                    onChange={(event) => setPresetName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter') return
+                      event.preventDefault()
+                      saveCurrentPreset()
+                    }}
+                  />
+                  <button type="button" onClick={saveCurrentPreset} disabled={!presetName.trim()}>
+                    {copy.savePreset}
+                  </button>
+                </div>
+
+                <div className="table-preset-custom-list">
+                  {customPresets.length === 0 && (
+                    <span className="table-preset-empty">{copy.noCustomPresets}</span>
+                  )}
+                  {customPresets.map((item) => (
+                    <div className="table-preset-custom-row" key={item.id}>
+                      <button
+                        type="button"
+                        className="table-preset-custom-name"
+                        title={item.name}
+                        onClick={() => applyPreset(item.preset)}
+                      >
+                        {item.name}
+                      </button>
+                      <button type="button" onClick={() => updatePreset(item)}>{copy.updatePreset}</button>
+                      <button type="button" className="danger-lite" onClick={() => deletePreset(item)}>
+                        {copy.deletePreset}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
         </div>
 
-        <details className="table-column-picker">
+        <details
+          ref={columnPickerRef}
+          className="table-column-picker"
+          onMouseEnter={cancelOverlayClose}
+          onMouseLeave={scheduleColumnClose}
+          onToggle={(event) => {
+            if (event.currentTarget.open) setPresetOpen(false)
+          }}
+        >
           <summary>
             <span aria-hidden="true">☷</span>
             <strong>{copy.columns}</strong>

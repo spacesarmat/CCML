@@ -4453,3 +4453,232 @@ button:disabled:hover {
     max-width: none;
   }
 }
+/* Stage 14.2 — popup presets and auto-hide */
+
+.table-columns-toolbar {
+  position: relative;
+  flex-wrap: nowrap;
+  min-height: 50px;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Stage 14.1 inline preset bar is no longer rendered. */
+.table-preset-toolbar {
+  display: none;
+}
+
+.table-preset-picker {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.table-preset-trigger {
+  min-height: var(--ccml-control-h-sm);
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-md);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.table-preset-trigger:hover,
+.table-preset-trigger.active {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+  color: var(--ccml-text-strong);
+}
+
+.table-preset-trigger b {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--ccml-accent-soft);
+  color: var(--ccml-text-strong);
+  font-size: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-preset-popover {
+  position: absolute;
+  z-index: 95;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(430px, calc(100vw - 28px));
+  max-height: min(520px, 68vh);
+  overflow: auto;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-xl);
+  background: var(--ccml-bg-elevated);
+  box-shadow: var(--ccml-shadow-lg);
+}
+
+.table-preset-section {
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+}
+
+.table-preset-section:last-child {
+  border-bottom: 0;
+}
+
+.table-preset-section > strong {
+  color: var(--ccml-text-strong);
+  font-size: 9px;
+}
+
+.table-preset-builtins {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.table-preset-builtins button {
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+}
+
+.table-preset-save {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.table-preset-save input,
+.table-preset-save button {
+  min-height: 30px;
+  font-size: 8px;
+}
+
+.table-preset-save input {
+  min-width: 0;
+  padding: 5px 8px;
+}
+
+.table-preset-save button {
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+.table-preset-custom-list {
+  max-height: 230px;
+  display: grid;
+  gap: 4px;
+  overflow: auto;
+  scrollbar-gutter: auto;
+}
+
+.table-preset-custom-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px;
+  align-items: center;
+}
+
+.table-preset-custom-row button {
+  min-height: 28px;
+  padding: 4px 7px;
+  font-size: 8px;
+}
+
+.table-preset-custom-name {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-preset-custom-row .danger-lite {
+  color: var(--ccml-danger);
+}
+
+.table-preset-empty {
+  padding: 8px 4px;
+  color: var(--ccml-text-dim);
+  font-size: 8px;
+}
+
+/* Columns becomes a true anchored popup rather than a wide toolbar block. */
+.table-column-picker {
+  position: relative;
+  width: auto;
+  max-width: none;
+}
+
+.table-column-picker > summary {
+  margin-left: 0;
+}
+
+.table-column-panel {
+  position: absolute;
+  z-index: 94;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(360px, calc(100vw - 28px));
+  max-height: min(500px, 66vh);
+  margin-top: 0;
+}
+
+/* Small invisible hover bridge prevents accidental close while crossing the
+   6px visual gap between trigger and popup. */
+.table-preset-picker::after,
+.table-column-picker[open]::after {
+  content: '';
+  position: absolute;
+  z-index: 93;
+  top: 100%;
+  right: 0;
+  width: 100%;
+  height: 8px;
+}
+
+:root[data-ccml-theme='light'] .table-preset-popover {
+  background: #f8fafc;
+}
+
+:root[data-ccml-theme='light'] .table-preset-section {
+  background: #ffffff;
+}
+
+@media (max-width: 980px) {
+  .table-columns-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .table-preset-popover,
+  .table-column-panel {
+    width: min(350px, calc(100vw - 20px));
+  }
+
+  .table-preset-builtins {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 720px) {
+  .table-preset-popover,
+  .table-column-panel {
+    max-height: 58vh;
+  }
+
+  .table-preset-custom-list {
+    max-height: 150px;
+  }
+}
