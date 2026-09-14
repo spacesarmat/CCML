@@ -4340,3 +4340,116 @@ button:disabled:hover {
   height: 100%;
   overflow: auto;
 }
+/* Stage 11.3.5 — Tag Editor responsive layout */
+
+.tag-editor {
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.tag-actions {
+  min-width: 0;
+}
+
+.tag-actions button {
+  min-width: 0;
+  width: 100%;
+}
+
+/*
+  Cover information gets the complete first row. Actions use the second row.
+  This prevents the label from being squeezed between two long localized
+  buttons inside the narrow Inspector.
+*/
+.cover-row {
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.cover-row > div {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.cover-row > div strong,
+.cover-row > div span {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cover-row > div span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cover-row > button {
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+/* History must also survive long RU labels and 110–125% UI scaling. */
+.tag-history-row {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(88px, auto);
+}
+
+.tag-history-row > div {
+  min-width: 0;
+}
+
+.tag-history-row span,
+.tag-history-row small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag-history-row span {
+  white-space: nowrap;
+}
+
+.tag-history-row small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.tag-history-row > button {
+  min-width: 88px;
+  max-width: 132px;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.tag-preview-item {
+  min-width: 0;
+}
+
+.tag-preview-item span,
+.tag-preview-item small {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@container (max-width: 360px) {
+  .tag-actions,
+  .cover-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cover-row > div {
+    grid-column: 1;
+  }
+
+  .tag-history-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tag-history-row > button {
+    width: 100%;
+    max-width: none;
+  }
+}
