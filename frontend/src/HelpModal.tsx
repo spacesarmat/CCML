@@ -81,7 +81,7 @@ const HELP: Record<AppLanguage, HelpCopy> = {
         title: 'Медиатека и таблица',
         summary: 'Поиск, фильтрация и выбор треков.',
         bullets: [
-          'Поле поиска фильтрует загруженную медиатеку через backend CCML. Нажмите Enter или кнопку Поиск.',
+          'Поиск медиатеки интерактивный: после ввода текста CCML автоматически обновляет результаты примерно через 280 мс. Enter или кнопка «Поиск» запускают запрос немедленно; «Очистить» сбрасывает строку и возвращает полный список.',
           'Фильтры позволяют отдельно показать все треки, записи без изменений после обогащения и записи, где обработка метаданных завершилась ошибкой.',
           'Обычный клик выбирает одну строку. Чекбоксы, Ctrl+клик и Shift+клик используются для массового выделения.',
           'При перемещении клавишами активная строка автоматически прокручивается в видимую область.',
@@ -251,7 +251,7 @@ const HELP: Record<AppLanguage, HelpCopy> = {
         title: 'Library and table',
         summary: 'Search, filter and select tracks.',
         bullets: [
-          'Library search is performed through the CCML backend. Press Enter or use Search.',
+          'Library search is interactive: after typing, CCML automatically refreshes results after about 280 ms. Enter or Search runs immediately; Clear resets the query and restores the full list.',
           'Filters can show all tracks, unchanged enrichment results, or metadata jobs that failed.',
           'A normal click selects one row. Checkboxes, Ctrl+click and Shift+click are for multi-selection.',
           'Keyboard navigation automatically scrolls the active row into view.',

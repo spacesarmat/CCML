@@ -78,6 +78,7 @@ function App() {
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [folder, setFolder] = useState('')
   const [search, setSearch] = useState('')
+  const [searchLoading, setSearchLoading] = useState(false)
   const [tracks, setTracks] = useState<Track[]>([])
   const [selectedIDs, setSelectedIDs] = useState<number[]>([])
   const [activeTrackID, setActiveTrackID] = useState<number | null>(null)
@@ -119,6 +120,10 @@ function App() {
   const mediaFallbackTried = useRef(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const trackLoadRequestRef = useRef(0)
+  const liveSearchTimerRef = useRef<number | null>(null)
+  const liveSearchReadyRef = useRef(false)
+  const skipNextLiveSearchRef = useRef(false)
   const selectionAnchor = useRef<number | null>(null)
   const spectrogramRequest = useRef(0)
 
@@ -187,6 +192,34 @@ function App() {
     window.addEventListener('keydown', onHelpKeyDown)
     return () => window.removeEventListener('keydown', onHelpKeyDown)
   }, [])
+
+  useEffect(() => {
+    if (!liveSearchReadyRef.current) {
+      liveSearchReadyRef.current = true
+      return
+    }
+
+    if (skipNextLiveSearchRef.current) {
+      skipNextLiveSearchRef.current = false
+      return
+    }
+
+    if (liveSearchTimerRef.current !== null) {
+      window.clearTimeout(liveSearchTimerRef.current)
+    }
+
+    liveSearchTimerRef.current = window.setTimeout(() => {
+      liveSearchTimerRef.current = null
+      void refreshTracksLive(search)
+    }, 280)
+
+    return () => {
+      if (liveSearchTimerRef.current !== null) {
+        window.clearTimeout(liveSearchTimerRef.current)
+        liveSearchTimerRef.current = null
+      }
+    }
+  }, [search])
 
   useEffect(() => {
     if (activeTrackID === null || mainView !== 'library') return
@@ -443,27 +476,76 @@ function App() {
     }
   }
 
-  async function refreshTracks(query = search) {
-    const result = await run(t('message.loadingLibrary'), async () => {
-      const pageSize = 1000
-      const allTracks: Track[] = []
-      for (let offset = 0; ; offset += pageSize) {
-        const page = await backend().ListTracks(query, pageSize, offset)
-        const rows = page ?? []
-        allTracks.push(...rows)
-        if (rows.length < pageSize) break
-      }
-      return allTracks
-    })
-    if (result) {
-      setTracks(result)
-      const visibleIDs = new Set(result
-        .filter((track) => metadataFilter === 'all' || track.lastMetadataJobStatus === metadataFilter)
-        .map((track) => track.id))
-      setSelectedIDs((current) => current.filter((id) => visibleIDs.has(id)))
-      setActiveTrackID((current) => current !== null && visibleIDs.has(current) ? current : null)
-      setMessage(t('message.tracksLoaded', {count: result.length}))
+  async function loadTrackRows(query: string): Promise<Track[]> {
+    const pageSize = 1000
+    const allTracks: Track[] = []
+
+    for (let offset = 0; ; offset += pageSize) {
+      const page = await backend().ListTracks(query, pageSize, offset)
+      const rows = page ?? []
+      allTracks.push(...rows)
+      if (rows.length < pageSize) break
     }
+
+    return allTracks
+  }
+
+  function applyTrackRows(result: Track[]) {
+    setTracks(result)
+    const visibleIDs = new Set(result
+      .filter((track) => metadataFilter === 'all' || track.lastMetadataJobStatus === metadataFilter)
+      .map((track) => track.id))
+    setSelectedIDs((current) => current.filter((id) => visibleIDs.has(id)))
+    setActiveTrackID((current) => current !== null && visibleIDs.has(current) ? current : null)
+    setMessage(t('message.tracksLoaded', {count: result.length}))
+  }
+
+  async function refreshTracks(query = search) {
+    const requestID = ++trackLoadRequestRef.current
+    const result = await run(t('message.loadingLibrary'), () => loadTrackRows(query))
+
+    if (result && requestID === trackLoadRequestRef.current) {
+      applyTrackRows(result)
+    }
+  }
+
+  async function refreshTracksLive(query: string) {
+    const requestID = ++trackLoadRequestRef.current
+    setSearchLoading(true)
+
+    try {
+      const result = await loadTrackRows(query)
+      if (requestID !== trackLoadRequestRef.current) return
+      applyTrackRows(result)
+    } catch (error) {
+      if (requestID === trackLoadRequestRef.current) {
+        setMessage(error instanceof Error ? error.message : String(error))
+      }
+    } finally {
+      if (requestID === trackLoadRequestRef.current) {
+        setSearchLoading(false)
+      }
+    }
+  }
+
+  function runSearchImmediately() {
+    if (liveSearchTimerRef.current !== null) {
+      window.clearTimeout(liveSearchTimerRef.current)
+      liveSearchTimerRef.current = null
+    }
+    void refreshTracks(search)
+  }
+
+  function clearLibrarySearch() {
+    if (liveSearchTimerRef.current !== null) {
+      window.clearTimeout(liveSearchTimerRef.current)
+      liveSearchTimerRef.current = null
+    }
+
+    skipNextLiveSearchRef.current = true
+    setSearch('')
+    void refreshTracks('')
+    searchInputRef.current?.focus()
   }
 
   async function refreshRoots() {
@@ -994,9 +1076,37 @@ function App() {
                     ? t('library.shown', {count: formatNumber(tracks.length, locale)})
                     : t('library.shownFiltered', {count: formatNumber(filteredTracks.length, locale), total: formatNumber(tracks.length, locale)})}</span>
                 </div>
-                <div className="workspace-search">
-                  <input ref={searchInputRef} value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && void refreshTracks()} placeholder={t('library.searchPlaceholder')} />
-                  <button onClick={() => void refreshTracks()} disabled={busy}>{t('library.search')}</button>
+                <div className={`workspace-search${searchLoading ? ' is-searching' : ''}`}>
+                  <input
+                    ref={searchInputRef}
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter') return
+                      event.preventDefault()
+                      runSearchImmediately()
+                    }}
+                    placeholder={t('library.searchPlaceholder')}
+                    aria-label={t('library.search')}
+                  />
+                  {search.length > 0 && (
+                    <button
+                      type="button"
+                      className="search-clear"
+                      onClick={clearLibrarySearch}
+                      title={t('library.clearSearch')}
+                    >
+                      {t('library.clearSearch')}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="search-submit"
+                    onClick={runSearchImmediately}
+                    disabled={busy || searchLoading}
+                  >
+                    {searchLoading ? t('library.searching') : t('library.search')}
+                  </button>
                 </div>
               </div>
 

@@ -2999,3 +2999,51 @@ button:disabled:hover {
 :focus:not(:focus-visible) {
   outline: none;
 }
+/* Stage 12.1 — interactive library search */
+.workspace-search {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.workspace-search input {
+  transition:
+    border-color .14s ease,
+    box-shadow .14s ease,
+    background-color .14s ease;
+}
+
+.workspace-search.is-searching input {
+  border-color: var(--ccml-accent-border);
+  box-shadow: 0 0 0 2px var(--ccml-accent-soft);
+}
+
+.workspace-search .search-clear {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text-muted);
+}
+
+.workspace-search .search-clear:hover:not(:disabled) {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+  color: var(--ccml-text-strong);
+}
+
+.workspace-search .search-submit {
+  min-width: 62px;
+}
+
+@media (max-width: 1160px) {
+  .workspace-search {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .workspace-search .search-clear {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .workspace-search .search-submit {
+    display: none;
+  }
+}

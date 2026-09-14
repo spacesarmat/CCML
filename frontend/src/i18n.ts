@@ -190,6 +190,8 @@ const en = {
   'library.shownFiltered': '{count} of {total} shown',
   'library.searchPlaceholder': 'Search artist, title, album…',
   'library.search': 'Search',
+  'library.searching': 'Searching…',
+  'library.clearSearch': 'Clear',
   'library.duplicates': 'Duplicates',
   'library.unknownArtist': 'Unknown artist',
 
@@ -639,6 +641,8 @@ const ru: Record<TranslationKey, string> = {
   'library.shownFiltered': 'Показано: {count} из {total}',
   'library.searchPlaceholder': 'Поиск по исполнителю, названию, альбому…',
   'library.search': 'Поиск',
+  'library.searching': 'Поиск…',
+  'library.clearSearch': 'Очистить',
   'library.duplicates': 'Дубликаты',
   'library.unknownArtist': 'Неизвестный исполнитель',
 
