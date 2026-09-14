@@ -990,6 +990,7 @@ function App() {
   async function findDuplicates() {
     const result = await run(t('message.searchingDuplicates'), () => backend().FindDuplicates())
     if (result) {
+      clearTrackSelection()
       setDuplicates(result)
       setMainView('duplicates')
       setMessage(t('message.duplicateGroupsFound', {count: result.length}))
@@ -1099,7 +1100,7 @@ function App() {
         </div>
       )}
 
-      <div className="workspace-grid">
+      <div className={`workspace-grid${mainView === 'duplicates' ? ' duplicates-layout' : ''}`}>
         <aside className="workspace-sidebar">
           <nav className="sidebar-section">
             <div className="sidebar-heading">{t('workspace.library')}</div>
@@ -1167,7 +1168,7 @@ function App() {
           )}
         </aside>
 
-        <main className="workspace-main">
+        <main className={`workspace-main${mainView === 'duplicates' ? ' duplicates-main' : ''}`}>
           {mainView === 'library' ? (
             <>
               <div className="workspace-commandbar">
@@ -1283,6 +1284,7 @@ function App() {
           )}
         </main>
 
+        {mainView === 'library' && (
         <aside className="workspace-inspector">
           <div className="inspector-head">
             <div className="inspector-summary">
@@ -1463,6 +1465,7 @@ function App() {
             )}
           </div>
         </aside>
+        )}
       </div>
 
       <HelpModal language={language} open={helpOpen} version={t('footer.version')} onClose={() => setHelpOpen(false)} />

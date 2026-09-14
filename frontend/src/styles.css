@@ -6319,3 +6319,118 @@ button:disabled:hover {
     margin-right: 0;
   }
 }
+/* Stage 16.3.1 — duplicates full workspace */
+
+/*
+  Duplicates is a comparison/action workspace, not an Inspector workflow.
+  Give it the entire area to the right of the library sidebar.
+*/
+.workspace-grid.duplicates-layout {
+  grid-template-columns: 218px minmax(0, 1fr);
+}
+
+.workspace-grid.duplicates-layout > .workspace-main.duplicates-main {
+  min-width: 0;
+  min-height: 0;
+  grid-column: 2;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.workspace-main.duplicates-main > .duplicate-workspace {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/*
+  Stage 16.1–16.3 progressively added comparison columns and accumulated
+  930/1010/1050px minimums. On normal desktop widths the full workspace is
+  sufficient, so reduce the forced minimum while preserving local horizontal
+  scrolling on genuinely narrow windows.
+*/
+.duplicate-compare-table,
+.duplicate-compare-table.quality-enabled,
+.duplicate-compare-table.action-enabled {
+  width: 100%;
+  min-width: 940px;
+}
+
+.duplicate-compare-table.action-enabled .duplicate-compare-row {
+  grid-template-columns:
+    32px
+    minmax(205px, 1.55fr)
+    minmax(76px, .52fr)
+    minmax(58px, .38fr)
+    minmax(72px, .46fr)
+    minmax(78px, .5fr)
+    minmax(64px, .42fr)
+    minmax(56px, .36fr)
+    minmax(96px, .65fr)
+    58px;
+}
+
+.duplicate-group-body {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.duplicate-group-card,
+.duplicate-group-head,
+.duplicate-group-title,
+.duplicate-group-body,
+.duplicate-compare-table {
+  max-width: 100%;
+}
+
+.duplicate-commandbar {
+  min-width: 0;
+}
+
+.duplicate-commandbar > div:first-child {
+  overflow: hidden;
+}
+
+.duplicate-commandbar h2,
+.duplicate-commandbar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.duplicate-filterbar {
+  min-width: 0;
+}
+
+@media (max-width: 1180px) {
+  .workspace-grid.duplicates-layout {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+
+  .duplicate-commandbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .duplicate-command-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .duplicate-compare-table,
+  .duplicate-compare-table.quality-enabled,
+  .duplicate-compare-table.action-enabled {
+    min-width: 900px;
+  }
+}
+
+@media (max-width: 900px) {
+  .workspace-grid.duplicates-layout {
+    grid-template-columns: 170px minmax(0, 1fr);
+  }
+
+  .duplicate-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
