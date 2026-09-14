@@ -741,6 +741,7 @@ export namespace model {
 	    remixPoolEnabled: boolean;
 	    bananaStreetEnabled: boolean;
 	    mixcloudEnabled: boolean;
+	    jesteiEnabled: boolean;
 	    traxsourceApiKey: string;
 	    metadataEnrichmentConcurrency: number;
 	    theAudioDBApiKey: string;
@@ -778,6 +779,7 @@ export namespace model {
 	        this.remixPoolEnabled = source["remixPoolEnabled"];
 	        this.bananaStreetEnabled = source["bananaStreetEnabled"];
 	        this.mixcloudEnabled = source["mixcloudEnabled"];
+	        this.jesteiEnabled = source["jesteiEnabled"];
 	        this.traxsourceApiKey = source["traxsourceApiKey"];
 	        this.metadataEnrichmentConcurrency = source["metadataEnrichmentConcurrency"];
 	        this.theAudioDBApiKey = source["theAudioDBApiKey"];

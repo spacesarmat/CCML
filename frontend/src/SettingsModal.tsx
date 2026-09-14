@@ -228,6 +228,8 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
 
               <ProviderCard language={language} title="Mixcloud" health={providerHealth['Mixcloud']} description={t('settings.mixcloudDescription')} enabled={settings.mixcloudEnabled ?? false} onEnabled={(v) => change('mixcloudEnabled', v)} badge={t('settings.djPoolSource')} helpLabel={t('settings.documentation')} onHelp={() => void openProviderPage('mixcloud')} />
 
+              <ProviderCard language={language} title="Jestei Pool" health={providerHealth['Jestei Pool']} description={t('settings.jesteiDescription')} enabled={settings.jesteiEnabled ?? false} onEnabled={(v) => change('jesteiEnabled', v)} badge={t('settings.djPoolSource')} helpLabel={t('settings.termsAndWebsite')} onHelp={() => void openProviderPage('jestei')} />
+
               <ProviderCard language={language} title="Discogs" health={providerHealth['Discogs']} description={t('settings.discogsDescription')} enabled={settings.discogsEnabled} onEnabled={(v) => change('discogsEnabled', v)} badge={t('settings.credentialsRequired')} helpLabel={t('settings.getCredentials')} onHelp={() => void openProviderPage('discogs')}>
                 <SettingInput label={t('settings.discogsToken')} value={settings.discogsToken} onChange={(v) => change('discogsToken', v)} password />
               </ProviderCard>

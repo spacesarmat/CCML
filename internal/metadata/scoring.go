@@ -456,7 +456,7 @@ func artistSimilarity(a, b string) float64 {
 func sourceFieldBonus(field, source string) float64 {
 	source = strings.ToLower(strings.TrimSpace(source))
 	bonuses := map[string]map[string]float64{
-		"genre":         {"discogs": 0.08, "traxsource": 0.09, "muzvizor": 0.10, "remixpool": 0.10, "bananastreet": 0.08, "mixcloud": 0.04, "yandex music": 0.03},
+		"genre":         {"discogs": 0.08, "traxsource": 0.09, "muzvizor": 0.10, "remixpool": 0.10, "bananastreet": 0.08, "mixcloud": 0.04, "jestei pool": 0.10, "yandex music": 0.03},
 		"label":         {"discogs": 0.10, "traxsource": 0.10, "musicbrainz": 0.04},
 		"catalogNumber": {"discogs": 0.12, "traxsource": 0.12, "musicbrainz": 0.03},
 		"isrc":          {"musicbrainz": 0.10, "spotify": 0.10, "deezer": 0.08, "apple music": 0.08},
@@ -467,9 +467,9 @@ func sourceFieldBonus(field, source string) float64 {
 		"discNumber":    {"musicbrainz": 0.05, "spotify": 0.05, "apple music": 0.05},
 		"discTotal":     {"musicbrainz": 0.05, "spotify": 0.05, "apple music": 0.05},
 		"albumArtist":   {"musicbrainz": 0.05, "discogs": 0.04, "spotify": 0.04},
-		"bpm":           {"muzvizor": 0.12, "remixpool": 0.12},
-		"key":           {"muzvizor": 0.12, "remixpool": 0.12},
-		"keyScale":      {"muzvizor": 0.12, "remixpool": 0.12},
+		"bpm":           {"muzvizor": 0.12, "remixpool": 0.12, "jestei pool": 0.12},
+		"key":           {"muzvizor": 0.12, "remixpool": 0.12, "jestei pool": 0.12},
+		"keyScale":      {"muzvizor": 0.12, "remixpool": 0.12, "jestei pool": 0.12},
 	}
 	if bySource, ok := bonuses[field]; ok {
 		return bySource[source]

@@ -359,6 +359,7 @@ export type MetadataSettings = {
   remixPoolEnabled?: boolean
   bananaStreetEnabled?: boolean
   mixcloudEnabled?: boolean
+  jesteiEnabled?: boolean
   traxsourceApiKey: string
   metadataEnrichmentConcurrency: number
   theAudioDBApiKey: string
