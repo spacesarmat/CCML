@@ -24,95 +24,11 @@ type djMixTransition struct {
 	warnings    []string
 }
 
-// PlanDJMix creates a deterministic greedy route through tracks with usable BPM.
-// The planner is intentionally conservative: it favors small tempo changes and
-// same/adjacent/relative Camelot moves, but never modifies media or metadata.
+// PlanDJMix creates a deterministic BPM/Camelot route. Stage 19.8 adds bounded
+// lookahead, genre/energy-flow evidence and fixed positions while retaining the
+// conservative Stage 19.7 transition primitives.
 func PlanDJMix(tracks []model.Track, options model.DJMixPlanOptions) model.DJMixPlan {
-	options = normalizeDJMixOptions(options)
-	plan := model.DJMixPlan{SourceCount: len(tracks)}
-
-	candidates := make([]djMixCandidate, 0, len(tracks))
-	for _, track := range tracks {
-		if !validPlannerBPM(track.BPM) {
-			plan.ExcludedMissingBPM++
-			continue
-		}
-		camelot, openKey, ok := DJKeyFormats(track.Key, track.KeyScale)
-		if !ok {
-			camelot = ""
-			openKey = ""
-			plan.TracksMissingKey++
-		}
-		candidates = append(candidates, djMixCandidate{
-			track: track, camelot: camelot, openKey: openKey,
-		})
-	}
-	plan.UsableCount = len(candidates)
-	if len(candidates) == 0 {
-		plan.Steps = []model.DJMixPlanStep{}
-		return plan
-	}
-
-	startIndex := chooseDJMixStart(candidates, options)
-	start := candidates[startIndex]
-	plan.StartTrackID = start.track.ID
-	plan.Steps = append(plan.Steps, model.DJMixPlanStep{
-		Position:      1,
-		Track:         start.track,
-		Camelot:       start.camelot,
-		OpenKey:       start.openKey,
-		AdjustedBPM:   start.track.BPM,
-		TempoFactor:   1,
-		TempoDeltaPct: 0,
-		KeyRelation:   "start",
-		Score:         1,
-		Warnings:      []string{},
-	})
-	plan.TotalDurationMS += start.track.DurationMS
-
-	remaining := append([]djMixCandidate(nil), candidates[:startIndex]...)
-	remaining = append(remaining, candidates[startIndex+1:]...)
-	current := start
-	scoreSum := 0.0
-	transitionCount := 0
-
-	for len(remaining) > 0 && len(plan.Steps) < options.Limit {
-		bestIndex := -1
-		var best djMixTransition
-		for i, candidate := range remaining {
-			transition := scoreDJMixTransition(current, candidate, options)
-			if bestIndex < 0 || betterDJMixChoice(candidate, transition, remaining[bestIndex], best) {
-				bestIndex = i
-				best = transition
-			}
-		}
-		if bestIndex < 0 {
-			break
-		}
-		next := remaining[bestIndex]
-		plan.Steps = append(plan.Steps, model.DJMixPlanStep{
-			Position:      len(plan.Steps) + 1,
-			Track:         next.track,
-			Camelot:       next.camelot,
-			OpenKey:       next.openKey,
-			AdjustedBPM:   best.adjustedBPM,
-			TempoFactor:   best.tempoFactor,
-			TempoDeltaPct: best.deltaPct,
-			KeyRelation:   best.keyRelation,
-			Score:         best.score,
-			Warnings:      best.warnings,
-		})
-		plan.TotalDurationMS += next.track.DurationMS
-		scoreSum += best.score
-		transitionCount++
-		current = next
-		remaining = append(remaining[:bestIndex], remaining[bestIndex+1:]...)
-	}
-
-	if transitionCount > 0 {
-		plan.AverageScore = scoreSum / float64(transitionCount)
-	}
-	return plan
+	return planDJMixQuality(tracks, options)
 }
 
 func normalizeDJMixOptions(options model.DJMixPlanOptions) model.DJMixPlanOptions {

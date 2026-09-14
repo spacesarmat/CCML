@@ -111,7 +111,7 @@
 
 .mix-planner-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -148,7 +148,7 @@
 
 .mix-planner-table {
   width: 100%;
-  min-width: 930px;
+  min-width: 1080px;
   border-collapse: collapse;
   font-size: 7px;
 }
@@ -286,6 +286,34 @@
 :root[data-ccml-theme='light'] .mix-planner-modal,
 :root[data-ccml-theme='light'] .mix-planner-summary > div {
   background: #ffffff;
+}
+
+
+.mix-planner-table tr.is-pinned td {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ccml-accent) 28%, transparent),
+              inset 0 -1px 0 color-mix(in srgb, var(--ccml-accent) 28%, transparent);
+}
+
+.mix-flow {
+  min-width: 120px;
+  color: var(--ccml-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mix-row-actions button.is-active {
+  border-color: var(--ccml-accent-border);
+  background: var(--ccml-accent-soft);
+  color: var(--ccml-text-strong);
+}
+
+.mix-planner-pin-note {
+  margin: -2px 0 0;
+  padding: 5px 8px;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: var(--ccml-radius-md);
+  color: var(--ccml-text-muted);
+  font-size: 7px;
 }
 
 @media (max-width: 900px) {

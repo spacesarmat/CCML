@@ -126,6 +126,10 @@ export function PauseBackgroundJob(arg1) {
   return window['go']['main']['App']['PauseBackgroundJob'](arg1);
 }
 
+export function PlanDJMix(arg1, arg2) {
+  return window['go']['main']['App']['PlanDJMix'](arg1, arg2);
+}
+
 export function PrepareTrackAudioPreview(arg1) {
   return window['go']['main']['App']['PrepareTrackAudioPreview'](arg1);
 }

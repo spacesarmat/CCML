@@ -303,14 +303,25 @@ type BPMKey struct {
 	OpenKey  string  `json:"openKey"`
 }
 
-// DJMixPlanOptions controls conservative BPM/Camelot route planning.
+// DJMixPin fixes one analyzed track at a 1-based plan position.
+type DJMixPin struct {
+	TrackID  int64 `json:"trackId"`
+	Position int   `json:"position"`
+}
+
+// DJMixPlanOptions controls conservative route planning and the Stage 19.8
+// lookahead/flow quality layer.
 type DJMixPlanOptions struct {
-	StartTrackID     int64   `json:"startTrackId"`
-	Limit            int     `json:"limit"`
-	MaxTempoShiftPct float64 `json:"maxTempoShiftPct"`
-	Direction        string  `json:"direction"`
-	PreferHarmonic   bool    `json:"preferHarmonic"`
-	AvoidSameArtist  bool    `json:"avoidSameArtist"`
+	StartTrackID          int64      `json:"startTrackId"`
+	Limit                 int        `json:"limit"`
+	MaxTempoShiftPct      float64    `json:"maxTempoShiftPct"`
+	Direction             string     `json:"direction"`
+	PreferHarmonic        bool       `json:"preferHarmonic"`
+	AvoidSameArtist       bool       `json:"avoidSameArtist"`
+	Lookahead             int        `json:"lookahead"`
+	PreferGenreContinuity bool       `json:"preferGenreContinuity"`
+	PreferEnergyFlow      bool       `json:"preferEnergyFlow"`
+	PinnedTracks          []DJMixPin `json:"pinnedTracks"`
 }
 
 // DJMixPlanStep is one ordered track plus the transition from the previous step.
@@ -323,6 +334,10 @@ type DJMixPlanStep struct {
 	TempoFactor   float64  `json:"tempoFactor"`
 	TempoDeltaPct float64  `json:"tempoDeltaPct"`
 	KeyRelation   string   `json:"keyRelation"`
+	GenreRelation string   `json:"genreRelation"`
+	Energy        float64  `json:"energy"`
+	EnergyDelta   float64  `json:"energyDelta"`
+	Pinned        bool     `json:"pinned"`
 	Score         float64  `json:"score"`
 	Warnings      []string `json:"warnings"`
 }
@@ -337,6 +352,9 @@ type DJMixPlan struct {
 	AverageScore       float64         `json:"averageScore"`
 	TotalDurationMS    int64           `json:"totalDurationMs"`
 	StartTrackID       int64           `json:"startTrackId"`
+	Lookahead          int             `json:"lookahead"`
+	PinnedCount        int             `json:"pinnedCount"`
+	IgnoredPins        int             `json:"ignoredPins"`
 }
 
 // EssentiaAnalysis is the latest persisted local BPM/key evidence for one track.

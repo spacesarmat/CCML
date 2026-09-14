@@ -64,6 +64,8 @@ export function OrganizeTrack(arg1:number,arg2:model.OrganizeRequest):Promise<st
 
 export function PauseBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
 
+export function PlanDJMix(arg1:Array<number>,arg2:model.DJMixPlanOptions):Promise<model.DJMixPlan>;
+
 export function PrepareTrackAudioPreview(arg1:number):Promise<string>;
 
 export function PrepareTrackCover(arg1:number):Promise<string>;

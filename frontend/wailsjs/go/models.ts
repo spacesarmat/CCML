@@ -100,94 +100,6 @@ export namespace model {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
-	export class DuplicateActionResult {
-	    action: string;
-	    requested: number;
-	    completed: number;
-	    failed: number;
-	    destination: string;
-	    paths: string[];
-	    errors: string[];
-	
-	    static createFrom(source: any = {}) {
-	        return new DuplicateActionResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.action = source["action"];
-	        this.requested = source["requested"];
-	        this.completed = source["completed"];
-	        this.failed = source["failed"];
-	        this.destination = source["destination"];
-	        this.paths = source["paths"];
-	        this.errors = source["errors"];
-	    }
-	}
-	export class DuplicateAudioComparison {
-	    trackId: number;
-	    similarity: number;
-	    offsetMs: number;
-	    durationDeltaMs: number;
-	    status: string;
-	    error: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new DuplicateAudioComparison(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.trackId = source["trackId"];
-	        this.similarity = source["similarity"];
-	        this.offsetMs = source["offsetMs"];
-	        this.durationDeltaMs = source["durationDeltaMs"];
-	        this.status = source["status"];
-	        this.error = source["error"];
-	    }
-	}
-	export class DuplicateAudioVerification {
-	    groupKey: string;
-	    referenceTrackId: number;
-	    comparisons: DuplicateAudioComparison[];
-	    sameCount: number;
-	    similarCount: number;
-	    differentCount: number;
-	    errorCount: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new DuplicateAudioVerification(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.groupKey = source["groupKey"];
-	        this.referenceTrackId = source["referenceTrackId"];
-	        this.comparisons = this.convertValues(source["comparisons"], DuplicateAudioComparison);
-	        this.sameCount = source["sameCount"];
-	        this.similarCount = source["similarCount"];
-	        this.differentCount = source["differentCount"];
-	        this.errorCount = source["errorCount"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class Track {
 	    id: number;
 	    path: string;
@@ -275,6 +187,209 @@ export namespace model {
 	        this.lastMetadataJobStatus = source["lastMetadataJobStatus"];
 	        this.lastMetadataJobUpdatedAt = source["lastMetadataJobUpdatedAt"];
 	    }
+	}
+	export class DJMixPlanStep {
+	    position: number;
+	    track: Track;
+	    camelot: string;
+	    openKey: string;
+	    adjustedBpm: number;
+	    tempoFactor: number;
+	    tempoDeltaPct: number;
+	    keyRelation: string;
+	    score: number;
+	    warnings: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new DJMixPlanStep(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.position = source["position"];
+	        this.track = this.convertValues(source["track"], Track);
+	        this.camelot = source["camelot"];
+	        this.openKey = source["openKey"];
+	        this.adjustedBpm = source["adjustedBpm"];
+	        this.tempoFactor = source["tempoFactor"];
+	        this.tempoDeltaPct = source["tempoDeltaPct"];
+	        this.keyRelation = source["keyRelation"];
+	        this.score = source["score"];
+	        this.warnings = source["warnings"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DJMixPlan {
+	    steps: DJMixPlanStep[];
+	    sourceCount: number;
+	    usableCount: number;
+	    excludedMissingBpm: number;
+	    tracksMissingKey: number;
+	    averageScore: number;
+	    totalDurationMs: number;
+	    startTrackId: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DJMixPlan(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.steps = this.convertValues(source["steps"], DJMixPlanStep);
+	        this.sourceCount = source["sourceCount"];
+	        this.usableCount = source["usableCount"];
+	        this.excludedMissingBpm = source["excludedMissingBpm"];
+	        this.tracksMissingKey = source["tracksMissingKey"];
+	        this.averageScore = source["averageScore"];
+	        this.totalDurationMs = source["totalDurationMs"];
+	        this.startTrackId = source["startTrackId"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DJMixPlanOptions {
+	    startTrackId: number;
+	    limit: number;
+	    maxTempoShiftPct: number;
+	    direction: string;
+	    preferHarmonic: boolean;
+	    avoidSameArtist: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DJMixPlanOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.startTrackId = source["startTrackId"];
+	        this.limit = source["limit"];
+	        this.maxTempoShiftPct = source["maxTempoShiftPct"];
+	        this.direction = source["direction"];
+	        this.preferHarmonic = source["preferHarmonic"];
+	        this.avoidSameArtist = source["avoidSameArtist"];
+	    }
+	}
+	
+	export class DuplicateActionResult {
+	    action: string;
+	    requested: number;
+	    completed: number;
+	    failed: number;
+	    destination: string;
+	    paths: string[];
+	    errors: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new DuplicateActionResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.action = source["action"];
+	        this.requested = source["requested"];
+	        this.completed = source["completed"];
+	        this.failed = source["failed"];
+	        this.destination = source["destination"];
+	        this.paths = source["paths"];
+	        this.errors = source["errors"];
+	    }
+	}
+	export class DuplicateAudioComparison {
+	    trackId: number;
+	    similarity: number;
+	    offsetMs: number;
+	    durationDeltaMs: number;
+	    status: string;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DuplicateAudioComparison(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.trackId = source["trackId"];
+	        this.similarity = source["similarity"];
+	        this.offsetMs = source["offsetMs"];
+	        this.durationDeltaMs = source["durationDeltaMs"];
+	        this.status = source["status"];
+	        this.error = source["error"];
+	    }
+	}
+	export class DuplicateAudioVerification {
+	    groupKey: string;
+	    referenceTrackId: number;
+	    comparisons: DuplicateAudioComparison[];
+	    sameCount: number;
+	    similarCount: number;
+	    differentCount: number;
+	    errorCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DuplicateAudioVerification(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.groupKey = source["groupKey"];
+	        this.referenceTrackId = source["referenceTrackId"];
+	        this.comparisons = this.convertValues(source["comparisons"], DuplicateAudioComparison);
+	        this.sameCount = source["sameCount"];
+	        this.similarCount = source["similarCount"];
+	        this.differentCount = source["differentCount"];
+	        this.errorCount = source["errorCount"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class DuplicateTrackQuality {
 	    trackId: number;

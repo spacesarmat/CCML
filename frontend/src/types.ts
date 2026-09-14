@@ -40,6 +40,11 @@ export type Track = {
   lastMetadataJobUpdatedAt: string
 }
 
+export type DJMixPin = {
+  trackId: number
+  position: number
+}
+
 export type DJMixPlanOptions = {
   startTrackId: number
   limit: number
@@ -47,6 +52,10 @@ export type DJMixPlanOptions = {
   direction: 'any' | 'up' | 'down' | string
   preferHarmonic: boolean
   avoidSameArtist: boolean
+  lookahead: number
+  preferGenreContinuity: boolean
+  preferEnergyFlow: boolean
+  pinnedTracks: DJMixPin[]
 }
 
 export type DJMixPlanStep = {
@@ -58,6 +67,10 @@ export type DJMixPlanStep = {
   tempoFactor: number
   tempoDeltaPct: number
   keyRelation: string
+  genreRelation: string
+  energy: number
+  energyDelta: number
+  pinned: boolean
   score: number
   warnings: string[] | null
 }
@@ -71,6 +84,9 @@ export type DJMixPlan = {
   averageScore: number
   totalDurationMs: number
   startTrackId: number
+  lookahead: number
+  pinnedCount: number
+  ignoredPins: number
 }
 
 export type ScanResult = {

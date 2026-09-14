@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react'
 import {translate, type AppLanguage, type TranslationKey} from './i18n'
-import type {DJMixPlan, DJMixPlanOptions, DJMixPlanStep} from './types'
+import type {DJMixPin, DJMixPlan, DJMixPlanOptions, DJMixPlanStep} from './types'
 import './djMixPlanner.css'
 
 type Props = {
@@ -28,9 +28,13 @@ function DJMixPlannerModal({
   const [startTrackID, setStartTrackID] = useState(0)
   const [limit, setLimit] = useState(20)
   const [maxTempoShiftPct, setMaxTempoShiftPct] = useState(8)
+  const [lookahead, setLookahead] = useState(3)
   const [direction, setDirection] = useState<'any' | 'up' | 'down'>('any')
   const [preferHarmonic, setPreferHarmonic] = useState(true)
+  const [preferGenreContinuity, setPreferGenreContinuity] = useState(true)
+  const [preferEnergyFlow, setPreferEnergyFlow] = useState(true)
   const [avoidSameArtist, setAvoidSameArtist] = useState(true)
+  const [pins, setPins] = useState<Record<number, number>>({})
 
   const t = (key: TranslationKey, params?: Record<string, string | number>) => translate(language, key, params)
   const scopeIDs = useMemo(() => selectedIDs.length >= 2 ? selectedIDs : [], [selectedIDs])
@@ -42,9 +46,10 @@ function DJMixPlannerModal({
     if (!open) return
     const seed = selectedIDs.length === 1 ? selectedIDs[0] : 0
     setStartTrackID(seed)
+    setPins({})
     setError('')
     setPlan(null)
-    void build(seed)
+    void build(seed, {})
   }, [open])
 
   useEffect(() => {
@@ -58,11 +63,15 @@ function DJMixPlannerModal({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [open, onClose])
 
-  async function build(seed = startTrackID) {
+  async function build(seed = startTrackID, pinState = pins) {
     if (!window.go?.main?.App) return
     setLoading(true)
     setError('')
     try {
+      const pinnedTracks: DJMixPin[] = Object.entries(pinState)
+        .map(([position, trackId]) => ({position: Number(position), trackId}))
+        .filter((pin) => Number.isFinite(pin.position) && pin.position > 0 && pin.trackId > 0)
+        .sort((left, right) => left.position - right.position)
       const options: DJMixPlanOptions = {
         startTrackId: seed,
         limit,
@@ -70,6 +79,10 @@ function DJMixPlannerModal({
         direction,
         preferHarmonic,
         avoidSameArtist,
+        lookahead,
+        preferGenreContinuity,
+        preferEnergyFlow,
+        pinnedTracks,
       }
       const result = await window.go.main.App.PlanDJMix(scopeIDs, options)
       setPlan(result)
@@ -83,8 +96,25 @@ function DJMixPlannerModal({
   }
 
   function useAsStart(trackID: number) {
+    const nextPins = {...pins}
+    delete nextPins[1]
+    setPins(nextPins)
     setStartTrackID(trackID)
-    void build(trackID)
+    void build(trackID, nextPins)
+  }
+
+  function togglePin(position: number, trackID: number) {
+    const nextPins = {...pins}
+    for (const [rawPosition, pinnedTrackID] of Object.entries(nextPins)) {
+      if (pinnedTrackID === trackID) delete nextPins[Number(rawPosition)]
+    }
+    if (pins[position] === trackID) {
+      delete nextPins[position]
+    } else {
+      nextPins[position] = trackID
+    }
+    setPins(nextPins)
+    void build(startTrackID, nextPins)
   }
 
   if (!open) return null
@@ -107,6 +137,15 @@ function DJMixPlannerModal({
             <input type="number" min={2} max={100} step={1} value={limit} onChange={(event) => setLimit(clampInt(Number(event.target.value), 2, 100, 20))} />
           </label>
           <label>
+            <span>{t('mixPlanner.lookahead')}</span>
+            <select value={lookahead} onChange={(event) => setLookahead(clampInt(Number(event.target.value), 1, 4, 3))}>
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={3}>3</option>
+              <option value={4}>4</option>
+            </select>
+          </label>
+          <label>
             <span>{t('mixPlanner.maxTempoShift')}</span>
             <input type="number" min={1} max={25} step={0.5} value={maxTempoShiftPct} onChange={(event) => setMaxTempoShiftPct(clampNumber(Number(event.target.value), 1, 25, 8))} />
           </label>
@@ -121,6 +160,14 @@ function DJMixPlannerModal({
           <label className="mix-planner-check">
             <input type="checkbox" checked={preferHarmonic} onChange={(event) => setPreferHarmonic(event.target.checked)} />
             <span>{t('mixPlanner.preferHarmonic')}</span>
+          </label>
+          <label className="mix-planner-check">
+            <input type="checkbox" checked={preferGenreContinuity} onChange={(event) => setPreferGenreContinuity(event.target.checked)} />
+            <span>{t('mixPlanner.preferGenre')}</span>
+          </label>
+          <label className="mix-planner-check">
+            <input type="checkbox" checked={preferEnergyFlow} onChange={(event) => setPreferEnergyFlow(event.target.checked)} />
+            <span>{t('mixPlanner.preferEnergy')}</span>
           </label>
           <label className="mix-planner-check">
             <input type="checkbox" checked={avoidSameArtist} onChange={(event) => setAvoidSameArtist(event.target.checked)} />
@@ -138,9 +185,12 @@ function DJMixPlannerModal({
             <div className="mix-planner-summary">
               <Summary value={plan.steps?.length ?? 0} label={t('mixPlanner.planTracks')} />
               <Summary value={`${Math.round((plan.averageScore || 0) * 100)}%`} label={t('mixPlanner.avgScore')} />
+              <Summary value={plan.lookahead || lookahead} label={t('mixPlanner.lookahead')} />
+              <Summary value={plan.pinnedCount} label={t('mixPlanner.pinned')} />
               <Summary value={plan.excludedMissingBpm} label={t('mixPlanner.missingBpm')} />
               <Summary value={plan.tracksMissingKey} label={t('mixPlanner.missingKey')} />
             </div>
+            {plan.ignoredPins > 0 && <div className="mix-planner-pin-note">{t('mixPlanner.ignoredPins', {count: plan.ignoredPins})}</div>}
 
             {(plan.steps?.length ?? 0) === 0 ? (
               <div className="mix-planner-empty">{t('mixPlanner.empty')}</div>
@@ -153,6 +203,7 @@ function DJMixPlannerModal({
                       <th>{t('mixPlanner.track')}</th>
                       <th>{t('mixPlanner.bpm')}</th>
                       <th>{t('mixPlanner.key')}</th>
+                      <th>{t('mixPlanner.flow')}</th>
                       <th>{t('mixPlanner.transition')}</th>
                       <th>{t('mixPlanner.score')}</th>
                       <th />
@@ -166,6 +217,7 @@ function DJMixPlannerModal({
                         isStart={step.track.id === plan.startTrackId}
                         t={t}
                         onStart={() => useAsStart(step.track.id)}
+                        onPin={() => togglePin(step.position, step.track.id)}
                         onReveal={() => void onRevealTrack(step.track.id)}
                       />
                     ))}
@@ -190,12 +242,14 @@ function PlannerRow({
   isStart,
   t,
   onStart,
+  onPin,
   onReveal,
 }: {
   step: DJMixPlanStep
   isStart: boolean
   t: (key: TranslationKey, params?: Record<string, string | number>) => string
   onStart: () => void
+  onPin: () => void
   onReveal: () => void
 }) {
   const factor = Math.abs(step.tempoFactor - 1) > 0.001
@@ -207,9 +261,12 @@ function PlannerRow({
   const transition = step.keyRelation === 'start'
     ? t('mixPlanner.relation.start')
     : `${formatSigned(step.tempoDeltaPct)}% · ${relationLabel(step.keyRelation, t)}`
+  const flow = step.keyRelation === 'start'
+    ? `${genreRelationLabel(step.genreRelation, t)} · E ${Math.round(step.energy * 100)}%`
+    : `${genreRelationLabel(step.genreRelation, t)} · E ${formatSigned(step.energyDelta * 100)}%`
 
   return (
-    <tr className={isStart ? 'is-start' : ''}>
+    <tr className={`${isStart ? 'is-start ' : ''}${step.pinned ? 'is-pinned' : ''}`.trim()}>
       <td className="mix-position">{step.position}</td>
       <td className="mix-track">
         <strong>{step.track.artist || '—'} — {step.track.title || step.track.fileName}</strong>
@@ -222,14 +279,29 @@ function PlannerRow({
       </td>
       <td className="mix-bpm">{bpm}</td>
       <td>{step.camelot || '—'}{step.openKey ? <small className="mix-open-key">{step.openKey}</small> : null}</td>
+      <td className="mix-flow">{flow}</td>
       <td>{transition}</td>
       <td><b className="mix-score">{Math.round(step.score * 100)}%</b></td>
       <td className="mix-row-actions">
         {!isStart && <button type="button" onClick={onStart}>{t('mixPlanner.startHere')}</button>}
+        <button type="button" className={step.pinned ? 'is-active' : ''} onClick={onPin}>
+          {step.pinned ? t('mixPlanner.unpin') : t('mixPlanner.pin')}
+        </button>
         <button type="button" onClick={onReveal}>{t('mixPlanner.reveal')}</button>
       </td>
     </tr>
   )
+}
+
+function genreRelationLabel(value: string, t: (key: TranslationKey) => string): string {
+  const key = ({
+    same: 'mixPlanner.genre.same',
+    related: 'mixPlanner.genre.related',
+    different: 'mixPlanner.genre.different',
+    unknown: 'mixPlanner.genre.unknown',
+    start: 'mixPlanner.genre.start',
+  } as Record<string, TranslationKey>)[value] ?? 'mixPlanner.genre.unknown'
+  return t(key)
 }
 
 function Summary({value, label}: {value: string | number; label: string}) {
@@ -256,6 +328,9 @@ function warningLabel(value: string, t: (key: TranslationKey) => string): string
     key_unknown: 'mixPlanner.warning.key_unknown',
     same_artist: 'mixPlanner.warning.same_artist',
     direction_reverse: 'mixPlanner.warning.direction_reverse',
+    genre_jump: 'mixPlanner.warning.genre_jump',
+    energy_jump: 'mixPlanner.warning.energy_jump',
+    pinned_transition: 'mixPlanner.warning.pinned_transition',
   } as Record<string, TranslationKey>)[value]
   return key ? t(key) : value
 }
