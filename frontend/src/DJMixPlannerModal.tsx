@@ -53,6 +53,11 @@ function DJMixPlannerModal({
   const [previewDuration, setPreviewDuration] = useState(0)
   const [previewVolume, setPreviewVolume] = useState(1)
   const [previewAutoAdvance, setPreviewAutoAdvance] = useState(false)
+  const [transitionPreviewIndex, setTransitionPreviewIndex] = useState(-1)
+  const [transitionPreviewLoading, setTransitionPreviewLoading] = useState(false)
+  const [transitionPreviewPlaying, setTransitionPreviewPlaying] = useState(false)
+  const [transitionPreviewProgress, setTransitionPreviewProgress] = useState(0)
+  const [transitionPreviewError, setTransitionPreviewError] = useState('')
   const [previewWaveform, setPreviewWaveform] = useState<TrackWaveform | null>(null)
   const [previewWaveformLoading, setPreviewWaveformLoading] = useState(false)
   const [previewWaveformError, setPreviewWaveformError] = useState('')
@@ -61,6 +66,10 @@ function DJMixPlannerModal({
   const previewWaveformRequestRef = useRef(0)
   const previewFallbackTriedRef = useRef(false)
   const previewAutoplayRef = useRef(0)
+  const transitionOutAudioRef = useRef<HTMLAudioElement | null>(null)
+  const transitionInAudioRef = useRef<HTMLAudioElement | null>(null)
+  const transitionRequestRef = useRef(0)
+  const transitionAnimationRef = useRef<number | null>(null)
 
   const t = (key: TranslationKey, params?: Record<string, string | number>) => translate(language, key, params)
   const scopeIDs = useMemo(() => selectedIDs.length >= 2 ? selectedIDs : [], [selectedIDs])
@@ -102,6 +111,7 @@ function DJMixPlannerModal({
     setPreviewWaveform(null)
     setPreviewWaveformLoading(false)
     setPreviewWaveformError('')
+    stopTransitionPreview()
     previewAutoplayRef.current = 0
     void refreshSavedPlans()
     void build(seed, {}, scopeIDs)
@@ -237,7 +247,12 @@ function DJMixPlannerModal({
   }, [previewVolume, previewMedia?.audioUrl])
 
   useEffect(() => {
+    if (transitionPreviewIndex >= 0) stopTransitionPreview()
+  }, [previewTrackID])
+
+  useEffect(() => {
     if (open) return
+    stopTransitionPreview()
     previewAutoplayRef.current = 0
     if (previewAudioRef.current) {
       previewAudioRef.current.pause()
@@ -487,6 +502,184 @@ function DJMixPlannerModal({
     }
   }
 
+  function stopTransitionPreview() {
+    transitionRequestRef.current += 1
+
+    if (transitionAnimationRef.current !== null) {
+      window.cancelAnimationFrame(transitionAnimationRef.current)
+      transitionAnimationRef.current = null
+    }
+
+    for (const audio of [transitionOutAudioRef.current, transitionInAudioRef.current]) {
+      if (!audio) continue
+      audio.pause()
+      audio.currentTime = 0
+      audio.volume = previewVolume
+      audio.playbackRate = 1
+    }
+
+    setTransitionPreviewIndex(-1)
+    setTransitionPreviewLoading(false)
+    setTransitionPreviewPlaying(false)
+    setTransitionPreviewProgress(0)
+    setTransitionPreviewError('')
+  }
+
+  function finishTransitionPreview(request: number, error = '') {
+    if (transitionRequestRef.current !== request) return
+
+    if (transitionAnimationRef.current !== null) {
+      window.cancelAnimationFrame(transitionAnimationRef.current)
+      transitionAnimationRef.current = null
+    }
+
+    for (const audio of [transitionOutAudioRef.current, transitionInAudioRef.current]) {
+      if (!audio) continue
+      audio.pause()
+      audio.volume = previewVolume
+      audio.playbackRate = 1
+    }
+
+    setTransitionPreviewLoading(false)
+    setTransitionPreviewPlaying(false)
+    setTransitionPreviewProgress(error ? 0 : 1)
+    setTransitionPreviewError(error)
+  }
+
+  async function auditionTransition(index: number) {
+    const steps = plan?.steps ?? []
+    if (index <= 0 || index >= steps.length) return
+
+    if (
+      transitionPreviewIndex === index &&
+      (transitionPreviewLoading || transitionPreviewPlaying)
+    ) {
+      stopTransitionPreview()
+      return
+    }
+
+    const app = window.go?.main?.App
+    const outgoingAudio = transitionOutAudioRef.current
+    const incomingAudio = transitionInAudioRef.current
+    if (!app || !outgoingAudio || !incomingAudio) return
+
+    stopTransitionPreview()
+    const request = ++transitionRequestRef.current
+    const outgoingStep = steps[index - 1]
+    const incomingStep = steps[index]
+
+    previewAudioRef.current?.pause()
+    setPreviewPlaying(false)
+    setTransitionPreviewIndex(index)
+    setTransitionPreviewLoading(true)
+    setTransitionPreviewPlaying(false)
+    setTransitionPreviewProgress(0)
+    setTransitionPreviewError('')
+
+    try {
+      const [outgoingMedia, incomingMedia] = await Promise.all([
+        app.PrepareTrackMedia(outgoingStep.track.id),
+        app.PrepareTrackMedia(incomingStep.track.id),
+      ])
+      if (transitionRequestRef.current !== request) return
+
+      const loadWithFallback = async (
+        audio: HTMLAudioElement,
+        trackID: number,
+        initialURL: string,
+      ) => {
+        try {
+          await loadTransitionPreviewAudio(audio, initialURL)
+        } catch {
+          const fallbackURL = await app.PrepareTrackAudioPreview(trackID)
+          if (transitionRequestRef.current !== request) return
+          await loadTransitionPreviewAudio(audio, fallbackURL)
+        }
+      }
+
+      await Promise.all([
+        loadWithFallback(outgoingAudio, outgoingStep.track.id, outgoingMedia.audioUrl),
+        loadWithFallback(incomingAudio, incomingStep.track.id, incomingMedia.audioUrl),
+      ])
+      if (transitionRequestRef.current !== request) return
+
+      const metadataDuration = Number.isFinite(outgoingAudio.duration) ? outgoingAudio.duration : 0
+      const fallbackDuration = Math.max(0, (outgoingStep.track.durationMs || 0) / 1000)
+      const outgoingDuration = metadataDuration > 0 ? metadataDuration : fallbackDuration
+      if (outgoingDuration <= 0) {
+        throw new Error('Outgoing track duration is unavailable')
+      }
+
+      const outgoingWindow = Math.max(2, Math.min(12, outgoingDuration))
+      const crossfadeSeconds = Math.max(1, Math.min(5, outgoingWindow * 0.4))
+      const leadSeconds = Math.max(0, outgoingWindow - crossfadeSeconds)
+      const incomingTailSeconds = 6
+      const totalSeconds = outgoingWindow + incomingTailSeconds
+      const tempoRate = mixTransitionPlaybackRate(outgoingStep, incomingStep)
+
+      outgoingAudio.currentTime = Math.max(0, outgoingDuration - outgoingWindow)
+      outgoingAudio.volume = previewVolume
+      outgoingAudio.playbackRate = 1
+      incomingAudio.currentTime = 0
+      incomingAudio.volume = 0
+      incomingAudio.playbackRate = tempoRate
+
+      await outgoingAudio.play()
+      if (transitionRequestRef.current !== request) {
+        outgoingAudio.pause()
+        return
+      }
+
+      setTransitionPreviewLoading(false)
+      setTransitionPreviewPlaying(true)
+
+      const startedAt = performance.now()
+      let incomingStarted = false
+      let outgoingStopped = false
+
+      const tick = (now: number) => {
+        if (transitionRequestRef.current !== request) return
+
+        const elapsed = Math.max(0, (now - startedAt) / 1000)
+
+        if (!incomingStarted && elapsed >= leadSeconds) {
+          incomingStarted = true
+          incomingAudio.currentTime = 0
+          void incomingAudio.play().catch((err) => {
+            finishTransitionPreview(request, err instanceof Error ? err.message : String(err))
+          })
+        }
+
+        const mixRatio = incomingStarted
+          ? Math.max(0, Math.min(1, (elapsed - leadSeconds) / crossfadeSeconds))
+          : 0
+
+        outgoingAudio.volume = Math.max(0, Math.min(1, previewVolume * (1 - mixRatio)))
+        incomingAudio.volume = Math.max(0, Math.min(1, previewVolume * mixRatio))
+
+        if (!outgoingStopped && elapsed >= outgoingWindow) {
+          outgoingStopped = true
+          outgoingAudio.pause()
+          outgoingAudio.volume = 0
+          incomingAudio.volume = previewVolume
+        }
+
+        setTransitionPreviewProgress(Math.max(0, Math.min(1, elapsed / totalSeconds)))
+
+        if (elapsed >= totalSeconds || (incomingStarted && incomingAudio.ended)) {
+          finishTransitionPreview(request)
+          return
+        }
+
+        transitionAnimationRef.current = window.requestAnimationFrame(tick)
+      }
+
+      transitionAnimationRef.current = window.requestAnimationFrame(tick)
+    } catch (err) {
+      finishTransitionPreview(request, err instanceof Error ? err.message : String(err))
+    }
+  }
+
   function selectPreviewTrack(trackID: number, autoplay = false) {
     if (trackID <= 0) return
     if (autoplay) previewAutoplayRef.current = trackID
@@ -503,6 +696,7 @@ function DJMixPlannerModal({
   }
 
   async function togglePreviewPlayback() {
+    stopTransitionPreview()
     const audio = previewAudioRef.current
     if (!audio || previewLoading || previewFallbackLoading) return
     if (!audio.paused) {
@@ -530,6 +724,7 @@ function DJMixPlannerModal({
   }
 
   function stopPreviewPlayback() {
+    stopTransitionPreview()
     const audio = previewAudioRef.current
     if (!audio) return
     audio.pause()
@@ -719,6 +914,16 @@ function DJMixPlannerModal({
 
                 <div className="mix-planner-preview-player">
                   <audio
+                    className="mix-planner-transition-audio"
+                    ref={transitionOutAudioRef}
+                    preload="metadata"
+                  />
+                  <audio
+                    className="mix-planner-transition-audio"
+                    ref={transitionInAudioRef}
+                    preload="metadata"
+                  />
+                  <audio
                     ref={previewAudioRef}
                     key={previewMedia?.audioUrl || `preview-${previewTrackID}`}
                     preload="metadata"
@@ -834,9 +1039,15 @@ function DJMixPlannerModal({
               playing={previewPlaying}
               currentTime={previewCurrentTime}
               duration={previewDuration}
+              transitionPreviewIndex={transitionPreviewIndex}
+              transitionPreviewLoading={transitionPreviewLoading}
+              transitionPreviewPlaying={transitionPreviewPlaying}
+              transitionPreviewProgress={transitionPreviewProgress}
+              transitionPreviewError={transitionPreviewError}
               t={t}
               onSelectTrack={(trackID) => selectPreviewTrack(trackID)}
               onPlayTrack={(trackID) => selectPreviewTrack(trackID, true)}
+              onPreviewTransition={(index) => void auditionTransition(index)}
             />
 
             <div className="mix-planner-summary">
@@ -1190,9 +1401,15 @@ function DJMixTimeline({
   playing,
   currentTime,
   duration,
+  transitionPreviewIndex,
+  transitionPreviewLoading,
+  transitionPreviewPlaying,
+  transitionPreviewProgress,
+  transitionPreviewError,
   t,
   onSelectTrack,
   onPlayTrack,
+  onPreviewTransition,
 }: {
   steps: DJMixPlanStep[]
   selectedTrackID: number
@@ -1200,9 +1417,15 @@ function DJMixTimeline({
   playing: boolean
   currentTime: number
   duration: number
+  transitionPreviewIndex: number
+  transitionPreviewLoading: boolean
+  transitionPreviewPlaying: boolean
+  transitionPreviewProgress: number
+  transitionPreviewError: string
   t: (key: TranslationKey, params?: Record<string, string | number>) => string
   onSelectTrack: (trackID: number) => void
   onPlayTrack: (trackID: number) => void
+  onPreviewTransition: (index: number) => void
 }) {
   const selectedCardRef = useRef<HTMLButtonElement | null>(null)
 
@@ -1227,6 +1450,20 @@ function DJMixTimeline({
     <div className="mix-planner-flow">
       <div className="mix-planner-flow-head">
         <strong>{t('mixPlanner.timeline')}</strong>
+        {transitionPreviewIndex > 0 && (
+          <span
+            className={`mix-planner-transition-status${transitionPreviewError ? ' is-error' : ''}`}
+            title={transitionPreviewError || `Transition #${transitionPreviewIndex} -> #${transitionPreviewIndex + 1}`}
+          >
+            {transitionPreviewError
+              ? `MIX error: ${transitionPreviewError}`
+              : transitionPreviewLoading
+                ? `MIX #${transitionPreviewIndex} -> #${transitionPreviewIndex + 1} loading`
+                : transitionPreviewPlaying
+                  ? `MIX #${transitionPreviewIndex} -> #${transitionPreviewIndex + 1} playing`
+                  : `MIX #${transitionPreviewIndex} -> #${transitionPreviewIndex + 1} ready`}
+          </span>
+        )}
         <span>{steps.length} tracks · {formatTimeline(totalMS)}</span>
       </div>
       <div className="mix-planner-flow-scroll">
@@ -1251,13 +1488,32 @@ function DJMixTimeline({
             return (
               <div className={classes} key={`flow-${step.position}-${step.track.id}`}>
                 {index > 0 && (
-                  <div
-                    className="mix-planner-flow-transition"
-                    title={`${t('mixPlanner.transition')}: ${formatSigned(step.tempoDeltaPct)}% · ${relation}`}
+                  <button
+                    type="button"
+                    className={[
+                      'mix-planner-flow-transition',
+                      transitionPreviewIndex === index ? 'is-active' : '',
+                      transitionPreviewIndex === index && transitionPreviewLoading ? 'is-loading' : '',
+                      transitionPreviewIndex === index && transitionPreviewPlaying ? 'is-playing' : '',
+                    ].filter(Boolean).join(' ')}
+                    onClick={() => onPreviewTransition(index)}
+                    aria-pressed={transitionPreviewIndex === index}
+                    title={`Preview transition #${index} -> #${index + 1} / ${mixTransitionPlaybackRate(steps[index - 1], step).toFixed(3)}x / ${formatSigned(step.tempoDeltaPct)}% / ${relation}`}
                   >
-                    <strong>{Math.round(step.score * 100)}%</strong>
-                    <span>{formatSigned(step.tempoDeltaPct)}% · {step.camelot || relation || '—'}</span>
-                  </div>
+                    <strong>
+                      {transitionPreviewIndex === index && transitionPreviewLoading
+                        ? 'LOAD'
+                        : transitionPreviewIndex === index && transitionPreviewPlaying
+                          ? 'STOP'
+                          : 'MIX'} {Math.round(step.score * 100)}%
+                    </strong>
+                    <span>{formatSigned(step.tempoDeltaPct)}% / {step.camelot || relation || '-'}</span>
+                    {transitionPreviewIndex === index && (
+                      <i className="mix-planner-transition-progress" aria-hidden="true">
+                        <i style={{width: `${transitionPreviewProgress * 100}%`}} />
+                      </i>
+                    )}
+                  </button>
                 )}
                 <button
                   ref={isSelected ? selectedCardRef : undefined}
@@ -1302,6 +1558,64 @@ function DJMixTimeline({
       </div>
     </div>
   )
+}
+
+function mixTransitionPlaybackRate(outgoing: DJMixPlanStep, incoming: DJMixPlanStep): number {
+  const outgoingBPM = outgoing.adjustedBpm || outgoing.track.bpm
+  const incomingBPM = incoming.adjustedBpm || incoming.track.bpm
+  if (!Number.isFinite(outgoingBPM) || !Number.isFinite(incomingBPM) || outgoingBPM <= 0 || incomingBPM <= 0) {
+    return 1
+  }
+  return Math.max(0.8, Math.min(1.25, outgoingBPM / incomingBPM))
+}
+
+function loadTransitionPreviewAudio(audio: HTMLAudioElement, url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!url) {
+      reject(new Error('Audio preview URL is unavailable'))
+      return
+    }
+
+    let settled = false
+    let timer = 0
+
+    const cleanup = () => {
+      window.clearTimeout(timer)
+      audio.removeEventListener('loadedmetadata', onReady)
+      audio.removeEventListener('canplay', onReady)
+      audio.removeEventListener('error', onError)
+    }
+
+    const onReady = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve()
+    }
+
+    const onError = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(new Error('Audio preview could not be loaded'))
+    }
+
+    audio.pause()
+    audio.preload = 'auto'
+    audio.src = url
+    audio.addEventListener('loadedmetadata', onReady)
+    audio.addEventListener('canplay', onReady)
+    audio.addEventListener('error', onError)
+    timer = window.setTimeout(() => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(new Error('Audio preview loading timed out'))
+    }, 15000)
+    audio.load()
+
+    if (audio.readyState >= 1) onReady()
+  })
 }
 
 function mixTimelineTrackWidth(durationMS: number): number {
