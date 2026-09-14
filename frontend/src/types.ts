@@ -375,7 +375,7 @@ export type MetadataEnrichmentOptions = {
   minimumConfidence: number
   includeArtwork: boolean
   onlyMissing: boolean
-  searchMode: 'auto' | 'fast' | 'full'
+  searchMode: 'same' | 'auto' | 'fast' | 'full'
 }
 
 export type MetadataEnrichmentItem = {

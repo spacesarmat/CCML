@@ -931,6 +931,8 @@ func (a *App) RetryFailedBackgroundJob(jobID int64) (model.BackgroundJob, error)
 	return a.jobs.RetryFailed(a.context(), jobID)
 }
 
+const metadataSearchModeSameAsFind = "same"
+
 func normalizeEnrichmentOptions(opts *model.MetadataEnrichmentOptions) error {
 	if opts.MinimumConfidence <= 0 {
 		opts.MinimumConfidence = 0.86
@@ -938,7 +940,11 @@ func normalizeEnrichmentOptions(opts *model.MetadataEnrichmentOptions) error {
 	if opts.MinimumConfidence < 0.5 || opts.MinimumConfidence > 1 {
 		return fmt.Errorf("minimum confidence must be between 0.5 and 1.0")
 	}
-	opts.SearchMode = metadata.NormalizeEnrichmentSearchMode(opts.SearchMode)
+
+	// Enrichment intentionally uses the exact same provider/search path as
+	// "Find metadata". SearchMode is kept in the persisted job schema only for
+	// backward compatibility with already-created jobs.
+	opts.SearchMode = metadataSearchModeSameAsFind
 	return nil
 }
 
@@ -986,17 +992,17 @@ func (a *App) enrichMetadataTrack(ctx context.Context, trackID int64, opts model
 			localTitle = tags.Title
 		}
 	}
-	lookup, searchDiagnostics, err := a.metadataService().SearchEnrichment(
+	searchStarted := time.Now()
+	lookup, err := a.lookupMetadataQuery(
 		ctx,
 		metadata.QueryFromTrack(track, isrc),
-		opts.SearchMode,
-		opts.MinimumConfidence,
+		false,
 	)
-	item.SearchMode = searchDiagnostics.Mode
-	item.SearchDurationMS = searchDiagnostics.DurationMS
-	item.ProvidersResponded = searchDiagnostics.ProvidersResponded
-	item.ProvidersSkipped = searchDiagnostics.ProvidersSkipped
-	item.EarlyStopped = searchDiagnostics.EarlyStopped
+	item.SearchMode = metadataSearchModeSameAsFind
+	item.SearchDurationMS = time.Since(searchStarted).Milliseconds()
+	item.ProvidersResponded = len(lookup.ProviderReports)
+	item.ProvidersSkipped = 0
+	item.EarlyStopped = false
 	if err != nil {
 		return item, err
 	}
