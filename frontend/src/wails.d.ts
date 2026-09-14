@@ -68,6 +68,7 @@ declare global {
           CreateLibraryMetadataEnrichmentJob(opts: MetadataEnrichmentOptions): Promise<BackgroundJob>
           ListBackgroundJobs(limit: number): Promise<BackgroundJob[]>
           ListBackgroundJobItems(jobID: number, limit: number, offset: number): Promise<BackgroundJobItem[]>
+          ListRunningBackgroundJobItems(jobID: number, limit: number): Promise<BackgroundJobItem[]>
           PauseBackgroundJob(jobID: number): Promise<BackgroundJob>
           ResumeBackgroundJob(jobID: number): Promise<BackgroundJob>
           CancelBackgroundJob(jobID: number): Promise<BackgroundJob>

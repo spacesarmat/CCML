@@ -891,3 +891,41 @@ body { min-width: 1080px; overflow: hidden; }
 @media (max-width: 720px) {
   .settings-concurrency-row { grid-template-columns: 1fr; }
 }
+/* Stage 8.1A — real parallel metadata activity. */
+.job-parallel-status {
+  display: grid;
+  gap: 7px;
+  padding: 8px 9px;
+  border: 1px solid #2d4058;
+  border-radius: 8px;
+  background: #0c1520;
+}
+.job-parallel-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px 14px;
+  color: #8193aa;
+  font-size: 9px;
+}
+.job-parallel-metrics strong {
+  color: #9fd1bc;
+  font-size: 10px;
+}
+.job-active-items {
+  display: grid;
+  gap: 3px;
+  max-height: 132px;
+  overflow: auto;
+}
+.job-active-items code {
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: #101d2b;
+  color: #b8c7da;
+  font-size: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

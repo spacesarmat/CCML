@@ -262,6 +262,38 @@ FROM background_job_items WHERE job_id = ? ORDER BY id LIMIT ? OFFSET ?`, jobID,
 	return items, nil
 }
 
+// ListRunningBackgroundJobItems returns only items that are actively executing.
+// It is intentionally bounded because the manager itself has bounded concurrency.
+func (s *Store) ListRunningBackgroundJobItems(ctx context.Context, jobID int64, limit int) ([]model.BackgroundJobItem, error) {
+	if limit <= 0 || limit > 64 {
+		limit = 32
+	}
+	rows, err := s.db.QueryContext(ctx, `
+SELECT id, job_id, track_id, path, status, attempts, error, result_json, created_at, started_at, finished_at, updated_at
+FROM background_job_items
+WHERE job_id = ? AND status = 'running'
+ORDER BY id
+LIMIT ?`, jobID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list running background job items: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]model.BackgroundJobItem, 0, limit)
+	for rows.Next() {
+		var item model.BackgroundJobItem
+		if err := rows.Scan(&item.ID, &item.JobID, &item.TrackID, &item.Path, &item.Status, &item.Attempts, &item.Error,
+			&item.ResultJSON, &item.CreatedAt, &item.StartedAt, &item.FinishedAt, &item.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan running background job item: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate running background job items: %w", err)
+	}
+	return items, nil
+}
+
 // RecoverInterruptedBackgroundJobs makes persisted in-flight work runnable after a restart.
 func (s *Store) RecoverInterruptedBackgroundJobs(ctx context.Context) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)

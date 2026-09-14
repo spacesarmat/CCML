@@ -315,3 +315,54 @@ func TestTrackCarriesLatestMetadataEnrichmentStatus(t *testing.T) {
 		t.Fatalf("expected newest queued job to clear stale skipped highlight, got %q (job %d)", track.LastMetadataJobStatus, newJob.ID)
 	}
 }
+
+func TestListRunningBackgroundJobItems(t *testing.T) {
+	ctx := context.Background()
+	db, err := Open(filepath.Join(t.TempDir(), "library.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	var ids []int64
+	for _, name := range []string{"parallel-a.mp3", "parallel-b.mp3", "parallel-c.mp3"} {
+		id, err := db.UpsertTrack(ctx, model.Track{
+			Path: filepath.Join(t.TempDir(), name), FileName: name, Extension: ".mp3",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+
+	job, err := db.CreateBackgroundJob(ctx, "metadata_enrichment", "Metadata enrichment", `{}`, ids)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.MarkBackgroundJobRunning(ctx, job.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 2; i++ {
+		item, ok, err := db.NextQueuedBackgroundJobItem(ctx, job.ID)
+		if err != nil || !ok {
+			t.Fatalf("next item %d: ok=%v err=%v", i, ok, err)
+		}
+		if err := db.MarkBackgroundJobItemRunning(ctx, item.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	running, err := db.ListRunningBackgroundJobItems(ctx, job.ID, 32)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(running) != 2 {
+		t.Fatalf("running items = %d, want 2: %+v", len(running), running)
+	}
+	for _, item := range running {
+		if item.Status != "running" {
+			t.Fatalf("unexpected running item status: %+v", item)
+		}
+	}
+}

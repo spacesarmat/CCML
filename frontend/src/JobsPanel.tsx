@@ -17,17 +17,52 @@ function JobsPanel({language, open, onClose, onMessage}: Props) {
   const [expanded, setExpanded] = useState<Record<number, boolean>>({})
   const [loading, setLoading] = useState(false)
   const [failedOnly, setFailedOnly] = useState(false)
+  const [workerLimit, setWorkerLimit] = useState(10)
 
   async function refresh() {
     if (!open) return
     setLoading(true)
     try {
-      const result = await window.go.main.App.ListBackgroundJobs(100)
-      setJobs(result ?? [])
-      const expandedIDs = Object.entries(expanded).filter(([, value]) => value).map(([key]) => Number(key))
-      for (const jobID of expandedIDs) {
-        const detail = await window.go.main.App.ListBackgroundJobItems(jobID, 500, 0)
-        setItems((current) => ({...current, [jobID]: detail ?? []}))
+      const [result, settings] = await Promise.all([
+        window.go.main.App.ListBackgroundJobs(100),
+        window.go.main.App.GetMetadataSettings(),
+      ])
+      const nextJobs = result ?? []
+      setJobs(nextJobs)
+      setWorkerLimit(settings?.metadataEnrichmentConcurrency || 10)
+
+      const expandedIDs = new Set(
+        Object.entries(expanded).filter(([, value]) => value).map(([key]) => Number(key)),
+      )
+      const activeMetadataIDs = new Set(
+        nextJobs
+          .filter((job) => job.type === 'metadata_enrichment' && (job.status === 'running' || job.status === 'queued'))
+          .map((job) => job.id),
+      )
+      const detailIDs = Array.from(new Set([...expandedIDs, ...activeMetadataIDs]))
+
+      const detailEntries = await Promise.all(detailIDs.map(async (jobID) => {
+        const full = expandedIDs.has(jobID)
+          ? await window.go.main.App.ListBackgroundJobItems(jobID, 500, 0)
+          : []
+        const running = activeMetadataIDs.has(jobID)
+          ? await window.go.main.App.ListRunningBackgroundJobItems(jobID, 32)
+          : []
+
+        const merged = [...(full ?? [])]
+        const seen = new Set(merged.map((item) => item.id))
+        for (const item of running ?? []) {
+          if (!seen.has(item.id)) merged.push(item)
+        }
+        return [jobID, merged] as const
+      }))
+
+      if (detailEntries.length > 0) {
+        setItems((current) => {
+          const next = {...current}
+          for (const [jobID, detail] of detailEntries) next[jobID] = detail
+          return next
+        })
       }
     } catch (error) {
       onMessage(error instanceof Error ? error.message : String(error))
@@ -99,6 +134,9 @@ function JobsPanel({language, open, onClose, onMessage}: Props) {
               const done = job.completedItems + job.skippedItems + job.failedItems + cancelled
               const statusKey = (`jobs.status.${job.status}`) as TranslationKey
               const jobTypeKey = (`jobs.type.${job.type}`) as TranslationKey
+              const jobItems = items[job.id] ?? []
+              const runningItems = jobItems.filter((item) => item.status === 'running')
+              const queued = Math.max(0, job.totalItems - done - runningItems.length)
               return (
                 <article className={`job-card ${job.status}`} key={job.id}>
                   <div className="job-head">
@@ -110,7 +148,23 @@ function JobsPanel({language, open, onClose, onMessage}: Props) {
                   </div>
                   <div className="job-progress"><span style={{width: `${Math.round(Math.max(0, Math.min(1, job.progress)) * 100)}%`}} /></div>
                   <div className="job-summary">{t('jobs.summary', {done, total: job.totalItems, skipped: job.skippedItems, failed: job.failedItems, cancelled})}</div>
-                  {job.currentItem && <div className="job-current"><span>{t('jobs.current')}</span><code title={job.currentItem}>{job.currentItem}</code></div>}
+                  {job.type === 'metadata_enrichment' && (job.status === 'running' || job.status === 'queued') && (
+                    <div className="job-parallel-status">
+                      <div className="job-parallel-metrics">
+                        <strong>{t('jobs.activeWorkers', {active: runningItems.length})}</strong>
+                        <span>{t('jobs.configuredWorkers', {limit: workerLimit})}</span>
+                        <span>{t('jobs.queuedRemaining', {count: queued})}</span>
+                      </div>
+                      {runningItems.length > 0 && (
+                        <div className="job-active-items">
+                          {runningItems.map((item) => (
+                            <code key={item.id} title={item.path}>{item.path}</code>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {job.type !== 'metadata_enrichment' && job.currentItem && <div className="job-current"><span>{t('jobs.current')}</span><code title={job.currentItem}>{job.currentItem}</code></div>}
                   {job.lastError && <p className="job-error">{job.lastError}</p>}
                   <div className="job-actions">
                     {job.status === 'running' || job.status === 'queued' ? <button onClick={() => void control('pause', job.id)}>{t('jobs.pause')}</button> : null}

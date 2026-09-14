@@ -62,6 +62,10 @@ export function ListBackgroundJobItems(arg1, arg2, arg3) {
   return window['go']['main']['App']['ListBackgroundJobItems'](arg1, arg2, arg3);
 }
 
+export function ListRunningBackgroundJobItems(arg1, arg2) {
+  return window['go']['main']['App']['ListRunningBackgroundJobItems'](arg1, arg2);
+}
+
 export function ListBackgroundJobs(arg1) {
   return window['go']['main']['App']['ListBackgroundJobs'](arg1);
 }

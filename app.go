@@ -832,6 +832,12 @@ func (a *App) ListBackgroundJobItems(jobID int64, limit, offset int) ([]model.Ba
 	return a.store.ListBackgroundJobItems(a.context(), jobID, limit, offset)
 }
 
+// ListRunningBackgroundJobItems returns the exact set of tracks currently being
+// executed by a parallel background job.
+func (a *App) ListRunningBackgroundJobItems(jobID int64, limit int) ([]model.BackgroundJobItem, error) {
+	return a.store.ListRunningBackgroundJobItems(a.context(), jobID, limit)
+}
+
 func (a *App) PauseBackgroundJob(jobID int64) (model.BackgroundJob, error) {
 	if a.jobs == nil {
 		return model.BackgroundJob{}, errors.New("background job manager is not available")
