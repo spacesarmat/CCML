@@ -774,7 +774,14 @@ func (a *App) AnalyzeBPMKey(trackID int64) (model.BPMKey, error) {
 	if err != nil {
 		return model.BPMKey{}, err
 	}
+	result, err = normalizeEssentiaAnalysisResult(result)
+	if err != nil {
+		return model.BPMKey{}, err
+	}
 	if err := a.store.UpdateBPMKey(a.context(), trackID, result); err != nil {
+		return model.BPMKey{}, err
+	}
+	if err := a.store.PutEssentiaAnalysis(a.context(), trackID, result); err != nil {
 		return model.BPMKey{}, err
 	}
 	return result, nil
@@ -801,7 +808,11 @@ func (a *App) lookupMetadataTrack(trackID int64, force bool) (model.MetadataLook
 	if tagErr == nil && strings.TrimSpace(tags.ISRC) != "" {
 		isrc = tags.ISRC
 	}
-	return a.lookupMetadataQuery(a.context(), metadata.QueryFromTrack(track, isrc), force)
+	lookup, err := a.lookupMetadataQuery(a.context(), metadata.QueryFromTrack(track, isrc), force)
+	if err != nil {
+		return lookup, err
+	}
+	return a.attachEssentiaDJComparison(a.context(), trackID, lookup), nil
 }
 
 func (a *App) lookupMetadataQuery(ctx context.Context, query model.MetadataQuery, force bool) (model.MetadataLookupResult, error) {

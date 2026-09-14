@@ -18,6 +18,10 @@ export function CancelScan():Promise<boolean>;
 
 export function Close():Promise<void>;
 
+export function CreateEssentiaAnalysisJob(arg1:Array<number>,arg2:boolean,arg3:boolean):Promise<model.BackgroundJob>;
+
+export function CreateLibraryEssentiaAnalysisJob(arg1:boolean,arg2:boolean):Promise<model.BackgroundJob>;
+
 export function CreateLibraryMetadataEnrichmentJob(arg1:model.MetadataEnrichmentOptions):Promise<model.BackgroundJob>;
 
 export function CreateMetadataEnrichmentJob(arg1:Array<number>,arg2:model.MetadataEnrichmentOptions):Promise<model.BackgroundJob>;

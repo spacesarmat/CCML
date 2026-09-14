@@ -217,5 +217,6 @@ func (a *EssentiaAnalyzer) Analyze(ctx context.Context, input string) (result mo
 		Scale:    parsed.Tonal.KeyScale,
 		Strength: parsed.Tonal.KeyStrength,
 	}
+	result.Camelot, result.OpenKey, _ = DJKeyFormats(result.Key, result.Scale)
 	return result, nil
 }

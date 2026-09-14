@@ -98,6 +98,14 @@ function optionSourceNames(option: MetadataFieldOption): string[] {
   return sources.length > 0 ? sources : [option.source]
 }
 
+function audioRelationLabel(language: AppLanguage, kind: 'bpm' | 'key', value: string): string {
+  return translate(language, `metadata.audio.${kind}.${value || 'none'}` as TranslationKey)
+}
+
+function audioRecommendationLabel(language: AppLanguage, value: string): string {
+  return translate(language, `metadata.audio.recommendation.${value || 'none'}` as TranslationKey)
+}
+
 export default function MetadataMerge({language, lookup, current, disabled, onApply}: Props) {
   const t = (key: TranslationKey) => translate(language, key)
   const candidates = lookup.candidates ?? []
@@ -169,9 +177,52 @@ export default function MetadataMerge({language, lookup, current, disabled, onAp
     return [{field, label, before: String(before ?? ''), after: String(after ?? '')}]
   }) : []
 
+  const audio = lookup.audioComparison
+
   return (
     <div className="metadata-merge" data-testid="metadata-merge">
       <div className="panel-title"><h3>{t('metadata.mergeTitle')}</h3><span>{t('metadata.mergeHint')}</span></div>
+      {audio?.essentiaAvailable && (
+        <div className="metadata-audio-consensus">
+          <div className="metadata-audio-consensus-heading">
+            <strong>{t('metadata.audio.title')}</strong>
+            <span>{t('metadata.audio.hint')}</span>
+          </div>
+          <div className="metadata-audio-consensus-grid">
+            <div>
+              <small>{t('metadata.audio.essentia')}</small>
+              <strong>
+                {audio.essentia.bpm > 0 ? `${audio.essentia.bpm.toFixed(1)} BPM` : '—'} · {audio.essentia.key || '—'} {audio.essentia.scale || ''} · {audio.essentia.camelot || '—'} / {audio.essentia.openKey || '—'}
+              </strong>
+              <span>{translate(language, 'metadata.audio.keyConfidence', {confidence: Math.round((audio.essentia.strength ?? 0) * 100)})}</span>
+            </div>
+            <div>
+              <small>{t('metadata.audio.djPool')}</small>
+              {(audio.poolBpm > 0 || audio.poolKey) ? (
+                <>
+                  <strong>
+                    {audio.poolBpm > 0 ? `${audio.poolBpm.toFixed(1)} BPM` : '—'} · {audio.poolCamelot || audio.poolKey || '—'}{audio.poolOpenKey ? ` / ${audio.poolOpenKey}` : ''}
+                  </strong>
+                  <span>
+                    {translate(language, 'metadata.audio.poolSupport', {
+                      bpm: audio.poolBpmSupport ?? 0,
+                      key: audio.poolKeySupport ?? 0,
+                    })}
+                  </span>
+                </>
+              ) : <strong>{t('metadata.audio.noPoolEvidence')}</strong>}
+            </div>
+          </div>
+          <div className="metadata-audio-relations">
+            <span className={`metadata-audio-relation ${audio.bpmRelation}`}>{t('tags.field.bpm')}: {audioRelationLabel(language, 'bpm', audio.bpmRelation)}</span>
+            <span className={`metadata-audio-relation ${audio.keyRelation}`}>{t('tags.field.key')}: {audioRelationLabel(language, 'key', audio.keyRelation)}</span>
+          </div>
+          <div className="metadata-audio-recommendations">
+            <small>{translate(language, 'metadata.audio.bpmRecommendation', {source: audioRecommendationLabel(language, audio.bpmRecommendation)})}</small>
+            <small>{translate(language, 'metadata.audio.keyRecommendation', {source: audioRecommendationLabel(language, audio.keyRecommendation)})}</small>
+          </div>
+        </div>
+      )}
       {hasFields ? (
         <div className="metadata-merge-grid">
           {fields.map(({field, label, numeric}) => {
@@ -189,7 +240,9 @@ export default function MetadataMerge({language, lookup, current, disabled, onAp
                 >
                   {options.map((option, index) => (
                     <option key={`${field}-${option.source}-${option.externalId}-${index}`} value={index}>
-                      {optionValue(option, numeric)} — {option.source} ({Math.round(option.confidence * 100)}%){optionSupport(option) > 1 ? ` · ${translate(language, 'metadata.mergeSupport', {count: optionSupport(option)})}` : ''}
+                      {optionValue(option, numeric)} — {option.source === 'Essentia local'
+                        ? t('metadata.audio.localOption')
+                        : `${option.source} (${Math.round(option.confidence * 100)}%)${optionSupport(option) > 1 ? ` · ${translate(language, 'metadata.mergeSupport', {count: optionSupport(option)})}` : ''}`}
                     </option>
                   ))}
                 </select>

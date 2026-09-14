@@ -265,6 +265,39 @@ export type BPMKey = {
   key: string
   scale: string
   strength: number
+  camelot: string
+  openKey: string
+}
+
+export type EssentiaAnalysis = {
+  trackId: number
+  bpm: number
+  key: string
+  scale: string
+  strength: number
+  camelot: string
+  openKey: string
+  analyzedAt: string
+}
+
+export type MetadataAudioComparison = {
+  essentiaAvailable: boolean
+  essentia: EssentiaAnalysis
+  poolBpm: number
+  poolBpmSupport: number
+  poolBpmSources: string[] | null
+  poolBpmQuality: number
+  poolKey: string
+  poolKeyScale: string
+  poolCamelot: string
+  poolOpenKey: string
+  poolKeySupport: number
+  poolKeySources: string[] | null
+  poolKeyQuality: number
+  bpmRelation: 'none' | 'agree' | 'half_double' | 'conflict' | string
+  keyRelation: 'none' | 'agree' | 'relative' | 'conflict' | 'unresolved' | string
+  bpmRecommendation: 'none' | 'agreement' | 'essentia' | 'dj_pool' | 'review' | string
+  keyRecommendation: 'none' | 'agreement' | 'essentia' | 'dj_pool' | 'review' | string
 }
 
 export type MetadataScore = {
@@ -341,6 +374,7 @@ export type MetadataLookupResult = {
   fieldOptions: MetadataFieldOption[] | null
   providerReports: MetadataProviderReport[] | null
   warnings: string[] | null
+  audioComparison?: MetadataAudioComparison
   cached: boolean
   cacheAgeSeconds: number
 }

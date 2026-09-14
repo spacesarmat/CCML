@@ -10,6 +10,7 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"github.com/spacesarmat/CCML/internal/audio"
 	jobqueue "github.com/spacesarmat/CCML/internal/jobs"
 	"github.com/spacesarmat/CCML/internal/model"
 )
@@ -28,6 +29,8 @@ type essentiaAnalysisItemResult struct {
 	Key         string  `json:"key"`
 	Scale       string  `json:"scale"`
 	Strength    float64 `json:"strength"`
+	Camelot     string  `json:"camelot"`
+	OpenKey     string  `json:"openKey"`
 	WriteTags   bool    `json:"writeTags"`
 	OnlyMissing bool    `json:"onlyMissing"`
 	Written     bool    `json:"written"`
@@ -115,6 +118,8 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 		Key:         result.Key,
 		Scale:       result.Scale,
 		Strength:    result.Strength,
+		Camelot:     result.Camelot,
+		OpenKey:     result.OpenKey,
 		WriteTags:   opts.WriteTags,
 		OnlyMissing: opts.OnlyMissing,
 	}
@@ -132,6 +137,9 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 		if err := a.store.UpdateBPMKey(ctx, track.ID, result); err != nil {
 			return jobqueue.ItemResult{}, err
 		}
+	}
+	if err := a.store.PutEssentiaAnalysis(ctx, track.ID, result); err != nil {
+		return jobqueue.ItemResult{}, err
 	}
 
 	raw, err := json.Marshal(item)
@@ -164,6 +172,10 @@ func normalizeEssentiaAnalysisResult(result model.BPMKey) (model.BPMKey, error) 
 	if result.Key == "" {
 		result.Scale = ""
 		result.Strength = 0
+		result.Camelot = ""
+		result.OpenKey = ""
+	} else {
+		result.Camelot, result.OpenKey, _ = audio.DJKeyFormats(result.Key, result.Scale)
 	}
 	if result.BPM == 0 && result.Key == "" {
 		return model.BPMKey{}, errors.New("Essentia returned no usable BPM or key")

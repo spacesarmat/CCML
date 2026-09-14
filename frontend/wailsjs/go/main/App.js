@@ -34,6 +34,14 @@ export function Close() {
   return window['go']['main']['App']['Close']();
 }
 
+export function CreateEssentiaAnalysisJob(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateEssentiaAnalysisJob'](arg1, arg2, arg3);
+}
+
+export function CreateLibraryEssentiaAnalysisJob(arg1, arg2) {
+  return window['go']['main']['App']['CreateLibraryEssentiaAnalysisJob'](arg1, arg2);
+}
+
 export function CreateLibraryMetadataEnrichmentJob(arg1) {
   return window['go']['main']['App']['CreateLibraryMetadataEnrichmentJob'](arg1);
 }

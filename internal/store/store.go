@@ -153,6 +153,16 @@ CREATE TABLE IF NOT EXISTS metadata_lookup_cache (
 );
 CREATE INDEX IF NOT EXISTS idx_metadata_lookup_cache_expires ON metadata_lookup_cache(expires_unix);
 
+CREATE TABLE IF NOT EXISTS essentia_analysis (
+    track_id INTEGER PRIMARY KEY,
+    bpm REAL NOT NULL DEFAULT 0,
+    musical_key TEXT NOT NULL DEFAULT '',
+    key_scale TEXT NOT NULL DEFAULT '',
+    strength REAL NOT NULL DEFAULT 0,
+    analyzed_at TEXT NOT NULL,
+    FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS background_jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     type TEXT NOT NULL,
@@ -219,7 +229,7 @@ CREATE INDEX IF NOT EXISTS idx_background_job_items_track ON background_job_item
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?), (4, ?), (5, ?), (6, ?), (7, ?), (8, ?), (9, ?)`, now, now, now, now, now, now, now, now, now); err != nil {
+	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?), (4, ?), (5, ?), (6, ?), (7, ?), (8, ?), (9, ?), (10, ?)`, now, now, now, now, now, now, now, now, now, now); err != nil {
 		return fmt.Errorf("record sqlite schema version: %w", err)
 	}
 	return nil

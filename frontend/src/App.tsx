@@ -933,6 +933,8 @@ function App() {
         bpm: result.bpm.toFixed(1),
         key: result.key,
         scale: result.scale,
+        camelot: result.camelot || '—',
+        openKey: result.openKey || '—',
         confidence: Math.round(Math.max(0, Math.min(1, result.strength ?? 0)) * 100),
       }))
       await refreshTracks(search)

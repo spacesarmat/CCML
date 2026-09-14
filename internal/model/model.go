@@ -299,6 +299,42 @@ type BPMKey struct {
 	Key      string  `json:"key"`
 	Scale    string  `json:"scale"`
 	Strength float64 `json:"strength"`
+	Camelot  string  `json:"camelot"`
+	OpenKey  string  `json:"openKey"`
+}
+
+// EssentiaAnalysis is the latest persisted local BPM/key evidence for one track.
+type EssentiaAnalysis struct {
+	TrackID    int64   `json:"trackId"`
+	BPM        float64 `json:"bpm"`
+	Key        string  `json:"key"`
+	Scale      string  `json:"scale"`
+	Strength   float64 `json:"strength"`
+	Camelot    string  `json:"camelot"`
+	OpenKey    string  `json:"openKey"`
+	AnalyzedAt string  `json:"analyzedAt"`
+}
+
+// MetadataAudioComparison compares local Essentia evidence with DJ-pool
+// consensus without silently replacing the normal metadata suggestion.
+type MetadataAudioComparison struct {
+	EssentiaAvailable bool             `json:"essentiaAvailable"`
+	Essentia          EssentiaAnalysis `json:"essentia"`
+	PoolBPM           float64          `json:"poolBpm"`
+	PoolBPMSupport    int              `json:"poolBpmSupport"`
+	PoolBPMSources    []string         `json:"poolBpmSources"`
+	PoolBPMQuality    float64          `json:"poolBpmQuality"`
+	PoolKey           string           `json:"poolKey"`
+	PoolKeyScale      string           `json:"poolKeyScale"`
+	PoolCamelot       string           `json:"poolCamelot"`
+	PoolOpenKey       string           `json:"poolOpenKey"`
+	PoolKeySupport    int              `json:"poolKeySupport"`
+	PoolKeySources    []string         `json:"poolKeySources"`
+	PoolKeyQuality    float64          `json:"poolKeyQuality"`
+	BPMRelation       string           `json:"bpmRelation"`
+	KeyRelation       string           `json:"keyRelation"`
+	BPMRecommendation string           `json:"bpmRecommendation"`
+	KeyRecommendation string           `json:"keyRecommendation"`
 }
 
 // MetadataQuery describes a lookup request sent to external providers.
@@ -390,6 +426,7 @@ type MetadataLookupResult struct {
 	FieldOptions    []MetadataFieldOption    `json:"fieldOptions"`
 	ProviderReports []MetadataProviderReport `json:"providerReports"`
 	Warnings        []string                 `json:"warnings"`
+	AudioComparison MetadataAudioComparison  `json:"audioComparison"`
 	Cached          bool                     `json:"cached"`
 	CacheAgeSeconds int64                    `json:"cacheAgeSeconds"`
 }
