@@ -54,6 +54,10 @@ export function FindDuplicates() {
   return window['go']['main']['App']['FindDuplicates']();
 }
 
+export function VerifyDuplicateAudio(arg1) {
+  return window['go']['main']['App']['VerifyDuplicateAudio'](arg1);
+}
+
 export function GenerateSpectrograms(arg1, arg2) {
   return window['go']['main']['App']['GenerateSpectrograms'](arg1, arg2);
 }

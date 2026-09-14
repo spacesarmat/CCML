@@ -6434,3 +6434,81 @@ button:disabled:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Stage 16.4 — decoded audio duplicate verification */
+
+.duplicate-verify-audio {
+  border-color: color-mix(in srgb, var(--ccml-accent) 48%, var(--ccml-border));
+}
+
+.duplicate-audio-summary {
+  min-width: 0;
+  padding: 7px 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  border: 1px solid var(--ccml-accent-border);
+  border-radius: var(--ccml-radius-md);
+  background: color-mix(in srgb, var(--ccml-accent) 6%, var(--ccml-surface-1));
+}
+
+.duplicate-audio-summary strong {
+  color: var(--ccml-text-strong);
+  font-size: 8px;
+}
+
+.duplicate-audio-summary span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ccml-text-muted);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duplicate-quality-cell em.duplicate-audio-badge {
+  width: max-content;
+  max-width: 100%;
+  margin-top: 2px;
+  padding: 2px 5px;
+  overflow: hidden;
+  border: 1px solid var(--ccml-border);
+  border-radius: 999px;
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text-muted);
+  font-size: 6px;
+  font-style: normal;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.duplicate-audio-badge.reference {
+  border-color: var(--ccml-accent-border) !important;
+  background: var(--ccml-accent-soft) !important;
+  color: var(--ccml-text-strong) !important;
+}
+
+.duplicate-audio-badge.same {
+  border-color: color-mix(in srgb, var(--ccml-success) 60%, var(--ccml-border)) !important;
+  background: color-mix(in srgb, var(--ccml-success) 10%, transparent) !important;
+  color: var(--ccml-success) !important;
+}
+
+.duplicate-audio-badge.similar {
+  border-color: color-mix(in srgb, var(--ccml-warning) 55%, var(--ccml-border)) !important;
+  background: color-mix(in srgb, var(--ccml-warning) 9%, transparent) !important;
+  color: var(--ccml-warning) !important;
+}
+
+.duplicate-audio-badge.different,
+.duplicate-audio-badge.error {
+  border-color: color-mix(in srgb, var(--ccml-danger) 55%, var(--ccml-border)) !important;
+  background: color-mix(in srgb, var(--ccml-danger) 8%, transparent) !important;
+  color: var(--ccml-danger) !important;
+}
+
+:root[data-ccml-theme='light'] .duplicate-audio-summary {
+  background: #f7fbff;
+}

@@ -108,6 +108,8 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Stage 16.3 добавляет ручное выделение файлов в группе. «Оставить лучший» только выделяет все остальные строки — никакое действие не запускается автоматически. Backend не позволяет одной операцией убрать все файлы из затронутой группы.',
           '«В карантин» просит выбрать папку вне управляемых папок медиатеки, переносит файлы в подпапку «CCML Duplicates» и затем удаляет их записи из индекса. При ошибке SQLite перенос откатывается.',
           '«Удалить» является безвозвратным действием: перед запуском нужно ввести DELETE. Файлы сначала временно переименовываются, затем записи удаляются одной SQLite-транзакцией; если транзакция не проходит, исходные имена файлов восстанавливаются.',
+          'Stage 16.4 добавляет «Проверить аудио». FFmpeg декодирует все файлы текущей группы в mono PCM 4 kHz и сравнивает нормализованные признаки энергии, roughness и zero-crossing с выравниванием до ±6 секунд. Результаты: «Совпадает», «Похоже», «Отличается» или «Ошибка».',
+          'Статус «Совпадает» требует очень высокой похожести формы сигнала и близкой полной длительности. Проверка остаётся эвристикой: она помогает принять решение перед карантином/удалением, но сама не запускает действия и не заменяет прослушивание сомнительных Remix/Edit/Intro версий.',
         ],
       },
       {
@@ -294,6 +296,8 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Stage 16.3 adds manual file selection inside each group. Keep best only selects every other row; it never starts a destructive action automatically. The backend refuses any single operation that would remove every file from an affected group.',
           'Quarantine asks for a folder outside managed library roots, moves files into its CCML Duplicates subfolder, then removes their index rows. If SQLite fails, completed moves are rolled back.',
           'Delete is permanent and requires typing DELETE. Files are first renamed to temporary siblings, then index rows are removed in one SQLite transaction; if that transaction fails, original filenames are restored.',
+          'Stage 16.4 adds Check audio. FFmpeg decodes every file in the current group to 4 kHz mono PCM and compares normalized energy, roughness and zero-crossing features with alignment up to ±6 seconds. Results are Same, Similar, Different or Error.',
+          'Same requires very high decoded-waveform similarity plus close full duration. The check remains heuristic: it supports the quarantine/delete decision, never starts an action itself, and does not replace listening to questionable Remix/Edit/Intro versions.',
         ],
       },
       {

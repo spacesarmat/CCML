@@ -16,6 +16,7 @@ import {
   type TranslationKey,
 } from './i18n'
 import type {
+  DuplicateAudioVerification,
   DuplicateGroup,
   LibraryRoot,
   LibraryStats,
@@ -1006,6 +1007,19 @@ function App() {
     return {rows, nextDuplicates, nextStats}
   }
 
+  async function verifyDuplicateAudio(trackIDs: number[]): Promise<DuplicateAudioVerification | null> {
+    const result = await run(
+      language === 'ru' ? 'Сравнение декодированного аудио…' : 'Comparing decoded audio…',
+      () => backend().VerifyDuplicateAudio(trackIDs),
+    )
+    if (!result) return null
+
+    setMessage(language === 'ru'
+      ? `Проверка аудио: совпадает ${result.sameCount}, похоже ${result.similarCount}, отличается ${result.differentCount}, ошибок ${result.errorCount}`
+      : `Audio check: same ${result.sameCount}, similar ${result.similarCount}, different ${result.differentCount}, errors ${result.errorCount}`)
+    return result
+  }
+
   async function quarantineDuplicateTracks(trackIDs: number[]): Promise<boolean> {
     let destination = ''
     try {
@@ -1278,6 +1292,8 @@ function App() {
                 selectOnlyTrack(track.id)
                 setInspectorTab('tags')
               }}
+              canVerifyAudio={Boolean(status?.ffmpegReady)}
+              onVerifyAudio={verifyDuplicateAudio}
               onQuarantine={quarantineDuplicateTracks}
               onDelete={deleteDuplicateTracks}
             />

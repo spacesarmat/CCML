@@ -3,6 +3,7 @@ import type {
   BackgroundJob,
   BackgroundJobItem,
   DuplicateActionResult,
+  DuplicateAudioVerification,
   DuplicateGroup,
   FFmpegUpdateResult,
   LibraryRoot,
@@ -43,6 +44,7 @@ declare global {
           LibraryStatistics(): Promise<LibraryStats>
           ListTracks(search: string, limit: number, offset: number): Promise<Track[]>
           FindDuplicates(): Promise<DuplicateGroup[]>
+          VerifyDuplicateAudio(trackIDs: number[]): Promise<DuplicateAudioVerification>
           SelectDuplicateQuarantineFolder(): Promise<string>
           QuarantineDuplicateTracks(trackIDs: number[], destinationRoot: string): Promise<DuplicateActionResult>
           DeleteDuplicateTracks(trackIDs: number[], confirmation: string): Promise<DuplicateActionResult>

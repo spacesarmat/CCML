@@ -181,6 +181,27 @@ type TagHistory struct {
 	AffectedCount int    `json:"affectedCount"`
 }
 
+// DuplicateAudioComparison compares one track to a decoded-audio reference.
+type DuplicateAudioComparison struct {
+	TrackID         int64   `json:"trackId"`
+	Similarity      float64 `json:"similarity"`
+	OffsetMS        int64   `json:"offsetMs"`
+	DurationDeltaMS int64   `json:"durationDeltaMs"`
+	Status          string  `json:"status"`
+	Error           string  `json:"error"`
+}
+
+// DuplicateAudioVerification contains one whole-group decoded waveform check.
+type DuplicateAudioVerification struct {
+	GroupKey         string                     `json:"groupKey"`
+	ReferenceTrackID int64                      `json:"referenceTrackId"`
+	Comparisons      []DuplicateAudioComparison `json:"comparisons"`
+	SameCount        int                        `json:"sameCount"`
+	SimilarCount     int                        `json:"similarCount"`
+	DifferentCount   int                        `json:"differentCount"`
+	ErrorCount       int                        `json:"errorCount"`
+}
+
 // DuplicateActionResult summarizes a quarantine or permanent delete operation.
 type DuplicateActionResult struct {
 	Action      string   `json:"action"`

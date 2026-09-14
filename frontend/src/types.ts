@@ -159,6 +159,25 @@ export type TagHistory = {
   affectedCount: number
 }
 
+export type DuplicateAudioComparison = {
+  trackId: number
+  similarity: number
+  offsetMs: number
+  durationDeltaMs: number
+  status: 'reference' | 'same' | 'similar' | 'different' | 'error' | string
+  error: string
+}
+
+export type DuplicateAudioVerification = {
+  groupKey: string
+  referenceTrackId: number
+  comparisons: DuplicateAudioComparison[]
+  sameCount: number
+  similarCount: number
+  differentCount: number
+  errorCount: number
+}
+
 export type DuplicateActionResult = {
   action: 'quarantine' | 'delete' | string
   requested: number

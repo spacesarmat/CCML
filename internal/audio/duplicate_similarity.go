@@ -1,0 +1,362 @@
+package audio
+
+import (
+	"bytes"
+	"context"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"math"
+	"os/exec"
+	"strings"
+
+	"github.com/spacesarmat/CCML/internal/model"
+)
+
+const (
+	duplicateVerifySampleRate = 4000
+	duplicateVerifyFrameMS    = 100
+	duplicateVerifyFrameSize  = duplicateVerifySampleRate * duplicateVerifyFrameMS / 1000
+	duplicateVerifyMaxSeconds = 900
+	duplicateVerifyMaxShift   = 60 // 6 seconds at 100 ms/frame.
+)
+
+// DuplicateComparator compares decoded waveforms using low-rate mono PCM.
+//
+// This is intentionally a conservative heuristic, not a cryptographic or
+// Chromaprint identity check. It is designed to add another signal before
+// destructive duplicate actions.
+type DuplicateComparator struct {
+	tools *Toolchain
+}
+
+// NewDuplicateComparator creates a decoded-waveform comparator.
+func NewDuplicateComparator(tools *Toolchain) *DuplicateComparator {
+	return &DuplicateComparator{tools: tools}
+}
+
+type duplicateFeatures struct {
+	energy    []float64
+	roughness []float64
+	zcr       []float64
+}
+
+// Compare compares every track against one reference track.
+func (c *DuplicateComparator) Compare(
+	ctx context.Context,
+	tracks []model.Track,
+	referenceTrackID int64,
+) (model.DuplicateAudioVerification, error) {
+	if c == nil || c.tools == nil || strings.TrimSpace(c.tools.FFmpegPath()) == "" {
+		return model.DuplicateAudioVerification{}, errors.New("FFmpeg is not available")
+	}
+	if len(tracks) < 2 {
+		return model.DuplicateAudioVerification{}, errors.New("audio verification requires at least two tracks")
+	}
+
+	var reference model.Track
+	foundReference := false
+	for _, track := range tracks {
+		if track.ID == referenceTrackID {
+			reference = track
+			foundReference = true
+			break
+		}
+	}
+	if !foundReference {
+		return model.DuplicateAudioVerification{}, fmt.Errorf("reference track %d is not in the duplicate group", referenceTrackID)
+	}
+
+	referenceFeatures, err := c.decodeFeatures(ctx, reference.Path)
+	if err != nil {
+		return model.DuplicateAudioVerification{}, fmt.Errorf("decode reference track %d: %w", reference.ID, err)
+	}
+
+	result := model.DuplicateAudioVerification{
+		ReferenceTrackID: referenceTrackID,
+		Comparisons:      make([]model.DuplicateAudioComparison, 0, len(tracks)),
+	}
+
+	for _, track := range tracks {
+		if track.ID == referenceTrackID {
+			result.Comparisons = append(result.Comparisons, model.DuplicateAudioComparison{
+				TrackID:         track.ID,
+				Similarity:      1,
+				OffsetMS:        0,
+				DurationDeltaMS: 0,
+				Status:          "reference",
+			})
+			continue
+		}
+
+		features, err := c.decodeFeatures(ctx, track.Path)
+		if err != nil {
+			result.ErrorCount++
+			result.Comparisons = append(result.Comparisons, model.DuplicateAudioComparison{
+				TrackID:         track.ID,
+				DurationDeltaMS: absInt64(track.DurationMS - reference.DurationMS),
+				Status:          "error",
+				Error:           err.Error(),
+			})
+			continue
+		}
+
+		similarity, offsetFrames := bestDuplicateFeatureSimilarity(referenceFeatures, features)
+		durationDelta := absInt64(track.DurationMS - reference.DurationMS)
+		status := classifyDuplicateSimilarity(similarity, durationDelta)
+
+		switch status {
+		case "same":
+			result.SameCount++
+		case "similar":
+			result.SimilarCount++
+		case "different":
+			result.DifferentCount++
+		}
+
+		result.Comparisons = append(result.Comparisons, model.DuplicateAudioComparison{
+			TrackID:         track.ID,
+			Similarity:      similarity,
+			OffsetMS:        int64(offsetFrames * duplicateVerifyFrameMS),
+			DurationDeltaMS: durationDelta,
+			Status:          status,
+		})
+	}
+
+	return result, nil
+}
+
+func (c *DuplicateComparator) decodeFeatures(ctx context.Context, path string) (duplicateFeatures, error) {
+	cmd := exec.CommandContext(
+		ctx,
+		c.tools.FFmpegPath(),
+		"-v", "error",
+		"-nostdin",
+		"-i", path,
+		"-map", "0:a:0",
+		"-vn",
+		"-ac", "1",
+		"-ar", fmt.Sprintf("%d", duplicateVerifySampleRate),
+		"-t", fmt.Sprintf("%d", duplicateVerifyMaxSeconds),
+		"-f", "s16le",
+		"pipe:1",
+	)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return duplicateFeatures{}, ctx.Err()
+		}
+		return duplicateFeatures{}, fmt.Errorf(
+			"FFmpeg decode failed: %w: %s",
+			err,
+			strings.TrimSpace(stderr.String()),
+		)
+	}
+
+	payload := stdout.Bytes()
+	if len(payload) < duplicateVerifyFrameSize*2*10 {
+		return duplicateFeatures{}, errors.New("decoded audio is too short for reliable comparison")
+	}
+	if len(payload)%2 != 0 {
+		payload = payload[:len(payload)-1]
+	}
+
+	samples := make([]int16, len(payload)/2)
+	for i := range samples {
+		samples[i] = int16(binary.LittleEndian.Uint16(payload[i*2 : i*2+2]))
+	}
+	return extractDuplicateFeatures(samples), nil
+}
+
+func extractDuplicateFeatures(samples []int16) duplicateFeatures {
+	frameCount := len(samples) / duplicateVerifyFrameSize
+	features := duplicateFeatures{
+		energy:    make([]float64, 0, frameCount),
+		roughness: make([]float64, 0, frameCount),
+		zcr:       make([]float64, 0, frameCount),
+	}
+
+	for frame := 0; frame < frameCount; frame++ {
+		start := frame * duplicateVerifyFrameSize
+		end := start + duplicateVerifyFrameSize
+		block := samples[start:end]
+
+		var sumSquares float64
+		var diffSum float64
+		zeroCrossings := 0
+		previous := float64(block[0])
+
+		for i, sample := range block {
+			value := float64(sample) / 32768.0
+			sumSquares += value * value
+			if i > 0 {
+				diffSum += math.Abs(value - previous)
+				if (value >= 0) != (previous >= 0) {
+					zeroCrossings++
+				}
+			}
+			previous = value
+		}
+
+		rms := math.Sqrt(sumSquares / float64(len(block)))
+		// Log energy makes the feature resilient to simple gain differences.
+		features.energy = append(features.energy, math.Log1p(rms*1000))
+		features.roughness = append(features.roughness, diffSum/float64(maxInt(len(block)-1, 1)))
+		features.zcr = append(features.zcr, float64(zeroCrossings)/float64(maxInt(len(block)-1, 1)))
+	}
+
+	features.energy = zNormalize(features.energy)
+	features.roughness = zNormalize(features.roughness)
+	features.zcr = zNormalize(features.zcr)
+	return features
+}
+
+func bestDuplicateFeatureSimilarity(left, right duplicateFeatures) (float64, int) {
+	maxFrames := maxInt(len(left.energy), len(right.energy))
+	minFrames := minInt(len(left.energy), len(right.energy))
+	if minFrames < 10 {
+		return 0, 0
+	}
+
+	minOverlap := maxInt(10, int(float64(minFrames)*0.70))
+	bestScore := -1.0
+	bestShift := 0
+
+	for shift := -duplicateVerifyMaxShift; shift <= duplicateVerifyMaxShift; shift++ {
+		leftStart := 0
+		rightStart := 0
+		if shift > 0 {
+			rightStart = shift
+		} else if shift < 0 {
+			leftStart = -shift
+		}
+
+		overlap := minInt(len(left.energy)-leftStart, len(right.energy)-rightStart)
+		if overlap < minOverlap {
+			continue
+		}
+
+		energyCorr := positiveCorrelation(
+			left.energy[leftStart:leftStart+overlap],
+			right.energy[rightStart:rightStart+overlap],
+		)
+		roughCorr := positiveCorrelation(
+			left.roughness[leftStart:leftStart+overlap],
+			right.roughness[rightStart:rightStart+overlap],
+		)
+		zcrCorr := positiveCorrelation(
+			left.zcr[leftStart:leftStart+overlap],
+			right.zcr[rightStart:rightStart+overlap],
+		)
+
+		contentScore := 0.58*energyCorr + 0.27*roughCorr + 0.15*zcrCorr
+		durationRatio := float64(minFrames) / float64(maxFrames)
+		// Duration matters, but only modestly: an edit can still be reported
+		// "similar" without being misclassified as the same full recording.
+		score := contentScore * (0.88 + 0.12*durationRatio)
+		if score > bestScore {
+			bestScore = score
+			bestShift = shift
+		}
+	}
+
+	if bestScore < 0 {
+		return 0, 0
+	}
+	if bestScore > 1 {
+		bestScore = 1
+	}
+	return bestScore, bestShift
+}
+
+func classifyDuplicateSimilarity(similarity float64, durationDeltaMS int64) string {
+	switch {
+	case similarity >= 0.985 && durationDeltaMS <= 1_500:
+		return "same"
+	case similarity >= 0.93:
+		return "similar"
+	default:
+		return "different"
+	}
+}
+
+func positiveCorrelation(left, right []float64) float64 {
+	if len(left) != len(right) || len(left) < 2 {
+		return 0
+	}
+
+	var dot float64
+	var leftSquares float64
+	var rightSquares float64
+	for i := range left {
+		dot += left[i] * right[i]
+		leftSquares += left[i] * left[i]
+		rightSquares += right[i] * right[i]
+	}
+	if leftSquares <= 1e-12 || rightSquares <= 1e-12 {
+		return 0
+	}
+
+	value := dot / math.Sqrt(leftSquares*rightSquares)
+	if value < 0 {
+		return 0
+	}
+	if value > 1 {
+		return 1
+	}
+	return value
+}
+
+func zNormalize(values []float64) []float64 {
+	if len(values) == 0 {
+		return values
+	}
+	var mean float64
+	for _, value := range values {
+		mean += value
+	}
+	mean /= float64(len(values))
+
+	var variance float64
+	for _, value := range values {
+		delta := value - mean
+		variance += delta * delta
+	}
+	variance /= float64(len(values))
+	stdDev := math.Sqrt(variance)
+
+	out := make([]float64, len(values))
+	if stdDev <= 1e-12 {
+		return out
+	}
+	for i, value := range values {
+		out[i] = (value - mean) / stdDev
+	}
+	return out
+}
+
+func absInt64(value int64) int64 {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
+func minInt(left, right int) int {
+	if left < right {
+		return left
+	}
+	return right
+}
+
+func maxInt(left, right int) int {
+	if left > right {
+		return left
+	}
+	return right
+}

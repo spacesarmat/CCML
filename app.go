@@ -27,26 +27,27 @@ import (
 
 // App is the Wails binding exposed to the React frontend.
 type App struct {
-	ctx            context.Context
-	store          *store.Store
-	scanMu         sync.Mutex
-	scanCancel     context.CancelFunc
-	tools          *audio.Toolchain
-	scanner        *library.Scanner
-	processor      *audio.Processor
-	bpmKey         *audio.EssentiaAnalyzer
-	metadataMu     sync.RWMutex
-	metadata       *metadata.Service
-	settings       *settings.Service
-	metadataConfig model.MetadataSettings
-	organizer      *organize.Service
-	tagEditor      *tagging.Service
-	media          *mediaService
-	jobs           *jobqueue.Manager
-	toolUpdater    *audio.ToolUpdater
-	toolUpdateMu   sync.Mutex
-	toolUpdating   bool
-	toolUpdateErr  string
+	ctx                 context.Context
+	store               *store.Store
+	scanMu              sync.Mutex
+	scanCancel          context.CancelFunc
+	tools               *audio.Toolchain
+	scanner             *library.Scanner
+	processor           *audio.Processor
+	duplicateComparator *audio.DuplicateComparator
+	bpmKey              *audio.EssentiaAnalyzer
+	metadataMu          sync.RWMutex
+	metadata            *metadata.Service
+	settings            *settings.Service
+	metadataConfig      model.MetadataSettings
+	organizer           *organize.Service
+	tagEditor           *tagging.Service
+	media               *mediaService
+	jobs                *jobqueue.Manager
+	toolUpdater         *audio.ToolUpdater
+	toolUpdateMu        sync.Mutex
+	toolUpdating        bool
+	toolUpdateErr       string
 }
 
 // NewApp creates all backend services and opens the media-library database.
@@ -98,17 +99,18 @@ func NewApp() (*App, error) {
 	}
 
 	app := &App{
-		store:          db,
-		tools:          tools,
-		scanner:        library.NewScanner(db, probe),
-		processor:      processor,
-		bpmKey:         audio.NewEssentiaAnalyzer(),
-		metadata:       metaService,
-		settings:       settingsService,
-		metadataConfig: metadataConfig,
-		organizer:      organize.NewService(db),
-		tagEditor:      tagEditor,
-		media:          media,
+		store:               db,
+		tools:               tools,
+		scanner:             library.NewScanner(db, probe),
+		processor:           processor,
+		duplicateComparator: audio.NewDuplicateComparator(tools),
+		bpmKey:              audio.NewEssentiaAnalyzer(),
+		metadata:            metaService,
+		settings:            settingsService,
+		metadataConfig:      metadataConfig,
+		organizer:           organize.NewService(db),
+		tagEditor:           tagEditor,
+		media:               media,
 	}
 	app.toolUpdater = audio.NewToolUpdater(appDir, tools)
 	app.jobs = jobqueue.New(db)
@@ -512,6 +514,12 @@ func (a *App) FindDuplicates() ([]model.DuplicateGroup, error) {
 		return nil, err
 	}
 	return library.FindDuplicates(tracks, 2_000), nil
+}
+
+// VerifyDuplicateAudio decodes one current duplicate group through FFmpeg and
+// compares low-rate waveform features against the group's quality reference.
+func (a *App) VerifyDuplicateAudio(trackIDs []int64) (model.DuplicateAudioVerification, error) {
+	return library.VerifyDuplicateAudio(a.context(), a.store, a.duplicateComparator, trackIDs)
 }
 
 // SelectDuplicateQuarantineFolder selects a folder outside the managed library.

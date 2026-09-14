@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react'
 import type {AppLanguage} from './i18n'
-import type {DuplicateGroup, DuplicateTrackQuality, Track} from './types'
+import type {DuplicateAudioVerification, DuplicateGroup, DuplicateTrackQuality, Track} from './types'
 
 type Props = {
   language: AppLanguage
@@ -9,6 +9,8 @@ type Props = {
   onBack: () => void
   onRefresh: () => void
   onOpenTrack: (track: Track) => void
+  canVerifyAudio: boolean
+  onVerifyAudio: (trackIDs: number[]) => Promise<DuplicateAudioVerification | null>
   onQuarantine: (trackIDs: number[]) => Promise<boolean>
   onDelete: (trackIDs: number[]) => Promise<boolean>
 }
@@ -67,6 +69,8 @@ function DuplicateGroupsView({
   onBack,
   onRefresh,
   onOpenTrack,
+  canVerifyAudio,
+  onVerifyAudio,
   onQuarantine,
   onDelete,
 }: Props) {
@@ -76,6 +80,7 @@ function DuplicateGroupsView({
   const [selectedIDs, setSelectedIDs] = useState<Set<number>>(new Set())
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [audioChecks, setAudioChecks] = useState<Record<string, DuplicateAudioVerification>>({})
 
   const copy = language === 'ru'
     ? {
@@ -130,6 +135,17 @@ function DuplicateGroupsView({
         deleteFiles: (count: number) => `Файлов к удалению: ${count}`,
         keepOneSafety: 'Backend дополнительно проверит, что в каждой группе останется хотя бы один файл.',
         selectTrack: 'Выбрать файл для действия',
+        verifyAudio: 'Проверить аудио',
+        verifyAudioUnavailable: 'Для проверки аудио требуется FFmpeg.',
+        verifyAudioHint: 'FFmpeg декодирует файлы в низкочастотный mono PCM и сравнивает форму сигнала. Это дополнительная эвристика, а не доказательство идентичности.',
+        audioReference: 'Эталон',
+        audioSame: 'Совпадает',
+        audioSimilar: 'Похоже',
+        audioDifferent: 'Отличается',
+        audioError: 'Ошибка',
+        audioSummary: (same: number, similar: number, different: number, errors: number) => `Аудио: совпадает ${same} · похоже ${similar} · отличается ${different} · ошибок ${errors}`,
+        similarity: 'сходство',
+        offset: 'сдвиг',
         qualityReasons: {
           lossless: 'lossless',
           efficient_lossy: 'эффективный lossy-кодек',
@@ -219,6 +235,17 @@ function DuplicateGroupsView({
         deleteFiles: (count: number) => `Files to delete: ${count}`,
         keepOneSafety: 'The backend also verifies that at least one file remains in every affected group.',
         selectTrack: 'Select file for action',
+        verifyAudio: 'Check audio',
+        verifyAudioUnavailable: 'FFmpeg is required for audio verification.',
+        verifyAudioHint: 'FFmpeg decodes files to low-rate mono PCM and compares waveform features. This is an additional heuristic, not proof of identity.',
+        audioReference: 'Reference',
+        audioSame: 'Same',
+        audioSimilar: 'Similar',
+        audioDifferent: 'Different',
+        audioError: 'Error',
+        audioSummary: (same: number, similar: number, different: number, errors: number) => `Audio: same ${same} · similar ${similar} · different ${different} · errors ${errors}`,
+        similarity: 'similarity',
+        offset: 'offset',
         qualityReasons: {
           lossless: 'lossless',
           efficient_lossy: 'efficient lossy codec',
@@ -262,6 +289,7 @@ function DuplicateGroupsView({
     setSelectedIDs(new Set())
     setPendingDelete(null)
     setDeleteConfirm('')
+    setAudioChecks({})
   }, [groups])
 
   const filtered = useMemo(() => {
@@ -315,6 +343,37 @@ function DuplicateGroupsView({
     if (!quality) return copy.scoreTitle
     const reasons = quality.reasons.map((reason) => copy.qualityReasons[reason] || reason)
     return `${copy.scoreTitle}\n${quality.score}/100 · ${copy.audio}: ${quality.audioScore}/80 · ${copy.metadataScore}: ${quality.metadataScore}/20\n${reasons.join(' · ')}`
+  }
+
+  function audioStatusLabel(status: string): string {
+    switch (status) {
+      case 'reference': return copy.audioReference
+      case 'same': return copy.audioSame
+      case 'similar': return copy.audioSimilar
+      case 'different': return copy.audioDifferent
+      case 'error': return copy.audioError
+      default: return status
+    }
+  }
+
+  function audioComparisonTitle(
+    verification: DuplicateAudioVerification | undefined,
+    trackID: number,
+  ): string {
+    const comparison = verification?.comparisons.find((item) => item.trackId === trackID)
+    if (!comparison) return copy.verifyAudioHint
+    if (comparison.error) return `${audioStatusLabel(comparison.status)}: ${comparison.error}`
+    if (comparison.status === 'reference') return `${copy.audioReference}. ${copy.verifyAudioHint}`
+
+    const percent = Math.round(comparison.similarity * 1000) / 10
+    const offset = comparison.offsetMs === 0 ? '0 ms' : `${comparison.offsetMs > 0 ? '+' : ''}${comparison.offsetMs} ms`
+    return `${audioStatusLabel(comparison.status)} · ${copy.similarity}: ${percent}% · ${copy.offset}: ${offset}\n${copy.verifyAudioHint}`
+  }
+
+  async function verifyGroupAudio(group: DuplicateGroup) {
+    const result = await onVerifyAudio(group.tracks.map((track) => track.id))
+    if (!result) return
+    setAudioChecks((current) => ({...current, [group.key]: result}))
   }
 
   function selectedTracks(group: DuplicateGroup): Track[] {
@@ -434,6 +493,8 @@ function DuplicateGroupsView({
           {filtered.map((group) => {
             const open = openGroups.has(group.key)
             const scores = qualityMap(group)
+            const verification = audioChecks[group.key]
+            const audioByTrack = new Map(verification?.comparisons.map((item) => [item.trackId, item]) ?? [])
             const groupSelected = selectedTracks(group)
             const sortedTracks = [...group.tracks].sort((left, right) => {
               const leftScore = scores.get(left.id)
@@ -485,6 +546,15 @@ function DuplicateGroupsView({
                       </button>
                       <button
                         type="button"
+                        className="duplicate-verify-audio"
+                        title={canVerifyAudio ? copy.verifyAudioHint : copy.verifyAudioUnavailable}
+                        disabled={busy || !canVerifyAudio}
+                        onClick={() => void verifyGroupAudio(group)}
+                      >
+                        {copy.verifyAudio}
+                      </button>
+                      <button
+                        type="button"
                         disabled={busy || groupSelected.length === 0}
                         onClick={() => void quarantineGroup(group)}
                       >
@@ -499,6 +569,18 @@ function DuplicateGroupsView({
                         {copy.delete}
                       </button>
                     </div>
+
+                    {verification && (
+                      <div className="duplicate-audio-summary" title={copy.verifyAudioHint}>
+                        <strong>{copy.audioSummary(
+                          verification.sameCount,
+                          verification.similarCount,
+                          verification.differentCount,
+                          verification.errorCount,
+                        )}</strong>
+                        <span>{copy.audioReference}: {group.tracks.find((track) => track.id === verification.referenceTrackId)?.fileName || verification.referenceTrackId}</span>
+                      </div>
+                    )}
 
                     <div className="duplicate-reasons">
                       {group.reasons.map((reason) => (
@@ -547,6 +629,17 @@ function DuplicateGroupsView({
                             <span className="duplicate-quality-cell" title={qualityTitle(quality)}>
                               <strong>{quality?.score ?? 0}</strong>
                               <small>{copy.audio} {quality?.audioScore ?? 0} · {copy.metadataScore} {quality?.metadataScore ?? 0}</small>
+                              {audioByTrack.get(track.id) && (
+                                <em
+                                  className={`duplicate-audio-badge ${audioByTrack.get(track.id)?.status || ''}`}
+                                  title={audioComparisonTitle(verification, track.id)}
+                                >
+                                  {audioStatusLabel(audioByTrack.get(track.id)?.status || '')}
+                                  {audioByTrack.get(track.id)?.status !== 'reference' && audioByTrack.get(track.id)?.status !== 'error'
+                                    ? ` ${Math.round((audioByTrack.get(track.id)?.similarity || 0) * 100)}%`
+                                    : ''}
+                                </em>
+                              )}
                             </span>
                             <span>{track.codec || track.extension.replace('.', '').toUpperCase() || '—'}</span>
                             <span>{formatBitRate(track.bitRate)}</span>
