@@ -1,6 +1,6 @@
 import {useMemo, useState} from 'react'
 import {translate, type AppLanguage, type TranslationKey} from './i18n'
-import type {TagApplyResult, TagPreview, TagTransformRequest, Track} from './types'
+import type {TagPreview, TagTransformRequest, Track} from './types'
 
 type TextField =
   | 'title'
@@ -23,8 +23,7 @@ type Props = {
   disabled: boolean
   onBusyChange: (busy: boolean) => void
   onMessage: (message: string) => void
-  onPreview: (preview: TagPreview[]) => void
-  onChanged: () => Promise<void>
+  onPreview: (preview: TagPreview[], request: TagTransformRequest) => void
 }
 
 const textFields: Array<{field: TextField; label: TranslationKey}> = [
@@ -53,7 +52,6 @@ function BatchTagTransforms({
   onBusyChange,
   onMessage,
   onPreview,
-  onChanged,
 }: Props) {
   const [operation, setOperation] = useState<Operation>('trim')
   const [fields, setFields] = useState<TextField[]>([])
@@ -62,13 +60,12 @@ function BatchTagTransforms({
   const [affix, setAffix] = useState('')
   const [caseSensitive, setCaseSensitive] = useState(false)
   const [copyDirection, setCopyDirection] = useState<'artistToAlbumArtist' | 'albumArtistToArtist'>('artistToAlbumArtist')
-  const [previewKey, setPreviewKey] = useState('')
   const [busy, setBusy] = useState(false)
 
   const copy = language === 'ru'
     ? {
         title: 'Преобразования',
-        hint: 'Преобразования рассчитываются отдельно для каждого файла. Перед применением обязателен предпросмотр.',
+        hint: 'Результат рассчитывается отдельно для каждого файла. Нажмите предпросмотр, затем примените изменения из отдельного окна.',
         operation: 'Операция',
         fields: 'Поля',
         trim: 'Обрезать пробелы по краям',
@@ -86,20 +83,15 @@ function BatchTagTransforms({
         artistToAlbumArtist: 'Исполнитель → Исполнитель альбома',
         albumArtistToArtist: 'Исполнитель альбома → Исполнитель',
         preview: 'Предпросмотр преобразования',
-        apply: 'Применить преобразование',
-        previewRequired: 'После изменения параметров снова выполните предпросмотр.',
         selectField: 'Выберите хотя бы одно поле.',
         invalidReplace: 'Введите строку для поиска.',
         invalidAffix: 'Введите текст префикса/суффикса.',
         previewing: 'Подготовка предпросмотра преобразования…',
         previewReady: (count: number) => `Предпросмотр готов: ${count}`,
-        confirm: (count: number) => `Применить преобразование к ${count} трекам?`,
-        applying: 'Применение массового преобразования…',
-        applied: (result: TagApplyResult) => `Преобразование: изменено ${result.changed}, ошибок ${result.failed}`,
       }
     : {
         title: 'Transforms',
-        hint: 'Transforms are calculated separately for each file. Preview is required before applying.',
+        hint: 'Output is calculated independently for each file. Preview first, then apply from the separate preview window.',
         operation: 'Operation',
         fields: 'Fields',
         trim: 'Trim leading/trailing whitespace',
@@ -117,16 +109,11 @@ function BatchTagTransforms({
         artistToAlbumArtist: 'Artist → Album Artist',
         albumArtistToArtist: 'Album Artist → Artist',
         preview: 'Preview transform',
-        apply: 'Apply transform',
-        previewRequired: 'Preview again after changing any transform setting.',
         selectField: 'Select at least one field.',
         invalidReplace: 'Enter text to find.',
         invalidAffix: 'Enter prefix/suffix text.',
         previewing: 'Preparing transform preview…',
         previewReady: (count: number) => `Preview ready: ${count}`,
-        confirm: (count: number) => `Apply transform to ${count} tracks?`,
-        applying: 'Applying batch transform…',
-        applied: (result: TagApplyResult) => `Transform: changed ${result.changed}, failed ${result.failed}`,
       }
 
   const request = useMemo<TagTransformRequest>(() => {
@@ -146,16 +133,12 @@ function BatchTagTransforms({
     }
   }, [operation, fields, search, replacement, affix, copyDirection, caseSensitive])
 
-  const currentKey = useMemo(() => JSON.stringify(request), [request])
-
   const validationError = useMemo(() => {
     if (operation !== 'copy' && fields.length === 0) return copy.selectField
     if (operation === 'replace' && search.length === 0) return copy.invalidReplace
     if ((operation === 'prefix' || operation === 'suffix') && affix.length === 0) return copy.invalidAffix
     return ''
   }, [operation, fields, search, affix, copy.selectField, copy.invalidReplace, copy.invalidAffix])
-
-  const previewCurrent = previewKey !== '' && previewKey === currentKey
 
   function toggleField(field: TextField) {
     setFields((current) => (
@@ -165,53 +148,30 @@ function BatchTagTransforms({
     ))
   }
 
-  async function run(label: string, work: () => Promise<void>) {
-    setBusy(true)
-    onBusyChange(true)
-    onMessage(label)
-    try {
-      await work()
-    } catch (error) {
-      onMessage(error instanceof Error ? error.message : String(error))
-    } finally {
-      setBusy(false)
-      onBusyChange(false)
-    }
-  }
-
   async function previewTransform() {
     if (validationError) {
       onMessage(validationError)
       return
     }
 
-    const key = currentKey
-    await run(copy.previewing, async () => {
-      const result = await api().PreviewTagTransforms(tracks.map((track) => track.id), request)
-      onPreview(result ?? [])
-      setPreviewKey(key)
+    setBusy(true)
+    onBusyChange(true)
+    onMessage(copy.previewing)
+
+    try {
+      const requestSnapshot: TagTransformRequest = {
+        ...request,
+        fields: [...request.fields],
+      }
+      const result = await api().PreviewTagTransforms(tracks.map((track) => track.id), requestSnapshot)
+      onPreview(result ?? [], requestSnapshot)
       onMessage(copy.previewReady(result?.length ?? 0))
-    })
-  }
-
-  async function applyTransform() {
-    if (validationError) {
-      onMessage(validationError)
-      return
+    } catch (error) {
+      onMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+      onBusyChange(false)
     }
-    if (!previewCurrent) {
-      onMessage(copy.previewRequired)
-      return
-    }
-    if (!window.confirm(copy.confirm(tracks.length))) return
-
-    await run(copy.applying, async () => {
-      const result = await api().ApplyTagTransforms(tracks.map((track) => track.id), request)
-      await onChanged()
-      onPreview([])
-      setPreviewKey('')
-      onMessage(copy.applied(result))
-    })
   }
 
   return (
@@ -313,23 +273,15 @@ function BatchTagTransforms({
       )}
 
       {validationError && <small className="batch-transform-warning">{validationError}</small>}
-      {!validationError && !previewCurrent && <small className="batch-transform-note">{copy.previewRequired}</small>}
 
-      <div className="batch-transform-actions">
+      <div className="batch-transform-actions single">
         <button
           type="button"
+          className="primary"
           disabled={disabled || busy || Boolean(validationError)}
           onClick={previewTransform}
         >
           {copy.preview}
-        </button>
-        <button
-          type="button"
-          className="primary"
-          disabled={disabled || busy || Boolean(validationError) || !previewCurrent}
-          onClick={applyTransform}
-        >
-          {copy.apply}
         </button>
       </div>
     </section>

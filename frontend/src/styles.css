@@ -5269,3 +5269,307 @@ button:disabled:hover {
     max-height: calc(62vh - 58px);
   }
 }
+/* Stage 15.3.1 — normalized tools toolbar and preview modal */
+
+/* Final override for historical Stage 7/14/15 toolbar rules. */
+.table-columns-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  width: 100%;
+  min-height: 42px;
+  padding: 6px 8px;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  align-content: center;
+  gap: 6px;
+  overflow: visible;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+  background: var(--ccml-bg-elevated);
+}
+
+.batch-tools-toolbar,
+.table-preset-picker,
+.table-column-picker {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  margin: 0;
+}
+
+.batch-tools-trigger,
+.table-preset-trigger,
+.table-column-picker > summary {
+  min-height: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--ccml-radius-md);
+  line-height: 1;
+}
+
+.batch-tools-popover {
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(720px, calc(100vw - 42px));
+  max-height: min(650px, 72vh);
+}
+
+.batch-tools-scroll {
+  max-height: calc(min(650px, 72vh) - 54px);
+}
+
+.batch-tools-actions.single,
+.batch-transform-actions.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.batch-tools-actions.single button,
+.batch-transform-actions.single button {
+  width: 100%;
+}
+
+/* Separate Before/After preview window. */
+.batch-preview-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  padding: 28px;
+  display: grid;
+  place-items: center;
+  background: var(--ccml-modal-backdrop);
+  backdrop-filter: blur(2px);
+}
+
+.batch-preview-modal {
+  width: min(1040px, calc(100vw - 56px));
+  max-height: min(820px, calc(100vh - 56px));
+  min-height: 360px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-xl);
+  background: var(--ccml-bg-elevated);
+  box-shadow: var(--ccml-shadow-lg);
+}
+
+.batch-preview-head {
+  min-width: 0;
+  padding: 13px 14px 11px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+  background: var(--ccml-surface-1);
+}
+
+.batch-preview-head > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.batch-preview-head h2 {
+  margin: 0;
+  color: var(--ccml-text-strong);
+  font-size: 14px;
+}
+
+.batch-preview-head p {
+  margin: 4px 0 0;
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.batch-preview-head > button {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+}
+
+.batch-preview-stats {
+  padding: 8px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+  background: var(--ccml-surface-2);
+}
+
+.batch-preview-stats span {
+  min-height: 27px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: 999px;
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.batch-preview-stats strong {
+  color: var(--ccml-text-strong);
+  font-size: 9px;
+}
+
+.batch-preview-body {
+  min-height: 0;
+  padding: 10px 12px 14px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overflow: auto;
+  scrollbar-gutter: auto;
+}
+
+.batch-preview-file {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-lg);
+  background: var(--ccml-surface-1);
+}
+
+.batch-preview-file > header {
+  min-width: 0;
+  padding: 7px 9px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+  color: var(--ccml-text);
+  font-size: 8px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--ccml-surface-2);
+}
+
+.batch-preview-table {
+  min-width: 0;
+  display: grid;
+}
+
+.batch-preview-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(110px, .45fr) minmax(160px, 1fr) minmax(160px, 1fr);
+  border-bottom: 1px solid var(--ccml-border-subtle);
+}
+
+.batch-preview-row:last-child {
+  border-bottom: 0;
+}
+
+.batch-preview-row > * {
+  min-width: 0;
+  padding: 7px 9px;
+  overflow-wrap: anywhere;
+  border-right: 1px solid var(--ccml-border-subtle);
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.batch-preview-row > *:last-child {
+  border-right: 0;
+}
+
+.batch-preview-row strong {
+  color: var(--ccml-text-strong);
+  font-weight: 600;
+}
+
+.batch-preview-row .after {
+  color: var(--ccml-success);
+  background: color-mix(in srgb, var(--ccml-success) 6%, transparent);
+}
+
+.batch-preview-row-head {
+  background: var(--ccml-surface-2);
+}
+
+.batch-preview-row-head > * {
+  color: var(--ccml-text-dim);
+  font-weight: 600;
+}
+
+.batch-preview-empty {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  color: var(--ccml-text-muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.batch-preview-footer {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  border-top: 1px solid var(--ccml-border-subtle);
+  background: var(--ccml-surface-1);
+}
+
+.batch-preview-footer button {
+  min-width: 120px;
+}
+
+:root[data-ccml-theme='light'] .table-columns-toolbar,
+:root[data-ccml-theme='light'] .batch-preview-modal,
+:root[data-ccml-theme='light'] .batch-preview-file {
+  background: #ffffff;
+}
+
+:root[data-ccml-theme='light'] .batch-preview-file > header,
+:root[data-ccml-theme='light'] .batch-preview-row-head,
+:root[data-ccml-theme='light'] .batch-preview-stats,
+:root[data-ccml-theme='light'] .batch-preview-footer {
+  background: #f5f8fb;
+}
+
+@media (max-width: 1180px) {
+  .table-columns-toolbar {
+    min-height: 42px;
+    flex-wrap: wrap;
+  }
+
+  .batch-tools-popover {
+    width: min(620px, calc(100vw - 24px));
+  }
+}
+
+@media (max-width: 760px) {
+  .batch-preview-backdrop {
+    padding: 10px;
+  }
+
+  .batch-preview-modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+
+  .batch-preview-row {
+    grid-template-columns: minmax(90px, .42fr) minmax(120px, 1fr) minmax(120px, 1fr);
+  }
+
+  .batch-preview-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .batch-preview-footer button {
+    min-width: 0;
+  }
+}

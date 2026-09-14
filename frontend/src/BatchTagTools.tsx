@@ -1,11 +1,16 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
+import BatchPreviewModal from './BatchPreviewModal'
 import BatchTagFields from './BatchTagFields'
 import BatchTagTransforms from './BatchTagTransforms'
-import {translate, type AppLanguage, type TranslationKey} from './i18n'
-import type {TagPatch, TagPreview, Track} from './types'
+import {type AppLanguage} from './i18n'
+import type {TagPatch, TagPreview, TagTransformRequest, Track} from './types'
 
 type EditableField = Exclude<keyof TagPatch, 'fields'>
 type OpenTool = 'edit' | 'transform' | null
+
+type PreviewState =
+  | {kind: 'edit'; items: TagPreview[]; patch: TagPatch}
+  | {kind: 'transform'; items: TagPreview[]; request: TagTransformRequest}
 
 type Props = {
   language: AppLanguage
@@ -18,25 +23,6 @@ type Props = {
   onMessage: (message: string) => void
   onChanged: () => Promise<void>
 }
-
-const editableFields: EditableField[] = [
-  'title',
-  'artist',
-  'album',
-  'albumArtist',
-  'genre',
-  'composer',
-  'comment',
-  'label',
-  'catalogNumber',
-  'isrc',
-  'releaseDate',
-  'year',
-  'trackNumber',
-  'trackTotal',
-  'discNumber',
-  'discTotal',
-]
 
 const emptyPatch: TagPatch = {
   fields: [],
@@ -97,38 +83,6 @@ function buildInitialPatch(tracks: Track[]): TagPatch {
   }
 }
 
-function describeChanges(item: TagPreview, language: AppLanguage): string {
-  const labels: Record<EditableField, TranslationKey> = {
-    title: 'tags.field.title',
-    artist: 'tags.field.artist',
-    album: 'tags.field.album',
-    albumArtist: 'tags.field.albumArtist',
-    genre: 'tags.field.genre',
-    composer: 'tags.field.composer',
-    comment: 'tags.field.comment',
-    label: 'tags.field.label',
-    catalogNumber: 'tags.field.catalogNumber',
-    isrc: 'tags.field.isrc',
-    releaseDate: 'tags.field.releaseDate',
-    year: 'tags.field.year',
-    trackNumber: 'tags.field.track',
-    trackTotal: 'tags.field.trackTotal',
-    discNumber: 'tags.field.disc',
-    discTotal: 'tags.field.discTotal',
-  }
-
-  const changes: string[] = []
-  for (const field of editableFields) {
-    if (item.before[field] !== item.after[field]) {
-      changes.push(
-        `${translate(language, labels[field])}: ${String(item.before[field] || '—')} → ${String(item.after[field] || '—')}`,
-      )
-    }
-  }
-
-  return changes.join(' · ') || translate(language, 'tags.noChanges')
-}
-
 function BatchTagTools({
   language,
   tracks,
@@ -142,8 +96,7 @@ function BatchTagTools({
 }: Props) {
   const [openTool, setOpenTool] = useState<OpenTool>(null)
   const [patch, setPatch] = useState<TagPatch>(() => buildInitialPatch(tracks))
-  const [editPreview, setEditPreview] = useState<TagPreview[]>([])
-  const [transformPreview, setTransformPreview] = useState<TagPreview[]>([])
+  const [preview, setPreview] = useState<PreviewState | null>(null)
   const [localBusy, setLocalBusy] = useState(false)
   const closeTimer = useRef<number | null>(null)
   const selectionKey = useMemo(() => tracks.map((track) => track.id).join(','), [tracks])
@@ -153,53 +106,54 @@ function BatchTagTools({
         edit: 'Массовые теги',
         transform: 'Преобразования',
         editTitle: 'Массовое редактирование тегов',
-        editHint: (count: number) => `Выбрано треков: ${count}. Изменяются только поля, отмеченные как «Заменить» или «Очистить».`,
+        editHint: (count: number) => `Выбрано треков: ${count}. Изменяются только поля «Заменить» и «Очистить».`,
         transformTitle: 'Преобразования тегов',
         transformHint: (count: number) => `Выбрано треков: ${count}. Результат рассчитывается отдельно для каждого файла.`,
-        preview: 'Предпросмотр',
-        apply: 'Записать теги',
+        preview: 'Открыть предпросмотр',
         selectFieldFirst: 'Сначала выберите поля для изменения.',
         previewing: 'Подготовка предпросмотра тегов…',
         previewReady: (count: number) => `Предпросмотр готов: ${count}`,
-        confirm: (count: number) => `Записать изменения в ${count} треков?`,
-        applying: 'Запись массовых тегов…',
-        applied: (changed: number, failed: number) => `Теги: изменено ${changed}, ошибок ${failed}`,
-        previewTitle: 'Предпросмотр изменений',
-        previewMore: (count: number) => `Ещё файлов: ${count}`,
+        applyingTags: 'Запись массовых тегов…',
+        appliedTags: (changed: number, failed: number) => `Теги: изменено ${changed}, ошибок ${failed}`,
+        applyingTransform: 'Применение массового преобразования…',
+        appliedTransform: (changed: number, failed: number) => `Преобразование: изменено ${changed}, ошибок ${failed}`,
       }
     : {
         edit: 'Batch tags',
         transform: 'Transforms',
         editTitle: 'Batch tag editing',
-        editHint: (count: number) => `${count} tracks selected. Only fields set to Replace or Clear are written.`,
+        editHint: (count: number) => `${count} tracks selected. Only Replace and Clear fields are written.`,
         transformTitle: 'Tag transforms',
         transformHint: (count: number) => `${count} tracks selected. Output is calculated independently for each file.`,
-        preview: 'Preview',
-        apply: 'Write tags',
+        preview: 'Open preview',
         selectFieldFirst: 'Select fields to change first.',
         previewing: 'Preparing tag preview…',
         previewReady: (count: number) => `Preview ready: ${count}`,
-        confirm: (count: number) => `Write changes to ${count} tracks?`,
-        applying: 'Writing batch tags…',
-        applied: (changed: number, failed: number) => `Tags: changed ${changed}, failed ${failed}`,
-        previewTitle: 'Change preview',
-        previewMore: (count: number) => `${count} more files`,
+        applyingTags: 'Writing batch tags…',
+        appliedTags: (changed: number, failed: number) => `Tags: changed ${changed}, failed ${failed}`,
+        applyingTransform: 'Applying batch transform…',
+        appliedTransform: (changed: number, failed: number) => `Transform: changed ${changed}, failed ${failed}`,
       }
 
   useEffect(() => {
     setPatch(buildInitialPatch(tracks))
-    setEditPreview([])
-    setTransformPreview([])
+    setPreview(null)
     if (tracks.length < 2) setOpenTool(null)
   }, [selectionKey, revision])
 
   useEffect(() => {
     setOpenTool(null)
+    setPreview(null)
   }, [closeSignal])
 
   useEffect(() => {
     function onEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpenTool(null)
+      if (event.key !== 'Escape') return
+      if (!localBusy && preview) {
+        setPreview(null)
+        return
+      }
+      setOpenTool(null)
     }
 
     window.addEventListener('keydown', onEscape)
@@ -207,7 +161,7 @@ function BatchTagTools({
       window.removeEventListener('keydown', onEscape)
       if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
     }
-  }, [])
+  }, [localBusy, preview])
 
   if (tracks.length < 2) return null
 
@@ -219,6 +173,7 @@ function BatchTagTools({
   }
 
   function scheduleClose() {
+    if (preview) return
     cancelClose()
     closeTimer.current = window.setTimeout(() => {
       setOpenTool(null)
@@ -241,7 +196,6 @@ function BatchTagTools({
       [field]: value,
       fields: current.fields.includes(field) ? current.fields : [...current.fields, field],
     }))
-    setEditPreview([])
   }
 
   function toggleField(field: EditableField) {
@@ -251,7 +205,6 @@ function BatchTagTools({
         ? current.fields.filter((item) => item !== field)
         : [...current.fields, field],
     }))
-    setEditPreview([])
   }
 
   async function run(label: string, work: () => Promise<void>) {
@@ -275,140 +228,145 @@ function BatchTagTools({
     }
 
     await run(copy.previewing, async () => {
-      const result = await api().PreviewTagEdits(tracks.map((track) => track.id), patch)
-      setEditPreview(result ?? [])
+      const patchSnapshot: TagPatch = {...patch, fields: [...patch.fields]}
+      const result = await api().PreviewTagEdits(tracks.map((track) => track.id), patchSnapshot)
+      setPreview({kind: 'edit', items: result ?? [], patch: patchSnapshot})
       onMessage(copy.previewReady(result?.length ?? 0))
+      cancelClose()
     })
   }
 
-  async function applyEdits() {
-    if (patch.fields.length === 0) {
-      onMessage(copy.selectFieldFirst)
+  function previewTransform(items: TagPreview[], request: TagTransformRequest) {
+    setPreview({
+      kind: 'transform',
+      items,
+      request: {...request, fields: [...request.fields]},
+    })
+    cancelClose()
+  }
+
+  async function applyPreview() {
+    const current = preview
+    if (!current) return
+
+    if (current.kind === 'edit') {
+      await run(copy.applyingTags, async () => {
+        const result = await api().ApplyTagEdits(tracks.map((track) => track.id), current.patch)
+        await onChanged()
+        setPatch((value) => ({...value, fields: []}))
+        setPreview(null)
+        setOpenTool(null)
+        onMessage(copy.appliedTags(result.changed, result.failed))
+      })
       return
     }
-    if (!window.confirm(copy.confirm(tracks.length))) return
 
-    await run(copy.applying, async () => {
-      const result = await api().ApplyTagEdits(tracks.map((track) => track.id), patch)
+    await run(copy.applyingTransform, async () => {
+      const result = await api().ApplyTagTransforms(tracks.map((track) => track.id), current.request)
       await onChanged()
-      setEditPreview([])
-      setPatch((current) => ({...current, fields: []}))
-      onMessage(copy.applied(result.changed, result.failed))
+      setPreview(null)
+      setOpenTool(null)
+      onMessage(copy.appliedTransform(result.changed, result.failed))
     })
-  }
-
-  function renderPreview(items: TagPreview[]) {
-    if (items.length === 0) return null
-
-    return (
-      <div className="batch-tools-preview">
-        <strong>{copy.previewTitle}</strong>
-        {items.slice(0, 20).map((item) => (
-          <div className="batch-tools-preview-item" key={item.trackId}>
-            <span title={item.path}>{item.path}</span>
-            <small>{describeChanges(item, language)}</small>
-          </div>
-        ))}
-        {items.length > 20 && <small>{copy.previewMore(items.length - 20)}</small>}
-      </div>
-    )
   }
 
   return (
-    <div
-      className="batch-tools-toolbar"
-      onMouseEnter={cancelClose}
-      onMouseLeave={scheduleClose}
-    >
-      <button
-        type="button"
-        className={`batch-tools-trigger${openTool === 'edit' ? ' active' : ''}`}
-        aria-expanded={openTool === 'edit'}
-        disabled={disabled}
-        onClick={() => toggleTool('edit')}
+    <>
+      <div
+        className="batch-tools-toolbar"
+        onMouseEnter={cancelClose}
+        onMouseLeave={scheduleClose}
       >
-        <span aria-hidden="true">✎</span>
-        <strong>{copy.edit}</strong>
-        <b>{tracks.length}</b>
-      </button>
+        <button
+          type="button"
+          className={`batch-tools-trigger${openTool === 'edit' ? ' active' : ''}`}
+          aria-expanded={openTool === 'edit'}
+          disabled={disabled}
+          onClick={() => toggleTool('edit')}
+        >
+          <span aria-hidden="true">✎</span>
+          <strong>{copy.edit}</strong>
+          <b>{tracks.length}</b>
+        </button>
 
-      <button
-        type="button"
-        className={`batch-tools-trigger${openTool === 'transform' ? ' active' : ''}`}
-        aria-expanded={openTool === 'transform'}
-        disabled={disabled}
-        onClick={() => toggleTool('transform')}
-      >
-        <span aria-hidden="true">↔</span>
-        <strong>{copy.transform}</strong>
-      </button>
+        <button
+          type="button"
+          className={`batch-tools-trigger${openTool === 'transform' ? ' active' : ''}`}
+          aria-expanded={openTool === 'transform'}
+          disabled={disabled}
+          onClick={() => toggleTool('transform')}
+        >
+          <span aria-hidden="true">↔</span>
+          <strong>{copy.transform}</strong>
+        </button>
 
-      {openTool === 'edit' && (
-        <div className="batch-tools-popover">
-          <header className="batch-tools-popover-head">
-            <strong>{copy.editTitle}</strong>
-            <span>{copy.editHint(tracks.length)}</span>
-          </header>
+        {openTool === 'edit' && (
+          <div className="batch-tools-popover">
+            <header className="batch-tools-popover-head">
+              <strong>{copy.editTitle}</strong>
+              <span>{copy.editHint(tracks.length)}</span>
+            </header>
 
-          <div className="batch-tools-scroll">
-            <BatchTagFields
-              language={language}
-              tracks={tracks}
-              patch={patch}
-              disabled={disabled || localBusy}
-              onToggle={toggleField}
-              onChange={updateField}
-            />
+            <div className="batch-tools-scroll">
+              <BatchTagFields
+                language={language}
+                tracks={tracks}
+                patch={patch}
+                disabled={disabled || localBusy}
+                onToggle={toggleField}
+                onChange={updateField}
+              />
 
-            <div className="batch-tools-actions">
-              <button
-                type="button"
-                disabled={disabled || localBusy || patch.fields.length === 0}
-                onClick={previewEdits}
-              >
-                {copy.preview}
-              </button>
-              <button
-                type="button"
-                className="primary"
-                disabled={disabled || localBusy || patch.fields.length === 0}
-                onClick={applyEdits}
-              >
-                {copy.apply}
-              </button>
+              <div className="batch-tools-actions single">
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={disabled || localBusy || patch.fields.length === 0}
+                  onClick={previewEdits}
+                >
+                  {copy.preview}
+                </button>
+              </div>
             </div>
-
-            {renderPreview(editPreview)}
           </div>
-        </div>
-      )}
+        )}
 
-      {openTool === 'transform' && (
-        <div className="batch-tools-popover">
-          <header className="batch-tools-popover-head">
-            <strong>{copy.transformTitle}</strong>
-            <span>{copy.transformHint(tracks.length)}</span>
-          </header>
+        {openTool === 'transform' && (
+          <div className="batch-tools-popover">
+            <header className="batch-tools-popover-head">
+              <strong>{copy.transformTitle}</strong>
+              <span>{copy.transformHint(tracks.length)}</span>
+            </header>
 
-          <div className="batch-tools-scroll">
-            <BatchTagTransforms
-              language={language}
-              tracks={tracks}
-              disabled={disabled || localBusy}
-              onBusyChange={(busy) => {
-                setLocalBusy(busy)
-                onBusyChange(busy)
-              }}
-              onMessage={onMessage}
-              onPreview={setTransformPreview}
-              onChanged={onChanged}
-            />
-
-            {renderPreview(transformPreview)}
+            <div className="batch-tools-scroll">
+              <BatchTagTransforms
+                language={language}
+                tracks={tracks}
+                disabled={disabled || localBusy}
+                onBusyChange={(busy) => {
+                  setLocalBusy(busy)
+                  onBusyChange(busy)
+                }}
+                onMessage={onMessage}
+                onPreview={previewTransform}
+              />
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {preview && (
+        <BatchPreviewModal
+          language={language}
+          items={preview.items}
+          busy={localBusy}
+          onClose={() => {
+            if (!localBusy) setPreview(null)
+          }}
+          onApply={applyPreview}
+        />
       )}
-    </div>
+    </>
   )
 }
 
