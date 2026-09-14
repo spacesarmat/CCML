@@ -4682,3 +4682,196 @@ button:disabled:hover {
     max-height: 150px;
   }
 }
+/* Stage 15.1 — explicit batch tag editor */
+
+.batch-tag-editor {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.batch-tag-summary {
+  min-width: 0;
+  padding: 8px 9px;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-lg);
+  background: var(--ccml-surface-1);
+}
+
+.batch-tag-summary strong {
+  color: var(--ccml-text-strong);
+  font-size: 10px;
+}
+
+.batch-tag-summary span {
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+}
+
+.batch-tag-group {
+  min-width: 0;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-lg);
+  background: var(--ccml-surface-1);
+  overflow: hidden;
+}
+
+.batch-tag-group > summary {
+  min-height: 34px;
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  color: var(--ccml-text-strong);
+  background: var(--ccml-surface-2);
+}
+
+.batch-tag-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.batch-tag-group > summary::before {
+  content: '›';
+  color: var(--ccml-text-muted);
+  transform: rotate(0deg);
+  transition: transform .12s ease;
+}
+
+.batch-tag-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.batch-tag-group > summary strong {
+  min-width: 0;
+  font-size: 9px;
+}
+
+.batch-tag-group > summary span {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--ccml-accent-soft);
+  color: var(--ccml-text-strong);
+  font-size: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.batch-tag-group-body {
+  min-width: 0;
+  padding: 7px;
+  display: grid;
+  gap: 6px;
+}
+
+.batch-tag-field {
+  min-width: 0;
+  padding: 7px;
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: var(--ccml-radius-md);
+  background: var(--ccml-bg-elevated);
+}
+
+.batch-tag-field-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.batch-tag-field-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ccml-text-strong);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-tag-field-head span {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--ccml-text-dim);
+  font-size: 7px;
+}
+
+.batch-tag-field-head span.mixed {
+  color: var(--ccml-warning);
+}
+
+.batch-tag-field-controls {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(92px, .42fr) minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+}
+
+.batch-tag-field-controls select,
+.batch-tag-field-controls input,
+.batch-tag-field-controls textarea {
+  min-width: 0;
+  width: 100%;
+  font-size: 8px;
+}
+
+.batch-tag-field-controls select,
+.batch-tag-field-controls input {
+  min-height: 30px;
+}
+
+.batch-tag-field-controls textarea {
+  resize: vertical;
+  min-height: 58px;
+}
+
+.batch-tag-field-controls input:disabled,
+.batch-tag-field-controls textarea:disabled {
+  opacity: .72;
+}
+
+.batch-tag-mode-note {
+  min-width: 0;
+  color: var(--ccml-text-muted);
+  font-size: 7px;
+  line-height: 1.35;
+}
+
+.batch-tag-mode-note.clear {
+  color: var(--ccml-warning);
+}
+
+.batch-tag-mode-note.replace {
+  color: var(--ccml-accent-text, var(--ccml-accent));
+}
+
+:root[data-ccml-theme='light'] .batch-tag-summary,
+:root[data-ccml-theme='light'] .batch-tag-group {
+  background: #ffffff;
+}
+
+:root[data-ccml-theme='light'] .batch-tag-field {
+  background: #f8fafc;
+}
+
+@container (max-width: 360px) {
+  .batch-tag-field-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .batch-tag-group > summary::before {
+    transition: none;
+  }
+}

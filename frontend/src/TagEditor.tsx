@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { translate, type AppLanguage, type TranslateParams, type TranslationKey } from './i18n'
 import type { TagHistory, TagPatch, TagPreview, TagSnapshot, Track } from './types'
+import BatchTagFields from './BatchTagFields'
 
 type Props = {
   language: AppLanguage
@@ -212,33 +213,46 @@ export default function TagEditor({
 
       <p className="tag-help">{multi ? t('tags.batchHint') : t('tags.singleHint')}</p>
 
-      <div className="tag-grid">
-        <TagTextField field="title" label={t('tags.field.title')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagTextField field="artist" label={t('tags.field.artist')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagTextField field="album" label={t('tags.field.album')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagTextField field="albumArtist" label={t('tags.field.albumArtist')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagTextField field="genre" label={t('tags.field.genre')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagTextField field="composer" label={t('tags.field.composer')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagTextField field="label" label={t('tags.field.label')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagTextField field="catalogNumber" label={t('tags.field.catalogNumber')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagTextField field="isrc" label={t('tags.field.isrc')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagTextField field="releaseDate" label={t('tags.field.releaseDate')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagNumberField field="year" label={t('tags.field.year')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagNumberField field="trackNumber" label={t('tags.field.track')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagNumberField field="trackTotal" label={t('tags.field.trackTotal')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagNumberField field="discNumber" label={t('tags.field.disc')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-        <TagNumberField field="discTotal" label={t('tags.field.discTotal')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
-      </div>
-
-      <label className="tag-comment-field">
-        <span><input type="checkbox" checked={patch.fields.includes('comment')} onChange={() => toggleField('comment')} /> {t('tags.field.comment')}</span>
-        <textarea
-          value={patch.comment}
-          onChange={(event) => updateField('comment', event.target.value)}
+      {multi ? (
+        <BatchTagFields
+          language={language}
+          tracks={tracks}
+          patch={patch}
           disabled={disabled || localBusy}
-          rows={3}
+          onToggle={toggleField}
+          onChange={updateField}
         />
-      </label>
+      ) : (
+        <>
+          <div className="tag-grid">
+            <TagTextField field="title" label={t('tags.field.title')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagTextField field="artist" label={t('tags.field.artist')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagTextField field="album" label={t('tags.field.album')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagTextField field="albumArtist" label={t('tags.field.albumArtist')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagTextField field="genre" label={t('tags.field.genre')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagTextField field="composer" label={t('tags.field.composer')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagTextField field="label" label={t('tags.field.label')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagTextField field="catalogNumber" label={t('tags.field.catalogNumber')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagTextField field="isrc" label={t('tags.field.isrc')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagTextField field="releaseDate" label={t('tags.field.releaseDate')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagNumberField field="year" label={t('tags.field.year')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagNumberField field="trackNumber" label={t('tags.field.track')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagNumberField field="trackTotal" label={t('tags.field.trackTotal')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagNumberField field="discNumber" label={t('tags.field.disc')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+            <TagNumberField field="discTotal" label={t('tags.field.discTotal')} patch={patch} onToggle={toggleField} onChange={updateField} disabled={disabled || localBusy} />
+          </div>
+
+          <label className="tag-comment-field">
+            <span><input type="checkbox" checked={patch.fields.includes('comment')} onChange={() => toggleField('comment')} /> {t('tags.field.comment')}</span>
+            <textarea
+              value={patch.comment}
+              onChange={(event) => updateField('comment', event.target.value)}
+              disabled={disabled || localBusy}
+              rows={3}
+            />
+          </label>
+        </>
+      )}
 
       <div className="tag-actions">
         <button type="button" onClick={previewChanges} disabled={disabled || localBusy || patch.fields.length === 0}>{t('tags.preview')}</button>

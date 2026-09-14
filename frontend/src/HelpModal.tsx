@@ -119,8 +119,9 @@ const HELP: Record<AppLanguage, HelpCopy> = {
         title: 'Теги',
         summary: 'Ручное редактирование встроенных тегов аудиофайла.',
         bullets: [
-          'Для одного трека можно изменять поля напрямую. Для нескольких треков записываются только явно выбранные поля.',
-          'Неотмеченные значения при массовом редактировании сохраняются.',
+          'Для одного трека можно изменять поля напрямую. При выборе нескольких треков включается массовый Tag Editor.',
+          'У каждого поля массового редактора есть режим «Не менять / Заменить / Очистить». «Не менять» сохраняет исходное значение каждого файла; «Заменить» записывает одно новое значение во всю пачку; «Очистить» удаляет поле во всех выбранных треках.',
+          'Если исходные значения различаются, поле помечается «Разные значения». Перед записью используйте «Предпросмотр»; вся массовая операция создаётся как один общий Undo change-set.',
           'Изменения тегов записываются в файл; CCML ведёт историю изменений для поддерживаемых операций.',
           'Обложка является частью встроенных тегов и хранится внутри поддерживаемого аудиофайла.',
         ],
@@ -296,8 +297,9 @@ const HELP: Record<AppLanguage, HelpCopy> = {
         title: 'Tags',
         summary: 'Edit embedded audio tags manually.',
         bullets: [
-          'For one track fields can be edited directly. For several tracks only explicitly selected fields are written.',
-          'Unchecked values are preserved during batch editing.',
+          'For one track fields can be edited directly. Selecting several tracks switches to the batch Tag Editor.',
+          'Every batch field has Keep / Replace / Clear mode. Keep preserves each file’s original value; Replace writes one new value to the whole batch; Clear removes the field from all selected tracks.',
+          'Fields whose source values differ are marked Mixed values. Use Preview before writing; the whole batch operation is recorded as one undoable change set.',
           'Tag changes are written to the file; CCML keeps change history for supported operations.',
           'Artwork is embedded metadata and is stored inside supported audio files.',
         ],
