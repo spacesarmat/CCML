@@ -67,6 +67,14 @@ function DJMixPlannerModal({
     () => plan?.steps?.find((step) => step.track.id === previewTrackID) ?? null,
     [plan, previewTrackID],
   )
+  const previewStepIndex = useMemo(
+    () => plan?.steps?.findIndex((step) => step.track.id === previewTrackID) ?? -1,
+    [plan, previewTrackID],
+  )
+  const previewPreviousStep = previewStepIndex > 0 ? plan?.steps?.[previewStepIndex - 1] ?? null : null
+  const previewNextStep = previewStepIndex >= 0 && previewStepIndex < (plan?.steps?.length ?? 0) - 1
+    ? plan?.steps?.[previewStepIndex + 1] ?? null
+    : null
   const effectiveScopeIDs = savedScopeIDs ?? scopeIDs
   const scopeLabel = savedScopeIDs !== null
     ? t('mixPlanner.scopeSaved', {count: savedScopeIDs.length > 0 ? savedScopeIDs.length : libraryCount})
@@ -120,6 +128,21 @@ function DJMixPlannerModal({
       ) {
         event.preventDefault()
         void togglePreviewPlayback()
+        return
+      }
+
+      if (!editing && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+        const steps = plan?.steps ?? []
+        if (steps.length === 0) return
+        const currentIndex = steps.findIndex((step) => step.track.id === previewTrackID)
+        const fallbackIndex = currentIndex >= 0 ? currentIndex : 0
+        const delta = event.key === 'ArrowUp' ? -1 : 1
+        const nextIndex = Math.max(0, Math.min(steps.length - 1, fallbackIndex + delta))
+        const nextTrackID = steps[nextIndex]?.track.id ?? 0
+        if (nextTrackID > 0 && nextTrackID !== previewTrackID) {
+          event.preventDefault()
+          setPreviewTrackID(nextTrackID)
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -131,6 +154,7 @@ function DJMixPlannerModal({
     previewLoading,
     previewMedia?.audioUrl,
     previewTrackID,
+    plan,
   ])
 
   useEffect(() => {
@@ -449,6 +473,19 @@ function DJMixPlannerModal({
     })
   }
 
+  function selectRelativePreview(direction: -1 | 1) {
+    const steps = plan?.steps ?? []
+    if (steps.length === 0) return
+
+    const currentIndex = steps.findIndex((step) => step.track.id === previewTrackID)
+    const fallbackIndex = currentIndex >= 0 ? currentIndex : (direction > 0 ? -1 : steps.length)
+    const nextIndex = Math.max(0, Math.min(steps.length - 1, fallbackIndex + direction))
+    const nextTrackID = steps[nextIndex]?.track.id ?? 0
+    if (nextTrackID > 0 && nextTrackID !== previewTrackID) {
+      setPreviewTrackID(nextTrackID)
+    }
+  }
+
   function selectPreviewTrack(trackID: number, autoplay = false) {
     if (trackID <= 0) return
     if (autoplay) previewAutoplayRef.current = trackID
@@ -683,11 +720,16 @@ function DJMixPlannerModal({
                     onError={() => void handlePreviewPlaybackError()}
                   />
 
-                  {previewLoading || previewFallbackLoading
-                    ? <span className="mix-planner-preview-status">{previewFallbackLoading ? t('media.compatibilityPreview') : t('media.preparing')}</span>
-                    : previewError
-                      ? <span className="mix-planner-preview-status is-error" title={previewError}>{t('media.unavailable')}: {previewError}</span>
-                      : <span className="mix-planner-preview-status">{previewPlaying ? t('media.pause') : t('media.play')} В· Space</span>}
+                  <div className="mix-planner-preview-status-row">
+                    {previewLoading || previewFallbackLoading
+                      ? <span className="mix-planner-preview-status">{previewFallbackLoading ? t('media.compatibilityPreview') : t('media.preparing')}</span>
+                      : previewError
+                        ? <span className="mix-planner-preview-status is-error" title={previewError}>{t('media.unavailable')}: {previewError}</span>
+                        : <span className="mix-planner-preview-status">{previewPlaying ? t('media.pause') : t('media.play')} В· Space В· в†‘в†“ track</span>}
+                    <span className="mix-planner-preview-position">
+                      {previewStepIndex >= 0 ? `${previewStepIndex + 1} / ${plan.steps?.length ?? 0}` : `0 / ${plan.steps?.length ?? 0}`}
+                    </span>
+                  </div>
 
                   <WaveformOverview
                     waveform={previewWaveform}
@@ -703,6 +745,16 @@ function DJMixPlannerModal({
                   <div className="mix-planner-preview-controls">
                     <button
                       type="button"
+                      className="mix-preview-nav"
+                      onClick={() => selectRelativePreview(-1)}
+                      disabled={!previewPreviousStep}
+                      title={previewPreviousStep ? `${previewPreviousStep.track.artist || 'вЂ”'} вЂ” ${previewPreviousStep.track.title || previewPreviousStep.track.fileName}` : 'Previous track'}
+                      aria-label="Previous track"
+                    >
+                      вЏ®
+                    </button>
+                    <button
+                      type="button"
                       className="mix-preview-toggle"
                       onClick={() => void togglePreviewPlayback()}
                       disabled={!previewMedia?.audioUrl || previewLoading || previewFallbackLoading}
@@ -712,6 +764,16 @@ function DJMixPlannerModal({
                       {previewPlaying ? 'в…Ў' : 'в–¶'}
                     </button>
                     <button type="button" onClick={stopPreviewPlayback} disabled={!previewMedia?.audioUrl} title="Stop" aria-label="Stop">в– </button>
+                    <button
+                      type="button"
+                      className="mix-preview-nav"
+                      onClick={() => selectRelativePreview(1)}
+                      disabled={!previewNextStep}
+                      title={previewNextStep ? `${previewNextStep.track.artist || 'вЂ”'} вЂ” ${previewNextStep.track.title || previewNextStep.track.fileName}` : 'Next track'}
+                      aria-label="Next track"
+                    >
+                      вЏ­
+                    </button>
                     <button type="button" onClick={() => skipPreview(-10)} disabled={!previewMedia?.audioUrl} title="в€’10 s">в€’10</button>
                     <span className="mix-planner-preview-time">{formatPlayerTime(previewCurrentTime)}</span>
                     <input
