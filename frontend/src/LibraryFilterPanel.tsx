@@ -24,6 +24,8 @@ function LibraryFilterPanel({language, locale, tracks, filters, onChange, onClea
   const [labelSearch, setLabelSearch] = useState('')
   const options = useMemo(() => buildLibraryFilterOptions(tracks, locale), [tracks, locale])
   const activeCount = countActiveLibraryFilters(filters)
+  const indexedCoverCount = tracks.filter((track) => track.coverIndexed).length
+  const coverIndexComplete = indexedCoverCount === tracks.length
 
   const copy = language === 'ru'
     ? {
@@ -36,6 +38,12 @@ function LibraryFilterPanel({language, locale, tracks, filters, onChange, onClea
         label: 'Лейбл',
         codec: 'Кодек',
         key: 'Тональность',
+        cover: 'Обложка',
+        coverAny: 'Любая',
+        coverWith: 'Есть',
+        coverWithout: 'Нет',
+        coverIndexed: 'Индексировано',
+        coverRescan: 'Запустите сканирование библиотеки один раз для завершения индекса.',
         year: 'Год',
         bpm: 'BPM',
         lufs: 'LUFS',
@@ -55,6 +63,12 @@ function LibraryFilterPanel({language, locale, tracks, filters, onChange, onClea
         label: 'Label',
         codec: 'Codec',
         key: 'Key',
+        cover: 'Cover',
+        coverAny: 'Any',
+        coverWith: 'With cover',
+        coverWithout: 'Without cover',
+        coverIndexed: 'Indexed',
+        coverRescan: 'Run one library scan to finish the cover index.',
         year: 'Year',
         bpm: 'BPM',
         lufs: 'LUFS',
@@ -154,6 +168,34 @@ function LibraryFilterPanel({language, locale, tracks, filters, onChange, onClea
               emptyLabel={copy.noValues}
               selectedLabel={copy.selected}
             />
+
+            <section className="library-cover-filter">
+              <div className="library-filter-section-head">
+                <strong>{copy.cover}</strong>
+                <small>{copy.coverIndexed} {indexedCoverCount}/{tracks.length}</small>
+              </div>
+              <div className="library-cover-filter-options" role="radiogroup" aria-label={copy.cover}>
+                {([
+                  ['any', copy.coverAny],
+                  ['with', copy.coverWith],
+                  ['without', copy.coverWithout],
+                ] as const).map(([mode, label]) => (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={filters.cover === mode}
+                    className={filters.cover === mode ? 'active' : ''}
+                    key={mode}
+                    onClick={() => onChange({...filters, cover: mode})}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {!coverIndexComplete && tracks.length > 0 && (
+                <small className="library-cover-filter-hint">{copy.coverRescan}</small>
+              )}
+            </section>
 
             <div className="library-range-stack">
               <RangeFilter

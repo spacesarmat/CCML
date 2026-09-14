@@ -132,6 +132,8 @@ export namespace model {
 	    lra: number;
 	    threshold: number;
 	    scanError: string;
+	    hasCover: boolean;
+	    coverIndexed: boolean;
 	    lastMetadataJobStatus: string;
 	    lastMetadataJobUpdatedAt: string;
 	
@@ -176,6 +178,8 @@ export namespace model {
 	        this.lra = source["lra"];
 	        this.threshold = source["threshold"];
 	        this.scanError = source["scanError"];
+	        this.hasCover = source["hasCover"];
+	        this.coverIndexed = source["coverIndexed"];
 	        this.lastMetadataJobStatus = source["lastMetadataJobStatus"];
 	        this.lastMetadataJobUpdatedAt = source["lastMetadataJobUpdatedAt"];
 	    }

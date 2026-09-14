@@ -16,11 +16,12 @@ import (
 type TrackState struct {
 	Size         int64
 	ModifiedUnix int64
+	CoverIndexed bool
 }
 
 // TrackStatesUnderRoot returns known file states below root keyed by absolute path.
 func (s *Store) TrackStatesUnderRoot(ctx context.Context, root string) (states map[string]TrackState, resultErr error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT path, size, modified_unix FROM tracks WHERE path LIKE ? ESCAPE '!' COLLATE NOCASE`, rootPattern(root))
+	rows, err := s.db.QueryContext(ctx, `SELECT path, size, modified_unix, cover_indexed FROM tracks WHERE path LIKE ? ESCAPE '!' COLLATE NOCASE`, rootPattern(root))
 	if err != nil {
 		return nil, fmt.Errorf("load track states for %q: %w", root, err)
 	}
@@ -34,9 +35,11 @@ func (s *Store) TrackStatesUnderRoot(ctx context.Context, root string) (states m
 	for rows.Next() {
 		var path string
 		var state TrackState
-		if err := rows.Scan(&path, &state.Size, &state.ModifiedUnix); err != nil {
+		var coverIndexed int
+		if err := rows.Scan(&path, &state.Size, &state.ModifiedUnix, &coverIndexed); err != nil {
 			return nil, fmt.Errorf("scan track state: %w", err)
 		}
+		state.CoverIndexed = coverIndexed != 0
 		states[path] = state
 	}
 	if err := rows.Err(); err != nil {

@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS tracks (
     lra REAL NOT NULL DEFAULT 0,
     threshold REAL NOT NULL DEFAULT 0,
     scan_error TEXT NOT NULL DEFAULT '',
+    has_cover INTEGER NOT NULL DEFAULT 0,
+    cover_indexed INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -206,6 +208,8 @@ CREATE INDEX IF NOT EXISTS idx_background_job_items_track ON background_job_item
 		{table: "tracks", name: "catalog_number", ddl: "TEXT NOT NULL DEFAULT ''"},
 		{table: "tracks", name: "isrc", ddl: "TEXT NOT NULL DEFAULT ''"},
 		{table: "tracks", name: "release_date", ddl: "TEXT NOT NULL DEFAULT ''"},
+		{table: "tracks", name: "has_cover", ddl: "INTEGER NOT NULL DEFAULT 0"},
+		{table: "tracks", name: "cover_indexed", ddl: "INTEGER NOT NULL DEFAULT 0"},
 		{table: "tag_change_items", name: "cover_changed", ddl: "INTEGER NOT NULL DEFAULT 0"},
 		{table: "background_jobs", name: "cancelled_items", ddl: "INTEGER NOT NULL DEFAULT 0"},
 	} {
@@ -215,7 +219,7 @@ CREATE INDEX IF NOT EXISTS idx_background_job_items_track ON background_job_item
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?), (4, ?), (5, ?), (6, ?), (7, ?), (8, ?)`, now, now, now, now, now, now, now, now); err != nil {
+	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?), (4, ?), (5, ?), (6, ?), (7, ?), (8, ?), (9, ?)`, now, now, now, now, now, now, now, now, now); err != nil {
 		return fmt.Errorf("record sqlite schema version: %w", err)
 	}
 	return nil
@@ -404,6 +408,7 @@ const trackColumns = `id, path, file_name, extension, size, modified_unix,
  title, artist, album, album_artist, genre, year, track_number, track_total, disc_number, disc_total, composer, comment, label, catalog_number, isrc, release_date,
  duration_ms, codec, sample_rate, channels, bit_rate,
  bpm, musical_key, key_scale, loudness_i, true_peak, lra, threshold, scan_error,
+ has_cover, cover_indexed,
  COALESCE((SELECT bji.status FROM background_job_items bji JOIN background_jobs bj ON bj.id=bji.job_id WHERE bji.track_id=tracks.id AND bj.type='metadata_enrichment' ORDER BY bji.id DESC LIMIT 1), ''),
  COALESCE((SELECT bji.updated_at FROM background_job_items bji JOIN background_jobs bj ON bj.id=bji.job_id WHERE bji.track_id=tracks.id AND bj.type='metadata_enrichment' ORDER BY bji.id DESC LIMIT 1), '')`
 
@@ -413,15 +418,19 @@ type rowScanner interface {
 
 func scanTrack(row rowScanner) (model.Track, error) {
 	var t model.Track
+	var hasCover, coverIndexed int
 	err := row.Scan(
 		&t.ID, &t.Path, &t.FileName, &t.Extension, &t.Size, &t.ModifiedUnix,
 		&t.Title, &t.Artist, &t.Album, &t.AlbumArtist, &t.Genre, &t.Year, &t.TrackNumber, &t.TrackTotal, &t.DiscNumber, &t.DiscTotal, &t.Composer, &t.Comment, &t.Label, &t.CatalogNumber, &t.ISRC, &t.ReleaseDate,
 		&t.DurationMS, &t.Codec, &t.SampleRate, &t.Channels, &t.BitRate,
 		&t.BPM, &t.Key, &t.KeyScale, &t.LoudnessI, &t.TruePeak, &t.LRA, &t.Threshold, &t.ScanError,
+		&hasCover, &coverIndexed,
 		&t.LastMetadataJobStatus, &t.LastMetadataJobUpdatedAt,
 	)
 	if err != nil {
 		return model.Track{}, err
 	}
+	t.HasCover = hasCover != 0
+	t.CoverIndexed = coverIndexed != 0
 	return t, nil
 }

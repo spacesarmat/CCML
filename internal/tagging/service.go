@@ -203,6 +203,15 @@ func (s *Service) Undo(ctx context.Context, changeSetID int64) (model.TagApplyRe
 			result.Errors = appendLimited(result.Errors, err.Error())
 			continue
 		}
+		if item.CoverChanged {
+			if hasCover, coverErr := hasAnyEmbeddedArtwork(track.Path); coverErr == nil {
+				if err := s.store.UpdateTrackCoverPresence(ctx, track.ID, hasCover); err != nil {
+					_ = s.store.InvalidateTrackCoverPresence(context.Background(), track.ID)
+				}
+			} else {
+				_ = s.store.InvalidateTrackCoverPresence(context.Background(), track.ID)
+			}
+		}
 		result.Changed++
 	}
 	if result.Failed == 0 {
@@ -321,6 +330,15 @@ func (s *Service) applyOne(ctx context.Context, changeSetID, trackID int64, patc
 		}
 		return false, errors.Join(err, rollbackErr)
 	}
+	if coverChanged {
+		if hasCover, coverErr := hasAnyEmbeddedArtwork(track.Path); coverErr == nil {
+			if err := s.store.UpdateTrackCoverPresence(ctx, track.ID, hasCover); err != nil {
+				_ = s.store.InvalidateTrackCoverPresence(context.Background(), track.ID)
+			}
+		} else {
+			_ = s.store.InvalidateTrackCoverPresence(context.Background(), track.ID)
+		}
+	}
 	return true, nil
 }
 
@@ -383,6 +401,25 @@ func frontCover(images []mtag.Picture) coverData {
 		}
 	}
 	return coverData{}
+}
+
+func hasAnyEmbeddedArtwork(path string) (result bool, resultErr error) {
+	f, err := mtag.Open(path)
+	if err != nil {
+		return false, fmt.Errorf("open tags %q for cover index: %w", path, err)
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			resultErr = errors.Join(resultErr, fmt.Errorf("close tags %q after cover index: %w", path, err))
+		}
+	}()
+
+	for _, image := range f.ImageSummaries() {
+		if image.Size > 0 {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func writeState(ctx context.Context, path string, state model.TagSnapshot, cover coverMutation) (resultErr error) {

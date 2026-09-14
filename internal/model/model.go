@@ -43,6 +43,8 @@ type Track struct {
 	LRA                      float64 `json:"lra"`
 	Threshold                float64 `json:"threshold"`
 	ScanError                string  `json:"scanError"`
+	HasCover                 bool    `json:"hasCover"`
+	CoverIndexed             bool    `json:"coverIndexed"`
 	LastMetadataJobStatus    string  `json:"lastMetadataJobStatus"`
 	LastMetadataJobUpdatedAt string  `json:"lastMetadataJobUpdatedAt"`
 }

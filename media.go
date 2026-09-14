@@ -210,6 +210,7 @@ func (m *mediaService) PrepareCover(ctx context.Context, trackID int64) (string,
 	if err != nil {
 		return "", err
 	}
+	_ = m.store.UpdateTrackCoverPresence(ctx, trackID, coverPath != "")
 	if coverPath == "" {
 		return "", nil
 	}

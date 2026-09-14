@@ -1,6 +1,9 @@
 import type {Track} from './types'
 
+export type CoverFilter = 'any' | 'with' | 'without'
+
 export type LibraryFilters = {
+  cover: CoverFilter
   artists: string[]
   genres: string[]
   labels: string[]
@@ -26,6 +29,7 @@ const STORAGE_KEY = 'ccml.library-filters.v1'
 
 export function createEmptyLibraryFilters(): LibraryFilters {
   return {
+    cover: 'any',
     artists: [],
     genres: [],
     labels: [],
@@ -52,6 +56,7 @@ export function loadLibraryFilters(): LibraryFilters {
     const source = value as Record<string, unknown>
 
     return normalizeLibraryFilters({
+      cover: readCoverFilter(source.cover),
       artists: readStringArray(source.artists),
       genres: readStringArray(source.genres),
       labels: readStringArray(source.labels),
@@ -81,6 +86,7 @@ export function saveLibraryFilters(filters: LibraryFilters): void {
 
 export function normalizeLibraryFilters(filters: LibraryFilters): LibraryFilters {
   const normalized = {
+    cover: readCoverFilter(filters.cover),
     artists: uniqueStrings(filters.artists),
     genres: uniqueStrings(filters.genres),
     labels: uniqueStrings(filters.labels),
@@ -109,6 +115,7 @@ export function normalizeLibraryFilters(filters: LibraryFilters): LibraryFilters
 
 export function countActiveLibraryFilters(filters: LibraryFilters): number {
   let count = 0
+  if (filters.cover !== 'any') count++
   if (filters.artists.length > 0) count++
   if (filters.genres.length > 0) count++
   if (filters.labels.length > 0) count++
@@ -124,6 +131,12 @@ export function applyLibraryFilters(tracks: Track[], filters: LibraryFilters): T
   if (countActiveLibraryFilters(filters) === 0) return tracks
 
   return tracks.filter((track) => {
+    if (filters.cover !== 'any') {
+      if (!track.coverIndexed) return false
+      if (filters.cover === 'with' && !track.hasCover) return false
+      if (filters.cover === 'without' && track.hasCover) return false
+    }
+
     if (filters.artists.length > 0 && !matchesSingle(track.artist, filters.artists)) return false
 
     if (filters.genres.length > 0) {
@@ -234,6 +247,10 @@ function fold(value: string): string {
 
 function finiteOrNull(value: number | null): number | null {
   return value !== null && Number.isFinite(value) ? value : null
+}
+
+function readCoverFilter(value: unknown): CoverFilter {
+  return value === 'with' || value === 'without' ? value : 'any'
 }
 
 function readNullableNumber(value: unknown): number | null {

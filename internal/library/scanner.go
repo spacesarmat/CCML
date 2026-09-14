@@ -88,7 +88,7 @@ func (s *Scanner) Scan(ctx context.Context, root string, onProgress ProgressFunc
 			defer workers.Done()
 			for item := range jobs {
 				state, exists := existing[item.path]
-				if exists && state.Size == item.info.Size() && state.ModifiedUnix == item.info.ModTime().Unix() {
+				if exists && state.Size == item.info.Size() && state.ModifiedUnix == item.info.ModTime().Unix() && state.CoverIndexed {
 					if !sendOutcome(ctx, outcomes, scanOutcome{item: item, skipped: true}) {
 						return
 					}
@@ -176,7 +176,8 @@ func (s *Scanner) Scan(ctx context.Context, root string, onProgress ProgressFunc
 		}
 
 		if !outcome.skipped {
-			if _, err := s.store.UpsertTrack(ctx, outcome.track); err != nil {
+			trackID, err := s.store.UpsertTrack(ctx, outcome.track)
+			if err != nil {
 				if errors.Is(err, context.Canceled) {
 					result.Cancelled = true
 				} else {
@@ -185,6 +186,13 @@ func (s *Scanner) Scan(ctx context.Context, root string, onProgress ProgressFunc
 				}
 				emit(outcome.item.path, false)
 				continue
+			}
+			if err := s.store.UpdateTrackCoverPresence(ctx, trackID, outcome.track.HasCover); err != nil {
+				// Do not leave the otherwise valid file unseen: keep the track,
+				// report the index problem, and let a later scan retry it.
+				_ = s.store.InvalidateTrackCoverPresence(context.Background(), trackID)
+				result.Failed++
+				appendScanError(&result, err)
 			}
 		}
 		if err := s.store.MarkTrackSeen(ctx, outcome.item.path, root, scanID); err != nil {

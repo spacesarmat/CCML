@@ -31,6 +31,24 @@ WHERE id=?`,
 	return ensureAffected(res, id)
 }
 
+// UpdateTrackCoverPresence stores a known embedded-artwork presence result.
+func (s *Store) UpdateTrackCoverPresence(ctx context.Context, id int64, hasCover bool) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE tracks SET has_cover=?, cover_indexed=1 WHERE id=?`, boolToInt(hasCover), id)
+	if err != nil {
+		return fmt.Errorf("update cover presence for track %d: %w", id, err)
+	}
+	return ensureAffected(res, id)
+}
+
+// InvalidateTrackCoverPresence marks the cached artwork presence as unknown.
+func (s *Store) InvalidateTrackCoverPresence(ctx context.Context, id int64) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE tracks SET cover_indexed=0 WHERE id=?`, id)
+	if err != nil {
+		return fmt.Errorf("invalidate cover presence for track %d: %w", id, err)
+	}
+	return ensureAffected(res, id)
+}
+
 // BeginTagChange creates a reversible metadata change set.
 func (s *Store) BeginTagChange(ctx context.Context, label string) (int64, error) {
 	res, err := s.db.ExecContext(ctx, `INSERT INTO tag_change_sets(created_at, label, status, affected_count) VALUES (?, ?, 'pending', 0)`,

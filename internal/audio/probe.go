@@ -102,27 +102,48 @@ func (p *Probe) Read(ctx context.Context, path string) (model.Track, error) {
 	}
 
 	return model.Track{
-		Path:        path,
-		FileName:    filepath.Base(path),
-		Extension:   strings.ToLower(filepath.Ext(path)),
-		Title:       title,
-		Artist:      tagValue(tags, "artist"),
-		Album:       tagValue(tags, "album"),
-		AlbumArtist: firstTag(tags, "album_artist", "albumartist", "album artist"),
-		Genre:       tagValue(tags, "genre"),
-		Composer:    tagValue(tags, "composer"),
-		Comment:     firstTag(tags, "comment", "description"),
-		Year:        parseYear(firstTag(tags, "date", "year")),
-		TrackNumber: parsePairPart(firstTag(tags, "track", "tracknumber"), 0),
-		TrackTotal:  parsePairPart(firstTag(tags, "track", "tracknumber"), 1),
-		DiscNumber:  parsePairPart(firstTag(tags, "disc", "discnumber"), 0),
-		DiscTotal:   parsePairPart(firstTag(tags, "disc", "discnumber"), 1),
-		DurationMS:  duration,
-		Codec:       audioStream.CodecName,
-		SampleRate:  int(parseInt64(audioStream.SampleRate)),
-		Channels:    audioStream.Channels,
-		BitRate:     bitRate,
+		Path:         path,
+		FileName:     filepath.Base(path),
+		Extension:    strings.ToLower(filepath.Ext(path)),
+		Title:        title,
+		Artist:       tagValue(tags, "artist"),
+		Album:        tagValue(tags, "album"),
+		AlbumArtist:  firstTag(tags, "album_artist", "albumartist", "album artist"),
+		Genre:        tagValue(tags, "genre"),
+		Composer:     tagValue(tags, "composer"),
+		Comment:      firstTag(tags, "comment", "description"),
+		Year:         parseYear(firstTag(tags, "date", "year")),
+		TrackNumber:  parsePairPart(firstTag(tags, "track", "tracknumber"), 0),
+		TrackTotal:   parsePairPart(firstTag(tags, "track", "tracknumber"), 1),
+		DiscNumber:   parsePairPart(firstTag(tags, "disc", "discnumber"), 0),
+		DiscTotal:    parsePairPart(firstTag(tags, "disc", "discnumber"), 1),
+		DurationMS:   duration,
+		Codec:        audioStream.CodecName,
+		SampleRate:   int(parseInt64(audioStream.SampleRate)),
+		Channels:     audioStream.Channels,
+		BitRate:      bitRate,
+		HasCover:     hasAttachedPicture(output),
+		CoverIndexed: true,
 	}, nil
+}
+
+func hasAttachedPicture(output []byte) bool {
+	var parsed struct {
+		Streams []struct {
+			Disposition struct {
+				AttachedPic int `json:"attached_pic"`
+			} `json:"disposition"`
+		} `json:"streams"`
+	}
+	if err := json.Unmarshal(output, &parsed); err != nil {
+		return false
+	}
+	for _, stream := range parsed.Streams {
+		if stream.Disposition.AttachedPic != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func mergeTags(formatTags, streamTags map[string]string) map[string]string {

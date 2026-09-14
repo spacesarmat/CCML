@@ -34,6 +34,8 @@ export type Track = {
   lra: number
   threshold: number
   scanError: string
+  hasCover: boolean
+  coverIndexed: boolean
   lastMetadataJobStatus: string
   lastMetadataJobUpdatedAt: string
 }
