@@ -4280,3 +4280,63 @@ button:disabled:hover {
     text-overflow: ellipsis;
   }
 }
+/* Stage 11.3.4 — workspace vertical grid placement */
+
+/*
+  workspace-banner is conditional. Explicit grid rows keep the main workspace
+  in the flexible 1fr row even when the banner is absent.
+*/
+.workspace-app > .workspace-topbar {
+  grid-row: 1;
+}
+
+.workspace-app > .workspace-banner {
+  grid-row: 2;
+}
+
+.workspace-app > .workspace-grid {
+  grid-row: 3;
+  min-height: 0;
+  align-self: stretch;
+}
+
+.workspace-app > .workspace-statusbar {
+  grid-row: 4;
+  align-self: stretch;
+}
+
+/*
+  selection-toolbar is conditional too. Keep ConfigurableTrackTable pinned to
+  row 4 so row 3 collapses to 0 when nothing is selected instead of stealing
+  the flexible row from the table.
+*/
+.workspace-main > .workspace-commandbar {
+  grid-row: 1;
+}
+
+.workspace-main > .library-filterbar {
+  grid-row: 2;
+}
+
+.workspace-main > .selection-toolbar {
+  grid-row: 3;
+}
+
+.workspace-main > .configurable-track-table {
+  grid-row: 4;
+  min-height: 0;
+  align-self: stretch;
+}
+
+/* Duplicates is a single self-contained view and should consume all main rows. */
+.workspace-main > .duplicates-view {
+  grid-row: 1 / -1;
+  min-height: 0;
+  align-self: stretch;
+}
+
+/* Keep the scrolling table area responsible for the remaining height. */
+.configurable-track-table {
+  height: 100%;
+  overflow: auto;
+}
