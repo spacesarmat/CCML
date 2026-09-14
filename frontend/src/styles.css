@@ -2321,7 +2321,18 @@ body {
   width: var(--ccml-ui-inverse);
   height: var(--ccml-ui-inverse);
   overflow: hidden;
-  zoom: var(--ccml-ui-zoom);
+
+  /*
+    WebView2 CSS zoom scales the painted content but can keep percentage-based
+    root sizing at the already-zoomed viewport dimensions. At scale < 100%
+    that leaves empty strips on the right and bottom.
+
+    transform works from the unscaled layout box, so the inverse width/height
+    genuinely compensate for the visual scale in both directions.
+  */
+  zoom: 1;
+  transform: scale(var(--ccml-ui-zoom));
+  transform-origin: top left;
 }
 
 .workspace-app {
@@ -5572,4 +5583,40 @@ button:disabled:hover {
   .batch-preview-footer button {
     min-width: 0;
   }
+}
+/* Stage 15.3.2 — viewport scale fix */
+
+/*
+  Keep the application tied to the compensated root box instead of 100vh.
+  This is important once #root is transformed: 100vh would refer to the
+  physical viewport before inverse-size compensation.
+*/
+.workspace-app {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/*
+  The main three-column workspace and its children must be allowed to shrink
+  inside the compensated logical viewport instead of forcing an extra painted
+  region past the visible window.
+*/
+.workspace-grid,
+.workspace-main,
+.workspace-inspector,
+.configurable-track-table {
+  min-height: 0;
+}
+
+/*
+  Fixed/modal UI lives inside the transformed root. With inverse root sizing
+  these 100% dimensions map back to the complete physical window.
+*/
+.batch-preview-backdrop,
+.settings-backdrop {
+  max-width: 100%;
+  max-height: 100%;
 }
