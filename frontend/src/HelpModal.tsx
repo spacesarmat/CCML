@@ -85,6 +85,7 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Фильтры позволяют отдельно показать все треки, записи без изменений после обогащения и записи, где обработка метаданных завершилась ошибкой.',
           'Обычный клик выбирает одну строку. Чекбоксы, Ctrl+клик и Shift+клик используются для массового выделения.',
           'При перемещении клавишами активная строка автоматически прокручивается в видимую область.',
+          'Кнопка «Колонки» над таблицей позволяет включать и скрывать поля. Порядок меняется перетаскиванием в списке или самих заголовков; раскладка сохраняется между запусками.',
         ],
       },
       {
@@ -242,6 +243,7 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Filters can show all tracks, unchanged enrichment results, or metadata jobs that failed.',
           'A normal click selects one row. Checkboxes, Ctrl+click and Shift+click are for multi-selection.',
           'Keyboard navigation automatically scrolls the active row into view.',
+          'The Columns control above the table shows or hides fields. Reorder them by dragging list rows or table headers; the layout persists between launches.',
         ],
       },
       {

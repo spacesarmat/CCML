@@ -653,3 +653,207 @@ body { min-width: 1080px; overflow: hidden; }
   .help-nav { display: none; }
   .help-row { grid-template-columns: 1fr; }
 }
+/* Stage 7 v3 — configurable library table */
+.configurable-track-table {
+  min-height: 0;
+  overflow: auto;
+}
+.table-columns-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  min-height: 34px;
+  padding: 5px 8px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  border-bottom: 1px solid #202a38;
+  background: #0d141d;
+}
+.table-column-picker {
+  width: 330px;
+  max-width: 100%;
+}
+.table-column-picker > summary {
+  width: max-content;
+  min-width: 88px;
+  margin-left: auto;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  border: 1px solid #2a394d;
+  border-radius: 6px;
+  background: #101923;
+  color: #91a1b6;
+  font-size: 8px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.table-column-picker > summary::-webkit-details-marker { display: none; }
+.table-column-picker > summary:hover {
+  border-color: #40536d;
+  background: #14202d;
+  color: #d1dbe7;
+}
+.table-column-picker > summary b {
+  min-width: 17px;
+  margin-left: 3px;
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: #1e2c40;
+  color: #9eb5d5;
+  font-size: 7px;
+  text-align: center;
+}
+.table-column-picker[open] > summary {
+  border-color: #5572a7;
+  background: #172337;
+  color: #dce6f2;
+}
+.table-column-panel {
+  margin-top: 5px;
+  max-height: min(450px, 55vh);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid #314158;
+  border-radius: 8px;
+  background: #0e151f;
+  box-shadow: 0 14px 34px rgba(0,0,0,.34);
+  overflow: hidden;
+}
+.table-column-panel-head {
+  padding: 8px 9px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border-bottom: 1px solid #253347;
+  background: #111a25;
+}
+.table-column-panel-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.table-column-panel-head strong {
+  color: #d5dfeb;
+  font-size: 9px;
+}
+.table-column-panel-head span {
+  color: #75869b;
+  font-size: 7px;
+  line-height: 1.4;
+}
+.table-column-panel-head button {
+  margin-left: auto;
+  padding: 4px 7px;
+  font-size: 7px;
+}
+.table-column-list {
+  min-height: 0;
+  overflow: auto;
+  padding: 5px;
+}
+.table-column-option {
+  min-height: 31px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.table-column-option:hover {
+  border-color: #24354a;
+  background: #141f2c;
+}
+.table-column-option.dragging {
+  opacity: .45;
+  border-color: #526f9f;
+  background: #18263a;
+}
+.column-grip {
+  color: #596b82;
+  font-size: 12px;
+  cursor: grab;
+  letter-spacing: -3px;
+}
+.table-column-option label {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #aebccc;
+  font-size: 8px;
+  cursor: pointer;
+}
+.table-column-option label span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.table-column-option input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+}
+.table-column-option small {
+  min-width: 38px;
+  color: #59708d;
+  font-size: 6px;
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.configurable-workspace-table th {
+  top: 34px;
+}
+.configurable-workspace-table th.table-column-header {
+  min-width: 54px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.configurable-workspace-table th.table-column-header:active { cursor: grabbing; }
+.configurable-workspace-table th.table-column-header > span {
+  display: inline-block;
+  max-width: calc(100% - 15px);
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.column-drag-handle {
+  margin-left: 5px;
+  color: #485a70;
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: -3px;
+  opacity: .6;
+}
+.table-column-header:hover .column-drag-handle {
+  color: #8296b0;
+  opacity: 1;
+}
+.table-column-header.dragging {
+  opacity: .45;
+  background: #182438 !important;
+}
+.configurable-workspace-table td.numeric-cell {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.configurable-workspace-table td.file-cell {
+  max-width: 320px;
+  color: #7f91a8;
+}
+@media (max-width: 760px) {
+  .table-column-picker { width: 100%; }
+  .table-column-picker > summary { margin-left: 0; }
+  .table-columns-toolbar { justify-content: stretch; }
+}

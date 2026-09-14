@@ -30,6 +30,7 @@ import type {
   TrackMedia,
 } from './types'
 
+import ConfigurableTrackTable from './ConfigurableTrackTable'
 function compactProviderMessage(value: string | undefined): string {
   if (!value) return ''
   const htmlAt = value.search(/<!doctype\s+html|<html(?:\s|>)/i)
@@ -956,32 +957,20 @@ function App() {
                 </div>
               )}
 
-              <div className="workspace-table-wrap">
-                <table className="workspace-table">
-                  <thead>
-                    <tr>
-                      <th className="selection-col"><input type="checkbox" aria-label={t('library.selectAll')} checked={filteredTracks.length > 0 && filteredTracks.every((track) => selectedIDs.includes(track.id))} onChange={toggleAllVisible} /></th>
-                      <th>#</th><th>{t('table.artist')}</th><th>{t('table.title')}</th><th>{t('table.album')}</th><th>{t('table.time')}</th><th>{t('table.codec')}</th><th>LUFS</th><th>{t('table.bpmKey')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTracks.map((track) => (
-                      <tr
-                        key={track.id}
-                        data-track-id={track.id}
-                        className={metadataRowClass(track)}
-                        title={metadataRowTitle(track)}
-                        aria-current={activeTrackID === track.id ? 'true' : undefined}
-                        onClick={(event) => handleTrackRowClick(track.id, event.shiftKey, event.ctrlKey || event.metaKey)}
-                      >
-                        <td className="selection-col" onClick={(event: { stopPropagation(): void }) => event.stopPropagation()}><input type="checkbox" checked={selectedIDs.includes(track.id)} aria-label={t('library.selectTrack', {title: track.title || track.fileName})} onChange={() => toggleTrackSelection(track.id)} /></td>
-                        <td>{track.trackNumber || '–'}</td><td>{track.artist || t('library.unknownArtist')}</td><td className="title-cell">{track.title || track.fileName}</td><td>{track.album || '–'}</td><td>{formatDuration(track.durationMs)}</td><td>{track.codec}</td><td>{track.loudnessI ? track.loudnessI.toFixed(1) : '–'}</td><td>{track.bpm ? `${track.bpm.toFixed(1)} · ${track.key} ${track.keyScale}` : '–'}</td>
-                      </tr>
-                    ))}
-                    {filteredTracks.length === 0 && <tr className="empty-row"><td colSpan={9}>{t('library.filterEmpty')}</td></tr>}
-                  </tbody>
-                </table>
-              </div>
+              <ConfigurableTrackTable
+                language={language}
+                tracks={filteredTracks}
+                selectedIDs={selectedIDs}
+                onToggleAllVisible={toggleAllVisible}
+                onRowClick={handleTrackRowClick}
+                onToggleTrackSelection={toggleTrackSelection}
+                rowClass={metadataRowClass}
+                rowTitle={metadataRowTitle}
+                selectAllLabel={t('library.selectAll')}
+                selectTrackLabel={(track) => t('library.selectTrack', {title: track.title || track.fileName})}
+                unknownArtistLabel={t('library.unknownArtist')}
+                emptyLabel={t('library.filterEmpty')}
+              />
             </>
           ) : (
             <section className="duplicates-view">
