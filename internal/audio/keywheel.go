@@ -83,6 +83,34 @@ func camelotToOpenKey(number int, suffix byte) string {
 	return strconv.Itoa(openNumber) + string(openSuffix)
 }
 
+// HarmonicCamelotKeys returns the conservative one-step Camelot compatibility
+// set used by the DJ library UI: same key, adjacent wheel numbers on the same
+// side, and the relative major/minor key on the opposite side.
+func HarmonicCamelotKeys(camelot string) []string {
+	number, suffix, ok := parseWheelCode(strings.ToUpper(strings.TrimSpace(camelot)), "AB")
+	if !ok {
+		return nil
+	}
+	previous := number - 1
+	if previous < 1 {
+		previous = 12
+	}
+	next := number + 1
+	if next > 12 {
+		next = 1
+	}
+	relativeSuffix := byte('A')
+	if suffix == 'A' {
+		relativeSuffix = 'B'
+	}
+	return []string{
+		strconv.Itoa(number) + string(suffix),
+		strconv.Itoa(previous) + string(suffix),
+		strconv.Itoa(next) + string(suffix),
+		strconv.Itoa(number) + string(relativeSuffix),
+	}
+}
+
 func splitMusicalKey(key, scale string) (string, string) {
 	if normalizeKeyMode(scale) != "" {
 		return key, scale

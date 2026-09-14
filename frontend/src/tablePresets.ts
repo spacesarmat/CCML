@@ -31,19 +31,22 @@ const ALL_COLUMNS: TableColumnID[] = [
   'cover', 'trackNumber', 'artist', 'title', 'album', 'albumArtist',
   'year', 'genre', 'label', 'catalogNumber', 'releaseDate',
   'duration', 'codec', 'sampleRate', 'bitRate', 'channels',
-  'lufs', 'truePeak', 'bpmKey', 'isrc', 'fileName', 'path',
+  'lufs', 'truePeak', 'bpm', 'musicalKey', 'camelot', 'bpmKey',
+  'isrc', 'fileName', 'path',
 ]
 
 export function tablePreset(id: TablePresetID): TablePreset {
   switch (id) {
     case 'dj':
       return preset(
-        ['cover', 'artist', 'title', 'bpmKey', 'genre', 'lufs', 'truePeak', 'duration', 'codec'],
+        ['cover', 'artist', 'title', 'bpm', 'camelot', 'musicalKey', 'genre', 'lufs', 'truePeak', 'duration', 'codec'],
         {
           cover: 54,
           artist: 180,
-          title: 260,
-          bpmKey: 112,
+          title: 250,
+          bpm: 74,
+          camelot: 92,
+          musicalKey: 108,
           genre: 150,
           lufs: 72,
           truePeak: 90,
@@ -81,7 +84,7 @@ export function tablePreset(id: TablePresetID): TablePreset {
 
     case 'technical':
       return preset(
-        ['artist', 'title', 'codec', 'sampleRate', 'bitRate', 'channels', 'lufs', 'truePeak', 'bpmKey', 'duration', 'path'],
+        ['artist', 'title', 'codec', 'sampleRate', 'bitRate', 'channels', 'lufs', 'truePeak', 'bpm', 'camelot', 'musicalKey', 'duration', 'path'],
         {
           artist: 170,
           title: 220,
@@ -91,7 +94,9 @@ export function tablePreset(id: TablePresetID): TablePreset {
           channels: 78,
           lufs: 72,
           truePeak: 90,
-          bpmKey: 110,
+          bpm: 72,
+          camelot: 90,
+          musicalKey: 108,
           duration: 76,
           path: 360,
         },
@@ -104,12 +109,13 @@ export function tablePreset(id: TablePresetID): TablePreset {
 
     case 'compact':
       return preset(
-        ['cover', 'artist', 'title', 'bpmKey', 'duration'],
+        ['cover', 'artist', 'title', 'bpm', 'camelot', 'duration'],
         {
           cover: 52,
           artist: 180,
-          title: 280,
-          bpmKey: 108,
+          title: 270,
+          bpm: 72,
+          camelot: 90,
           duration: 74,
         },
         [

@@ -16,7 +16,7 @@ type Props = {
   onClear: () => void
 }
 
-type MultiFilterKey = 'artists' | 'genres' | 'labels' | 'codecs' | 'keys'
+type MultiFilterKey = 'artists' | 'genres' | 'labels' | 'codecs' | 'keys' | 'camelotKeys'
 
 function LibraryFilterPanel({language, locale, tracks, filters, onChange, onClear}: Props) {
   const [artistSearch, setArtistSearch] = useState('')
@@ -38,6 +38,7 @@ function LibraryFilterPanel({language, locale, tracks, filters, onChange, onClea
         label: 'Лейбл',
         codec: 'Кодек',
         key: 'Тональность',
+        camelot: 'Camelot',
         cover: 'Обложка',
         coverAny: 'Любая',
         coverWith: 'Есть',
@@ -63,6 +64,7 @@ function LibraryFilterPanel({language, locale, tracks, filters, onChange, onClea
         label: 'Label',
         codec: 'Codec',
         key: 'Key',
+        camelot: 'Camelot',
         cover: 'Cover',
         coverAny: 'Any',
         coverWith: 'With cover',
@@ -165,6 +167,15 @@ function LibraryFilterPanel({language, locale, tracks, filters, onChange, onClea
               values={options.keys}
               selected={filters.keys}
               onToggle={(value) => toggleValue('keys', value)}
+              emptyLabel={copy.noValues}
+              selectedLabel={copy.selected}
+            />
+
+            <FilterChecklist
+              title={copy.camelot}
+              values={options.camelotKeys}
+              selected={filters.camelotKeys}
+              onToggle={(value) => toggleValue('camelotKeys', value)}
               emptyLabel={copy.noValues}
               selectedLabel={copy.selected}
             />

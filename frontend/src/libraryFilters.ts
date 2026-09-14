@@ -1,4 +1,5 @@
 import type {Track} from './types'
+import {djKeyFormats} from './djKey'
 
 export type CoverFilter = 'any' | 'with' | 'without'
 
@@ -9,6 +10,7 @@ export type LibraryFilters = {
   labels: string[]
   codecs: string[]
   keys: string[]
+  camelotKeys: string[]
   yearMin: number | null
   yearMax: number | null
   bpmMin: number | null
@@ -23,6 +25,7 @@ export type LibraryFilterOptions = {
   labels: string[]
   codecs: string[]
   keys: string[]
+  camelotKeys: string[]
 }
 
 const STORAGE_KEY = 'ccml.library-filters.v1'
@@ -35,6 +38,7 @@ export function createEmptyLibraryFilters(): LibraryFilters {
     labels: [],
     codecs: [],
     keys: [],
+    camelotKeys: [],
     yearMin: null,
     yearMax: null,
     bpmMin: null,
@@ -62,6 +66,7 @@ export function loadLibraryFilters(): LibraryFilters {
       labels: readStringArray(source.labels),
       codecs: readStringArray(source.codecs),
       keys: readStringArray(source.keys),
+      camelotKeys: readStringArray(source.camelotKeys),
       yearMin: readNullableNumber(source.yearMin),
       yearMax: readNullableNumber(source.yearMax),
       bpmMin: readNullableNumber(source.bpmMin),
@@ -92,6 +97,7 @@ export function normalizeLibraryFilters(filters: LibraryFilters): LibraryFilters
     labels: uniqueStrings(filters.labels),
     codecs: uniqueStrings(filters.codecs),
     keys: uniqueStrings(filters.keys),
+    camelotKeys: uniqueStrings(filters.camelotKeys),
     yearMin: finiteOrNull(filters.yearMin),
     yearMax: finiteOrNull(filters.yearMax),
     bpmMin: finiteOrNull(filters.bpmMin),
@@ -121,6 +127,7 @@ export function countActiveLibraryFilters(filters: LibraryFilters): number {
   if (filters.labels.length > 0) count++
   if (filters.codecs.length > 0) count++
   if (filters.keys.length > 0) count++
+  if (filters.camelotKeys.length > 0) count++
   if (filters.yearMin !== null || filters.yearMax !== null) count++
   if (filters.bpmMin !== null || filters.bpmMax !== null) count++
   if (filters.lufsMin !== null || filters.lufsMax !== null) count++
@@ -156,6 +163,11 @@ export function applyLibraryFilters(tracks: Track[], filters: LibraryFilters): T
       if (!matchesSingle(key, filters.keys)) return false
     }
 
+    if (filters.camelotKeys.length > 0) {
+      const key = djKeyFormats(track.key, track.keyScale)
+      if (!key || !matchesSingle(key.camelot, filters.camelotKeys)) return false
+    }
+
     if (!matchesNumericRange(track.year > 0 ? track.year : null, filters.yearMin, filters.yearMax)) return false
     if (!matchesNumericRange(track.bpm > 0 ? track.bpm : null, filters.bpmMin, filters.bpmMax)) return false
 
@@ -172,6 +184,7 @@ export function buildLibraryFilterOptions(tracks: Track[], locale: string): Libr
   const labels = new Set<string>()
   const codecs = new Set<string>()
   const keys = new Set<string>()
+  const camelotKeys = new Set<string>()
 
   for (const track of tracks) {
     addNonEmpty(artists, track.artist)
@@ -183,6 +196,8 @@ export function buildLibraryFilterOptions(tracks: Track[], locale: string): Libr
     addNonEmpty(labels, track.label)
     addNonEmpty(codecs, normalizedCodec(track))
     addNonEmpty(keys, trackKey(track))
+    const djKey = djKeyFormats(track.key, track.keyScale)
+    if (djKey) addNonEmpty(camelotKeys, djKey.camelot)
   }
 
   const collator = new Intl.Collator(locale, {numeric: true, sensitivity: 'base'})
@@ -194,6 +209,7 @@ export function buildLibraryFilterOptions(tracks: Track[], locale: string): Libr
     labels: sorted(labels),
     codecs: sorted(codecs),
     keys: sorted(keys),
+    camelotKeys: sorted(camelotKeys),
   }
 }
 

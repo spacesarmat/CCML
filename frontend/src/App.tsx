@@ -46,6 +46,7 @@ import {
 import {loadTableSort, saveTableSort, sortTracks, type TableSort} from './tableSort'
 import {applyTheme, loadTheme, saveTheme, type AppTheme} from './theme'
 import {applyUIScale, loadUIScale, saveUIScale, type AppUIScale} from './uiScale'
+import {djKeyFormats, harmonicCamelotKeys} from './djKey'
 
 function compactProviderMessage(value: string | undefined): string {
   if (!value) return ''
@@ -171,6 +172,10 @@ function App() {
   )
 
   const selected = selectedTracks.length === 1 ? selectedTracks[0] : null
+  const selectedDJKey = useMemo(
+    () => selected ? djKeyFormats(selected.key, selected.keyScale) : null,
+    [selected],
+  )
   const unchangedAfterEnrichment = tracks.filter((track) => track.lastMetadataJobStatus === 'skipped').length
   const failedAfterEnrichment = tracks.filter((track) => track.lastMetadataJobStatus === 'failed').length
 
@@ -762,6 +767,46 @@ function App() {
     setLibraryFilters(empty)
     saveLibraryFilters(empty)
     clearTrackSelection()
+  }
+
+  async function showHarmonicMatches() {
+    if (!selected || !selectedDJKey) {
+      setMessage(t('message.harmonicKeyUnavailable'))
+      return
+    }
+    const compatible = harmonicCamelotKeys(selectedDJKey.camelot)
+    if (compatible.length === 0) {
+      setMessage(t('message.harmonicKeyUnavailable'))
+      return
+    }
+
+    const nextFilters = {...libraryFilters, camelotKeys: compatible}
+    setMainView('library')
+    setMetadataFilter('all')
+    setLibraryFilters(nextFilters)
+    saveLibraryFilters(nextFilters)
+
+    const nextSort: TableSort[] = [
+      {column: 'camelot', direction: 'asc'},
+      {column: 'bpm', direction: 'asc'},
+    ]
+    changeTableSort(nextSort)
+    clearTrackSelection()
+
+    if (liveSearchTimerRef.current !== null) {
+      window.clearTimeout(liveSearchTimerRef.current)
+      liveSearchTimerRef.current = null
+    }
+    if (search.trim() !== '') {
+      skipNextLiveSearchRef.current = true
+      setSearch('')
+      await refreshTracks('')
+    }
+
+    setMessage(t('message.harmonicFilterApplied', {
+      key: selectedDJKey.camelot,
+      keys: compatible.join(', '),
+    }))
   }
 
   async function revealJobTrack(trackID: number) {
@@ -1467,8 +1512,8 @@ function App() {
                   onQueued={() => setJobsOpen(true)}
                 />
                 {!selected ? <div className="workspace-empty-state">{t('workspace.analysisHint')}</div> : <>
-                  <dl className="facts inspector-facts"><dt>{t('details.path')}</dt><dd title={selected.path}>{selected.path}</dd><dt>{t('details.format')}</dt><dd>{selected.codec} · {selected.sampleRate || '–'} Hz · {selected.channels || '–'} {t('details.channelsShort')}</dd><dt>{t('details.loudness')}</dt><dd>{selected.loudnessI ? `${selected.loudnessI.toFixed(1)} LUFS / ${selected.truePeak.toFixed(1)} dBTP` : t('details.notAnalyzed')}</dd></dl>
-                  <div className="inspector-action-grid"><button onClick={analyzeLoudness} disabled={busy}>{t('actions.loudnessAnalysis')}</button><button onClick={analyzeBPMKey} disabled={busy || !status?.essentiaReady}>{t('actions.bpmKey')}</button><button onClick={writeReplayGain} disabled={busy}>{t('actions.replayGain')}</button></div>
+                  <dl className="facts inspector-facts"><dt>{t('details.path')}</dt><dd title={selected.path}>{selected.path}</dd><dt>{t('details.format')}</dt><dd>{selected.codec} · {selected.sampleRate || '–'} Hz · {selected.channels || '–'} {t('details.channelsShort')}</dd><dt>{t('details.loudness')}</dt><dd>{selected.loudnessI ? `${selected.loudnessI.toFixed(1)} LUFS / ${selected.truePeak.toFixed(1)} dBTP` : t('details.notAnalyzed')}</dd><dt>{t('details.bpm')}</dt><dd>{selected.bpm > 0 ? selected.bpm.toFixed(1) : '–'}</dd><dt>{t('details.musicalKey')}</dt><dd>{selected.key ? `${selected.key}${selected.keyScale ? ` ${selected.keyScale}` : ''}` : '–'}</dd><dt>{t('details.camelot')}</dt><dd>{selectedDJKey ? `${selectedDJKey.camelot} / ${selectedDJKey.openKey}` : '–'}</dd>{selectedDJKey && <><dt>{t('details.compatibleKeys')}</dt><dd>{harmonicCamelotKeys(selectedDJKey.camelot).join(', ')}</dd></>}</dl>
+                  <div className="inspector-action-grid"><button onClick={analyzeLoudness} disabled={busy}>{t('actions.loudnessAnalysis')}</button><button onClick={analyzeBPMKey} disabled={busy || !status?.essentiaReady}>{t('actions.bpmKey')}</button><button onClick={() => void showHarmonicMatches()} disabled={busy || !selectedDJKey}>{t('actions.harmonicMatches')}</button><button onClick={writeReplayGain} disabled={busy}>{t('actions.replayGain')}</button></div>
                   <div className="spectrogram-section">
                     <div className="spectrogram-heading"><h3>{t('spectrogram.title')}</h3><button onClick={() => void loadSpectrograms()} disabled={spectrogramLoading || !status?.ffmpegReady}>{spectrogramLoading ? t('spectrogram.generating') : t('spectrogram.refresh')}</button></div>
                     {spectrogramError && <p className="warning compact-warning">{spectrogramError}</p>}

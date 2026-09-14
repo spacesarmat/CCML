@@ -15,6 +15,7 @@ import {
 } from './tablePresets'
 import TrackCoverCell from './TrackCoverCell'
 import BatchTagTools from './BatchTagTools'
+import {djKeyFormats} from './djKey'
 
 type TableLayout = {
   order: TableColumnID[]
@@ -50,7 +51,8 @@ type Props = {
 const ALL_COLUMNS: TableColumnID[] = [
   'cover', 'trackNumber', 'artist', 'title', 'album', 'albumArtist', 'year', 'genre',
   'label', 'catalogNumber', 'releaseDate', 'duration', 'codec', 'sampleRate',
-  'bitRate', 'channels', 'lufs', 'truePeak', 'bpmKey', 'isrc', 'fileName', 'path',
+  'bitRate', 'channels', 'lufs', 'truePeak', 'bpm', 'musicalKey', 'camelot',
+  'bpmKey', 'isrc', 'fileName', 'path',
 ]
 
 const DEFAULT_WIDTHS: Record<TableColumnID, number> = {
@@ -72,6 +74,9 @@ const DEFAULT_WIDTHS: Record<TableColumnID, number> = {
   channels: 82,
   lufs: 72,
   truePeak: 92,
+  bpm: 74,
+  musicalKey: 110,
+  camelot: 92,
   bpmKey: 112,
   isrc: 132,
   fileName: 280,
@@ -92,7 +97,7 @@ const VIRTUAL_CHROME_HEIGHT = 70
 
 const DEFAULT_LAYOUT: TableLayout = {
   order: [...ALL_COLUMNS],
-  visible: ['cover', 'trackNumber', 'artist', 'title', 'album', 'duration', 'codec', 'lufs', 'bpmKey'],
+  visible: ['cover', 'trackNumber', 'artist', 'title', 'album', 'duration', 'codec', 'lufs', 'bpm', 'camelot'],
   widths: {},
 }
 
@@ -118,6 +123,9 @@ const LABELS: Record<AppLanguage, Record<TableColumnID, string>> = {
     channels: 'Каналы',
     lufs: 'LUFS',
     truePeak: 'True Peak',
+    bpm: 'BPM',
+    musicalKey: 'Тональность',
+    camelot: 'Camelot',
     bpmKey: 'BPM / Key',
     isrc: 'ISRC',
     fileName: 'Имя файла',
@@ -142,6 +150,9 @@ const LABELS: Record<AppLanguage, Record<TableColumnID, string>> = {
     channels: 'Channels',
     lufs: 'LUFS',
     truePeak: 'True Peak',
+    bpm: 'BPM',
+    musicalKey: 'Musical Key',
+    camelot: 'Camelot',
     bpmKey: 'BPM / Key',
     isrc: 'ISRC',
     fileName: 'File Name',
@@ -989,6 +1000,14 @@ function renderColumn(id: TableColumnID, track: Track, unknownArtistLabel: strin
       return track.loudnessI ? track.loudnessI.toFixed(1) : '–'
     case 'truePeak':
       return track.truePeak ? `${track.truePeak.toFixed(1)} dBTP` : '–'
+    case 'bpm':
+      return track.bpm > 0 ? track.bpm.toFixed(1) : '–'
+    case 'musicalKey':
+      return track.key ? `${track.key}${track.keyScale ? ` ${track.keyScale}` : ''}` : '–'
+    case 'camelot': {
+      const key = djKeyFormats(track.key, track.keyScale)
+      return key ? `${key.camelot} / ${key.openKey}` : '–'
+    }
     case 'bpmKey':
       return track.bpm
         ? `${track.bpm.toFixed(1)} · ${track.key || '–'}${track.keyScale ? ` ${track.keyScale}` : ''}`
@@ -1006,7 +1025,7 @@ function cellClass(id: TableColumnID): string {
   if (id === 'cover') return 'cover-cell'
   if (id === 'title') return 'title-cell'
   if (id === 'path' || id === 'fileName') return 'file-cell'
-  if (['trackNumber', 'year', 'duration', 'sampleRate', 'bitRate', 'channels', 'lufs', 'truePeak'].includes(id)) {
+  if (['trackNumber', 'year', 'duration', 'sampleRate', 'bitRate', 'channels', 'lufs', 'truePeak', 'bpm'].includes(id)) {
     return 'numeric-cell'
   }
   return ''

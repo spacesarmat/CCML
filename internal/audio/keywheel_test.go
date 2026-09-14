@@ -41,3 +41,30 @@ func TestDJKeyFormatsRejectsUnknownKey(t *testing.T) {
 		t.Fatalf("unexpected normalization = %q, %q, %v", camelot, openKey, ok)
 	}
 }
+
+func TestHarmonicCamelotKeys(t *testing.T) {
+	t.Parallel()
+
+	got := HarmonicCamelotKeys("8A")
+	want := []string{"8A", "7A", "9A", "8B"}
+	if len(got) != len(want) {
+		t.Fatalf("compatibility = %+v", got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("compatibility = %+v, want %+v", got, want)
+		}
+	}
+
+	wrapped := HarmonicCamelotKeys("1B")
+	wrappedWant := []string{"1B", "12B", "2B", "1A"}
+	for i := range wrappedWant {
+		if wrapped[i] != wrappedWant[i] {
+			t.Fatalf("wrapped compatibility = %+v, want %+v", wrapped, wrappedWant)
+		}
+	}
+
+	if got := HarmonicCamelotKeys("not-a-key"); len(got) != 0 {
+		t.Fatalf("invalid compatibility = %+v", got)
+	}
+}

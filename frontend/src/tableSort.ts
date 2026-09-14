@@ -1,10 +1,12 @@
 import type { Track } from './types'
+import {djKeyFormats, djKeySortRank} from './djKey'
 
 export type TableColumnID =
   | 'cover' | 'trackNumber' | 'artist' | 'title' | 'album' | 'albumArtist'
   | 'year' | 'genre' | 'label' | 'catalogNumber' | 'releaseDate'
   | 'duration' | 'codec' | 'sampleRate' | 'bitRate' | 'channels'
-  | 'lufs' | 'truePeak' | 'bpmKey' | 'isrc' | 'fileName' | 'path'
+  | 'lufs' | 'truePeak' | 'bpm' | 'musicalKey' | 'camelot' | 'bpmKey'
+  | 'isrc' | 'fileName' | 'path'
 
 export type TableSort = {
   column: TableColumnID
@@ -117,6 +119,12 @@ function sortValue(track: Track, column: TableColumnID): string | number | null 
     case 'channels': return track.channels > 0 ? track.channels : null
     case 'lufs': return track.loudnessI !== 0 ? track.loudnessI : null
     case 'truePeak': return track.truePeak !== 0 ? track.truePeak : null
+    case 'bpm': return track.bpm > 0 ? track.bpm : null
+    case 'musicalKey': return clean(track.key ? `${track.key} ${track.keyScale}` : '')
+    case 'camelot': {
+      const key = djKeyFormats(track.key, track.keyScale)
+      return key ? djKeySortRank(key.camelot) : null
+    }
     case 'bpmKey': return track.bpm > 0 ? track.bpm : clean(track.key)
     case 'isrc': return clean(track.isrc)
     case 'fileName': return clean(track.fileName)
@@ -133,6 +141,7 @@ function isColumnID(value: unknown): value is TableColumnID {
   return typeof value === 'string' && [
     'cover', 'trackNumber', 'artist', 'title', 'album', 'albumArtist', 'year', 'genre',
     'label', 'catalogNumber', 'releaseDate', 'duration', 'codec', 'sampleRate',
-    'bitRate', 'channels', 'lufs', 'truePeak', 'bpmKey', 'isrc', 'fileName', 'path',
+    'bitRate', 'channels', 'lufs', 'truePeak', 'bpm', 'musicalKey', 'camelot',
+    'bpmKey', 'isrc', 'fileName', 'path',
   ].includes(value)
 }
