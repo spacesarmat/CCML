@@ -182,6 +182,19 @@ func TestBananaStreetBaseTitleFallbackCanMatchVersionedTrack(t *testing.T) {
 	}
 }
 
+func TestBananaStreetSearchURLEscapesQuerySeparators(t *testing.T) {
+	t.Parallel()
+
+	got := bananaStreetSearchURL(
+		"https://bananastreet.ru",
+		"Simon & Garfunkel - Bridge Over Troubled Water",
+	)
+	want := "https://bananastreet.ru/search?q=Simon%20%26%20Garfunkel%20-%20Bridge%20Over%20Troubled%20Water"
+	if got != want {
+		t.Fatalf("url = %q, want %q", got, want)
+	}
+}
+
 func TestBananaStreetSearchUsesBrowserCompatiblePublicSearchPage(t *testing.T) {
 	t.Parallel()
 

@@ -114,7 +114,9 @@ func bananaStreetSearchTerm(query model.MetadataQuery) string {
 }
 
 func bananaStreetSearchURL(baseURL, term string) string {
-	return strings.TrimRight(baseURL, "/") + "/search?q=" + url.PathEscape(strings.TrimSpace(term))
+	encoded := url.QueryEscape(strings.TrimSpace(term))
+	encoded = strings.ReplaceAll(encoded, "+", "%20")
+	return strings.TrimRight(baseURL, "/") + "/search?q=" + encoded
 }
 
 func bananaStreetCandidatesFromHTML(doc, sourceURL string, query model.MetadataQuery) []model.MetadataCandidate {
