@@ -3047,3 +3047,267 @@ button:disabled:hover {
     display: none;
   }
 }
+/* Stage 11.3.1 — metadata inspector theme coverage */
+
+/* Batch-enrichment controls */
+.compact-enrichment {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text);
+}
+
+.compact-enrichment > label,
+.compact-enrichment .inline-check,
+.compact-enrichment .enrichment-mode-label {
+  color: var(--ccml-text-muted);
+}
+
+.compact-enrichment .enrichment-mode-hint {
+  color: var(--ccml-text-dim);
+}
+
+.compact-enrichment input,
+.compact-enrichment select {
+  border-color: var(--ccml-border);
+  background: var(--ccml-input);
+  color: var(--ccml-text);
+}
+
+.compact-enrichment input[type='checkbox'] {
+  accent-color: var(--ccml-accent);
+}
+
+/* Provider report rows */
+.inspector-provider {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text);
+}
+
+.inspector-provider strong {
+  color: var(--ccml-text-strong);
+}
+
+.inspector-provider span {
+  color: var(--ccml-text-muted);
+}
+
+.inspector-provider small {
+  color: var(--ccml-text-dim);
+}
+
+.inspector-provider.ok {
+  border-color: color-mix(in srgb, var(--ccml-success) 48%, var(--ccml-border));
+  background: color-mix(in srgb, var(--ccml-success) 5%, var(--ccml-surface-1));
+}
+
+.inspector-provider.empty {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  opacity: .82;
+}
+
+.inspector-provider.error {
+  border-color: color-mix(in srgb, var(--ccml-danger) 52%, var(--ccml-border));
+  background: color-mix(in srgb, var(--ccml-danger) 5%, var(--ccml-surface-1));
+}
+
+/* Ranked candidate cards */
+.inspector-candidate {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text);
+}
+
+.candidate-head img {
+  border: 1px solid var(--ccml-border);
+  background: var(--ccml-surface-3);
+}
+
+.candidate-head strong {
+  color: var(--ccml-text-strong);
+}
+
+.candidate-head span {
+  color: var(--ccml-text-muted);
+}
+
+.candidate-head small {
+  color: var(--ccml-text-dim);
+}
+
+.candidate-facts .metadata-detail span {
+  color: var(--ccml-text-muted);
+}
+
+.candidate-facts .metadata-detail strong {
+  color: var(--ccml-text);
+}
+
+/* Metadata merge card */
+.metadata-merge,
+.metadata-inspector .metadata-merge {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text);
+}
+
+.metadata-merge .panel-title {
+  border-bottom-color: var(--ccml-border-subtle);
+}
+
+.metadata-merge .panel-title h3 {
+  color: var(--ccml-text-strong);
+}
+
+.metadata-merge .panel-title span {
+  color: var(--ccml-text-muted);
+}
+
+.metadata-merge-grid label {
+  color: var(--ccml-text-muted);
+}
+
+.metadata-merge-grid select {
+  border-color: var(--ccml-border);
+  background: var(--ccml-input);
+  color: var(--ccml-text);
+}
+
+.metadata-merge-preview {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-2);
+}
+
+.metadata-merge-preview > strong {
+  color: var(--ccml-text-strong);
+}
+
+.metadata-merge-preview span,
+.metadata-merge-preview small {
+  color: var(--ccml-text-muted);
+}
+
+.metadata-merge-preview code {
+  color: var(--ccml-text);
+}
+
+.metadata-merge-preview b {
+  color: var(--ccml-text-dim);
+}
+
+.metadata-actions button {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text);
+}
+
+.metadata-actions button:hover:not(:disabled) {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+}
+
+/* Match badges / issue chips */
+.metadata-match-badge {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text-muted);
+}
+
+.metadata-match-badge.exact,
+.metadata-match-badge.high {
+  border-color: color-mix(in srgb, var(--ccml-success) 52%, var(--ccml-border));
+  background: color-mix(in srgb, var(--ccml-success) 9%, var(--ccml-surface-1));
+  color: var(--ccml-success);
+}
+
+.metadata-match-badge.medium,
+.metadata-match-badge.low {
+  border-color: color-mix(in srgb, var(--ccml-warning) 54%, var(--ccml-border));
+  background: color-mix(in srgb, var(--ccml-warning) 9%, var(--ccml-surface-1));
+  color: var(--ccml-warning);
+}
+
+.metadata-match-badge.rejected {
+  border-color: color-mix(in srgb, var(--ccml-danger) 52%, var(--ccml-border));
+  background: color-mix(in srgb, var(--ccml-danger) 8%, var(--ccml-surface-1));
+  color: var(--ccml-danger);
+}
+
+.metadata-issues span {
+  background: color-mix(in srgb, var(--ccml-danger) 8%, var(--ccml-surface-2));
+  color: var(--ccml-danger);
+}
+
+/* Legacy larger metadata-provider cards use the same semantics. */
+.metadata-provider {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text);
+}
+
+.metadata-provider strong {
+  color: var(--ccml-text-strong);
+}
+
+.metadata-provider span,
+.metadata-provider small {
+  color: var(--ccml-text-muted);
+}
+
+.metadata-provider.ok {
+  border-color: color-mix(in srgb, var(--ccml-success) 48%, var(--ccml-border));
+}
+
+.metadata-provider.error {
+  border-color: color-mix(in srgb, var(--ccml-danger) 52%, var(--ccml-border));
+}
+
+/* Explicit Light fallback for WebView versions where color-mix rendering is
+   less visually balanced than the dark themes. */
+:root[data-ccml-theme='light'] .inspector-provider,
+:root[data-ccml-theme='light'] .inspector-candidate,
+:root[data-ccml-theme='light'] .metadata-merge,
+:root[data-ccml-theme='light'] .metadata-provider,
+:root[data-ccml-theme='light'] .compact-enrichment {
+  background: #ffffff;
+}
+
+:root[data-ccml-theme='light'] .metadata-merge-preview {
+  background: #f3f6f9;
+}
+
+:root[data-ccml-theme='light'] .inspector-provider.empty {
+  background: #f7f9fb;
+}
+
+:root[data-ccml-theme='light'] .inspector-provider.ok {
+  border-color: #9dcbb4;
+  background: #f6fbf8;
+}
+
+:root[data-ccml-theme='light'] .inspector-provider.error {
+  border-color: #d6a1a6;
+  background: #fff8f8;
+}
+
+:root[data-ccml-theme='light'] .metadata-match-badge.exact,
+:root[data-ccml-theme='light'] .metadata-match-badge.high {
+  border-color: #9dcbb4;
+  background: #eef8f2;
+  color: #28744f;
+}
+
+:root[data-ccml-theme='light'] .metadata-match-badge.medium,
+:root[data-ccml-theme='light'] .metadata-match-badge.low {
+  border-color: #d7bf8b;
+  background: #fff8e8;
+  color: #86621e;
+}
+
+:root[data-ccml-theme='light'] .metadata-match-badge.rejected,
+:root[data-ccml-theme='light'] .metadata-issues span {
+  border-color: #d6a1a6;
+  background: #fff1f2;
+  color: #a8444c;
+}
