@@ -1430,6 +1430,7 @@ function App() {
                           <div className="candidate-facts">
                             <MetadataDetail label={t('metadata.year')} value={item.year ? String(item.year) : '–'} />
                             <MetadataDetail label={t('metadata.genre')} value={item.genre || '–'} />
+                            {item.stage && <MetadataDetail label={t('metadata.stage')} value={item.stage} />}
                             <MetadataDetail label={t('metadata.duration')} value={item.durationMs ? formatDuration(item.durationMs) : '–'} />
                             <MetadataDetail label={t('metadata.label')} value={item.label || '–'} />
                             <MetadataDetail label={t('metadata.isrc')} value={item.isrc || '–'} />

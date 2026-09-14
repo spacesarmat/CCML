@@ -290,6 +290,7 @@ export type MetadataCandidate = {
   releaseDate: string
   year: number
   genre: string
+  stage?: string
   label: string
   catalogNumber: string
   isrc: string

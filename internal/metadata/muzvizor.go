@@ -60,32 +60,32 @@ func (p *MuzvizorProvider) Search(ctx context.Context, query model.MetadataQuery
 		return nil, fmt.Errorf("artist or title is required")
 	}
 
-	// MUZVIZOR's public track search uses /tracks?query=... . Keep the provider
-	// on that confirmed web contract instead of guessing alternate endpoints.
+	// First try the confirmed public search route. MUZVIZOR can return only a
+	// JavaScript shell to a backend HTTP client even though the browser later
+	// renders track rows. If no rows are available, use public genre pages.
 	values := url.Values{}
 	values.Set("query", term)
 	searchURL := p.baseURL + "/tracks?" + values.Encode()
 
+	var directErr error
 	doc, err := p.fetchHTML(ctx, searchURL)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
+		directErr = err
+	} else if collected := muzvizorCandidatesFromHTML(doc, searchURL, query); len(collected) > 0 {
+		return muzvizorLimitCandidates(query, collected), nil
+	}
+
+	fallback, fallbackErr := p.searchPublicGenrePages(ctx, query)
+	if len(fallback) > 0 {
+		return fallback, nil
+	}
+	if err := muzvizorFallbackError(directErr, fallbackErr); err != nil {
 		return nil, err
 	}
-
-	collected := muzvizorCandidatesFromHTML(doc, searchURL, query)
-	if len(collected) == 0 {
-		return nil, nil
-	}
-
-	sort.SliceStable(collected, func(i, j int) bool {
-		return muzvizorQueryFit(query, collected[i]) > muzvizorQueryFit(query, collected[j])
-	})
-	if len(collected) > 12 {
-		collected = collected[:12]
-	}
-	return collected, nil
+	return nil, nil
 }
 
 func muzvizorSearchTerm(query model.MetadataQuery) string {
@@ -123,6 +123,9 @@ func (p *MuzvizorProvider) fetchHTML(ctx context.Context, target string) (string
 }
 
 func muzvizorCandidatesFromHTML(doc, sourceURL string, query model.MetadataQuery) []model.MetadataCandidate {
+	if items, rowsFound := muzvizorRenderedCandidatesFromHTML(doc, sourceURL, query); rowsFound {
+		return items
+	}
 	lines := muzvizorVisibleLines(doc)
 	if len(lines) == 0 {
 		return nil
@@ -298,11 +301,12 @@ func looksLikeMuzvizorGenre(value string) bool {
 	}
 	known := []string{
 		"pop", "hip-hop", "hip hop", "house", "deep", "deep house", "bass", "bass house",
-		"rave", "dnb", "drum", "drum'n'bass", "drum & bass", "baile funk", "disco", "funk",
-		"jersey", "jersey club", "afro", "afro house", "tech", "tech house", "techno", "club",
-		"trap", "breakbeat", "breaks", "uk", "2 step", "2step", "indie dance", "open format",
-		"moombahton", "rock", "rnb", "r&b", "afrobeats", "amapiano", "electronic", "halfstep",
-		"future beats", "nu disco", "underground",
+		"big room", "rave", "dnb", "drum", "drum'n'bass", "drum & bass", "baile funk",
+		"disco", "disco house", "funk", "jersey", "jersey club", "afro", "afro house",
+		"tech", "tech house", "techno", "club", "trap", "breakbeat", "breaks", "uk",
+		"2 step", "2step", "indie dance", "open format", "moombahton", "rock", "rnb",
+		"r&b", "soul", "afrobeats", "amapiano", "electronic", "halfstep", "future beats",
+		"nu disco", "organic", "progressive", "instrumental", "trance", "dubstep", "underground",
 	}
 	for _, item := range known {
 		if normalized == item || strings.Contains(normalized, item+",") || strings.Contains(normalized, ", "+item) {

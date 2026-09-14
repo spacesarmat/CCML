@@ -335,6 +335,7 @@ type MetadataCandidate struct {
 	ReleaseDate       string        `json:"releaseDate"`
 	Year              int           `json:"year"`
 	Genre             string        `json:"genre"`
+	Stage             string        `json:"stage"`
 	Label             string        `json:"label"`
 	CatalogNumber     string        `json:"catalogNumber"`
 	ISRC              string        `json:"isrc"`

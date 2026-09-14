@@ -463,6 +463,7 @@ export namespace model {
 	    releaseDate: string;
 	    year: number;
 	    genre: string;
+	    stage: string;
 	    label: string;
 	    catalogNumber: string;
 	    isrc: string;
@@ -500,6 +501,7 @@ export namespace model {
 	        this.releaseDate = source["releaseDate"];
 	        this.year = source["year"];
 	        this.genre = source["genre"];
+	        this.stage = source["stage"];
 	        this.label = source["label"];
 	        this.catalogNumber = source["catalogNumber"];
 	        this.isrc = source["isrc"];
