@@ -78,10 +78,24 @@ function buildFallbackOptions(candidates: MetadataCandidate[]): MetadataFieldOpt
         source: candidate.source,
         externalId: candidate.externalId,
         confidence: candidate.confidence,
+        support: 1,
+        sources: [candidate.source],
+        quality: candidate.confidence,
       })
     }
   }
   return result
+}
+
+const conflictFields = new Set<MergeField>(['genre', 'bpm', 'key'])
+
+function optionSupport(option: MetadataFieldOption): number {
+  return option.support ?? option.sources?.length ?? 1
+}
+
+function optionSourceNames(option: MetadataFieldOption): string[] {
+  const sources = option.sources?.filter(Boolean) ?? []
+  return sources.length > 0 ? sources : [option.source]
 }
 
 export default function MetadataMerge({language, lookup, current, disabled, onApply}: Props) {
@@ -163,6 +177,8 @@ export default function MetadataMerge({language, lookup, current, disabled, onAp
           {fields.map(({field, label, numeric}) => {
             const options = grouped.get(field) ?? []
             if (options.length === 0) return null
+            const sources = new Set(options.flatMap((option) => optionSourceNames(option)))
+            const conflict = conflictFields.has(field) && options.length > 1
             return (
               <label key={field}>
                 <span>{t(label)}</span>
@@ -173,10 +189,15 @@ export default function MetadataMerge({language, lookup, current, disabled, onAp
                 >
                   {options.map((option, index) => (
                     <option key={`${field}-${option.source}-${option.externalId}-${index}`} value={index}>
-                      {optionValue(option, numeric)} — {option.source} ({Math.round(option.confidence * 100)}%)
+                      {optionValue(option, numeric)} — {option.source} ({Math.round(option.confidence * 100)}%){optionSupport(option) > 1 ? ` · ${translate(language, 'metadata.mergeSupport', {count: optionSupport(option)})}` : ''}
                     </option>
                   ))}
                 </select>
+                {conflict && (
+                  <small className="warning">
+                    {translate(language, 'metadata.mergeConflict', {values: options.length, sources: sources.size})}
+                  </small>
+                )}
               </label>
             )
           })}

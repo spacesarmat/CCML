@@ -641,6 +641,9 @@ export namespace model {
 	    source: string;
 	    externalId: string;
 	    confidence: number;
+	    support: number;
+	    sources: string[];
+	    quality: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new MetadataFieldOption(source);
@@ -655,6 +658,9 @@ export namespace model {
 	        this.source = source["source"];
 	        this.externalId = source["externalId"];
 	        this.confidence = source["confidence"];
+	        this.support = source["support"];
+	        this.sources = source["sources"];
+	        this.quality = source["quality"];
 	    }
 	}
 	export class MetadataProviderReport {

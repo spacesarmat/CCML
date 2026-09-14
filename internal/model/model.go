@@ -359,13 +359,16 @@ type MetadataCandidate struct {
 
 // MetadataFieldOption is one source/value choice for the merge editor.
 type MetadataFieldOption struct {
-	Field      string  `json:"field"`
-	Value      string  `json:"value"`
-	Number     int     `json:"number"`
-	Decimal    float64 `json:"decimal"`
-	Source     string  `json:"source"`
-	ExternalID string  `json:"externalId"`
-	Confidence float64 `json:"confidence"`
+	Field      string   `json:"field"`
+	Value      string   `json:"value"`
+	Number     int      `json:"number"`
+	Decimal    float64  `json:"decimal"`
+	Source     string   `json:"source"`
+	ExternalID string   `json:"externalId"`
+	Confidence float64  `json:"confidence"`
+	Support    int      `json:"support"`
+	Sources    []string `json:"sources"`
+	Quality    float64  `json:"quality"`
 }
 
 // MetadataProviderReport describes one provider attempt during a lookup.

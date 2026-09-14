@@ -320,6 +320,9 @@ export type MetadataFieldOption = {
   source: string
   externalId: string
   confidence: number
+  support?: number
+  sources?: string[] | null
+  quality?: number
 }
 
 export type MetadataProviderReport = {

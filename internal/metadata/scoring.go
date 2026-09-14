@@ -3,7 +3,6 @@ package metadata
 import (
 	"math"
 	"sort"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -94,23 +93,7 @@ func ScoreCandidate(query model.MetadataQuery, candidate model.MetadataCandidate
 }
 
 func rankCandidates(query model.MetadataQuery, items []model.MetadataCandidate) []model.MetadataCandidate {
-	for i := range items {
-		items[i].Score = ScoreCandidate(query, items[i])
-		items[i].Confidence = items[i].Score.Total
-		items[i].MatchIssues = candidateIssues(query, items[i])
-		items[i].MatchClass = matchClass(items[i])
-	}
-	sort.SliceStable(items, func(i, j int) bool {
-		if items[i].Confidence == items[j].Confidence {
-			return candidateCompleteness(items[i]) > candidateCompleteness(items[j])
-		}
-		return items[i].Confidence > items[j].Confidence
-	})
-	items = dedupeCandidates(items)
-	if len(items) > maxRankedCandidates {
-		items = items[:maxRankedCandidates]
-	}
-	return items
+	return dedupeRankedCandidates(rankCandidateEvidence(query, items))
 }
 
 func matchClass(candidate model.MetadataCandidate) string {
@@ -155,10 +138,7 @@ func dedupeCandidates(items []model.MetadataCandidate) []model.MetadataCandidate
 	seen := make(map[string]struct{}, len(items))
 	out := make([]model.MetadataCandidate, 0, len(items))
 	for _, item := range items {
-		key := normalizeText(item.Artist) + "\x00" + normalizeText(item.Title) + "\x00" + normalizeText(item.Album) + "\x00" + normalizeIdentifier(item.ISRC)
-		if key == "\x00\x00\x00" {
-			key = item.Source + "\x00" + item.ExternalID
-		}
+		key := candidateDedupeKey(item)
 		if _, ok := seen[key]; ok {
 			continue
 		}
@@ -240,6 +220,24 @@ func buildSuggested(items []model.MetadataCandidate) model.MetadataCandidate {
 	base.BPM = pickFloat("bpm", func(c model.MetadataCandidate) float64 { return c.BPM })
 	base.Key = pickString("key", func(c model.MetadataCandidate) string { return c.Key })
 	base.KeyScale = pickString("keyScale", func(c model.MetadataCandidate) string { return c.KeyScale })
+
+	// DJ-pool fields use Stage 18.6 quality/consensus ordering. This runs after
+	// the legacy per-source picks so a weak show/tag source cannot silently
+	// replace stronger pool evidence, while two agreeing pools can reinforce
+	// the same value.
+	qualityOptions := buildFieldOptions(items)
+	if option, ok := bestFieldOption(qualityOptions, "genre"); ok {
+		base.Genre = option.Value
+	}
+	if option, ok := bestFieldOption(qualityOptions, "bpm"); ok {
+		base.BPM = option.Decimal
+	}
+	if option, ok := bestFieldOption(qualityOptions, "key"); ok {
+		base.Key = option.Value
+	}
+	if option, ok := bestFieldOption(qualityOptions, "keyScale"); ok {
+		base.KeyScale = option.Value
+	}
 	if base.Year == 0 {
 		base.Year = pickInt("year", func(c model.MetadataCandidate) int { return c.Year })
 	}
@@ -275,84 +273,7 @@ func buildSuggested(items []model.MetadataCandidate) model.MetadataCandidate {
 }
 
 func buildFieldOptions(items []model.MetadataCandidate) []model.MetadataFieldOption {
-	items = trustedCandidates(items)
-	type strField struct {
-		name string
-		get  func(model.MetadataCandidate) string
-	}
-	stringFields := []strField{
-		{"title", func(c model.MetadataCandidate) string { return c.Title }},
-		{"artist", func(c model.MetadataCandidate) string { return c.Artist }},
-		{"album", func(c model.MetadataCandidate) string { return c.Album }},
-		{"albumArtist", func(c model.MetadataCandidate) string { return c.AlbumArtist }},
-		{"releaseDate", func(c model.MetadataCandidate) string { return c.ReleaseDate }},
-		{"genre", func(c model.MetadataCandidate) string { return c.Genre }},
-		{"label", func(c model.MetadataCandidate) string { return c.Label }},
-		{"catalogNumber", func(c model.MetadataCandidate) string { return c.CatalogNumber }},
-		{"isrc", func(c model.MetadataCandidate) string { return c.ISRC }},
-		{"key", func(c model.MetadataCandidate) string { return c.Key }},
-		{"keyScale", func(c model.MetadataCandidate) string { return c.KeyScale }},
-	}
-	type intField struct {
-		name string
-		get  func(model.MetadataCandidate) int
-	}
-	intFields := []intField{
-		{"year", func(c model.MetadataCandidate) int { return c.Year }},
-		{"trackNumber", func(c model.MetadataCandidate) int { return c.TrackNumber }},
-		{"trackTotal", func(c model.MetadataCandidate) int { return c.TrackTotal }},
-		{"discNumber", func(c model.MetadataCandidate) int { return c.DiscNumber }},
-		{"discTotal", func(c model.MetadataCandidate) int { return c.DiscTotal }},
-	}
-	type floatField struct {
-		name string
-		get  func(model.MetadataCandidate) float64
-	}
-	floatFields := []floatField{
-		{"bpm", func(c model.MetadataCandidate) float64 { return c.BPM }},
-	}
-
-	options := make([]model.MetadataFieldOption, 0, len(items)*8)
-	seen := map[string]struct{}{}
-	for _, item := range items {
-		for _, field := range stringFields {
-			value := strings.TrimSpace(field.get(item))
-			if value == "" {
-				continue
-			}
-			key := field.name + "\x00" + normalizeText(value)
-			if _, ok := seen[key]; ok {
-				continue
-			}
-			seen[key] = struct{}{}
-			options = append(options, model.MetadataFieldOption{Field: field.name, Value: value, Source: item.Source, ExternalID: item.ExternalID, Confidence: item.Confidence})
-		}
-		for _, field := range intFields {
-			value := field.get(item)
-			if value <= 0 {
-				continue
-			}
-			key := field.name + "\x00" + strconv.Itoa(value)
-			if _, ok := seen[key]; ok {
-				continue
-			}
-			seen[key] = struct{}{}
-			options = append(options, model.MetadataFieldOption{Field: field.name, Number: value, Source: item.Source, ExternalID: item.ExternalID, Confidence: item.Confidence})
-		}
-		for _, field := range floatFields {
-			value := field.get(item)
-			if value <= 0 {
-				continue
-			}
-			key := field.name + "\x00" + strconv.FormatFloat(value, 'f', 3, 64)
-			if _, ok := seen[key]; ok {
-				continue
-			}
-			seen[key] = struct{}{}
-			options = append(options, model.MetadataFieldOption{Field: field.name, Decimal: value, Source: item.Source, ExternalID: item.ExternalID, Confidence: item.Confidence})
-		}
-	}
-	return options
+	return buildQualityFieldOptions(trustedCandidates(items))
 }
 
 type versionSignature map[string]struct{}
@@ -456,7 +377,7 @@ func artistSimilarity(a, b string) float64 {
 func sourceFieldBonus(field, source string) float64 {
 	source = strings.ToLower(strings.TrimSpace(source))
 	bonuses := map[string]map[string]float64{
-		"genre":         {"discogs": 0.08, "traxsource": 0.09, "muzvizor": 0.10, "remixpool": 0.10, "bananastreet": 0.08, "mixcloud": 0.04, "jestei pool": 0.10, "yandex music": 0.03},
+		"genre":         {"discogs": 0.08, "traxsource": 0.09, "muzvizor": 0.10, "remixpool": 0.10, "bananastreet": 0.05, "mixcloud": 0.00, "jestei pool": 0.12, "yandex music": 0.03},
 		"label":         {"discogs": 0.10, "traxsource": 0.10, "musicbrainz": 0.04},
 		"catalogNumber": {"discogs": 0.12, "traxsource": 0.12, "musicbrainz": 0.03},
 		"isrc":          {"musicbrainz": 0.10, "spotify": 0.10, "deezer": 0.08, "apple music": 0.08},
@@ -467,9 +388,9 @@ func sourceFieldBonus(field, source string) float64 {
 		"discNumber":    {"musicbrainz": 0.05, "spotify": 0.05, "apple music": 0.05},
 		"discTotal":     {"musicbrainz": 0.05, "spotify": 0.05, "apple music": 0.05},
 		"albumArtist":   {"musicbrainz": 0.05, "discogs": 0.04, "spotify": 0.04},
-		"bpm":           {"muzvizor": 0.12, "remixpool": 0.12, "jestei pool": 0.12},
-		"key":           {"muzvizor": 0.12, "remixpool": 0.12, "jestei pool": 0.12},
-		"keyScale":      {"muzvizor": 0.12, "remixpool": 0.12, "jestei pool": 0.12},
+		"bpm":           {"muzvizor": 0.13, "remixpool": 0.12, "jestei pool": 0.14},
+		"key":           {"muzvizor": 0.13, "remixpool": 0.12, "jestei pool": 0.14},
+		"keyScale":      {"muzvizor": 0.13, "remixpool": 0.12, "jestei pool": 0.14},
 	}
 	if bySource, ok := bonuses[field]; ok {
 		return bySource[source]

@@ -126,9 +126,10 @@ func (s *Service) searchOnce(ctx context.Context, query model.MetadataQuery) (mo
 	sort.Slice(result.ProviderReports, func(i, j int) bool {
 		return result.ProviderReports[i].Name < result.ProviderReports[j].Name
 	})
-	result.Candidates = rankCandidates(query, result.Candidates)
-	result.Suggested = buildSuggested(result.Candidates)
-	result.FieldOptions = buildFieldOptions(result.Candidates)
+	evidence := rankCandidateEvidence(query, result.Candidates)
+	result.Suggested = buildSuggested(evidence)
+	result.FieldOptions = buildFieldOptions(evidence)
+	result.Candidates = dedupeRankedCandidates(evidence)
 	return result, nil
 }
 
