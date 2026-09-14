@@ -159,7 +159,22 @@ CREATE TABLE IF NOT EXISTS essentia_analysis (
     musical_key TEXT NOT NULL DEFAULT '',
     key_scale TEXT NOT NULL DEFAULT '',
     strength REAL NOT NULL DEFAULT 0,
+    profile TEXT NOT NULL DEFAULT '',
+    requested_mode TEXT NOT NULL DEFAULT '',
+    effective_mode TEXT NOT NULL DEFAULT '',
     analyzed_at TEXT NOT NULL,
+    FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS dj_pool_consensus (
+    track_id INTEGER PRIMARY KEY,
+    bpm REAL NOT NULL DEFAULT 0,
+    bpm_support INTEGER NOT NULL DEFAULT 0,
+    bpm_quality REAL NOT NULL DEFAULT 0,
+    camelot TEXT NOT NULL DEFAULT '',
+    key_support INTEGER NOT NULL DEFAULT 0,
+    key_quality REAL NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
     FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
 );
 
@@ -222,6 +237,9 @@ CREATE INDEX IF NOT EXISTS idx_background_job_items_track ON background_job_item
 		{table: "tracks", name: "cover_indexed", ddl: "INTEGER NOT NULL DEFAULT 0"},
 		{table: "tag_change_items", name: "cover_changed", ddl: "INTEGER NOT NULL DEFAULT 0"},
 		{table: "background_jobs", name: "cancelled_items", ddl: "INTEGER NOT NULL DEFAULT 0"},
+		{table: "essentia_analysis", name: "profile", ddl: "TEXT NOT NULL DEFAULT ''"},
+		{table: "essentia_analysis", name: "requested_mode", ddl: "TEXT NOT NULL DEFAULT ''"},
+		{table: "essentia_analysis", name: "effective_mode", ddl: "TEXT NOT NULL DEFAULT ''"},
 	} {
 		if err := ensureColumn(db, column.table, column.name, column.ddl); err != nil {
 			return err
@@ -229,7 +247,7 @@ CREATE INDEX IF NOT EXISTS idx_background_job_items_track ON background_job_item
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?), (4, ?), (5, ?), (6, ?), (7, ?), (8, ?), (9, ?), (10, ?)`, now, now, now, now, now, now, now, now, now, now); err != nil {
+	if _, err := db.Exec(`INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES (1, ?), (2, ?), (3, ?), (4, ?), (5, ?), (6, ?), (7, ?), (8, ?), (9, ?), (10, ?), (11, ?)`, now, now, now, now, now, now, now, now, now, now, now); err != nil {
 		return fmt.Errorf("record sqlite schema version: %w", err)
 	}
 	return nil

@@ -277,6 +277,9 @@ export type EssentiaAnalysis = {
   strength: number
   camelot: string
   openKey: string
+  profile: string
+  requestedMode: string
+  effectiveMode: string
   analyzedAt: string
 }
 
@@ -489,9 +492,10 @@ export type OrganizeRequest = {
 }
 
 export type EssentiaPerformance = {
-  mode: 'fast' | 'accurate' | string
+  mode: 'adaptive' | 'fast' | 'accurate' | string
   workers: number
   fastSeconds: number
+  minKeyStrength: number
 }
 
 export type SystemStatus = {

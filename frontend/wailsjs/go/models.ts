@@ -377,6 +377,22 @@ export namespace model {
 	        this.analyzedAt = source["analyzedAt"];
 	    }
 	}
+	export class EssentiaPerformance {
+	    mode: string;
+	    workers: number;
+	    fastSeconds: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EssentiaPerformance(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.workers = source["workers"];
+	        this.fastSeconds = source["fastSeconds"];
+	    }
+	}
 	export class FFmpegUpdateResult {
 	    version: string;
 	    changed: boolean;
@@ -1045,6 +1061,9 @@ export namespace model {
 	    essentiaPath: string;
 	    essentiaSource: string;
 	    essentiaReady: boolean;
+	    essentiaMode: string;
+	    essentiaWorkers: number;
+	    essentiaFastSeconds: number;
 	    metadataProviders: string[];
 	
 	    static createFrom(source: any = {}) {
@@ -1064,6 +1083,9 @@ export namespace model {
 	        this.essentiaPath = source["essentiaPath"];
 	        this.essentiaSource = source["essentiaSource"];
 	        this.essentiaReady = source["essentiaReady"];
+	        this.essentiaMode = source["essentiaMode"];
+	        this.essentiaWorkers = source["essentiaWorkers"];
+	        this.essentiaFastSeconds = source["essentiaFastSeconds"];
 	        this.metadataProviders = source["metadataProviders"];
 	    }
 	}

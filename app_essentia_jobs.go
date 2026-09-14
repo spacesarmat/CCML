@@ -25,22 +25,28 @@ type essentiaAnalysisJobOptions struct {
 }
 
 type essentiaAnalysisItemResult struct {
-	TrackID     int64   `json:"trackId"`
-	Path        string  `json:"path"`
-	BPM         float64 `json:"bpm"`
-	Key         string  `json:"key"`
-	Scale       string  `json:"scale"`
-	Strength    float64 `json:"strength"`
-	Camelot     string  `json:"camelot"`
-	OpenKey     string  `json:"openKey"`
-	Mode        string  `json:"mode"`
-	Cached      bool    `json:"cached"`
-	DurationMS  int64   `json:"durationMs"`
-	WriteTags   bool    `json:"writeTags"`
-	OnlyMissing bool    `json:"onlyMissing"`
-	Written     bool    `json:"written"`
-	Skipped     bool    `json:"skipped"`
-	ChangeSetID int64   `json:"changeSetId"`
+	TrackID            int64   `json:"trackId"`
+	Path               string  `json:"path"`
+	BPM                float64 `json:"bpm"`
+	Key                string  `json:"key"`
+	Scale              string  `json:"scale"`
+	Strength           float64 `json:"strength"`
+	Camelot            string  `json:"camelot"`
+	OpenKey            string  `json:"openKey"`
+	Mode               string  `json:"mode"`
+	EffectiveMode      string  `json:"effectiveMode"`
+	Profile            string  `json:"profile"`
+	Escalated          bool    `json:"escalated"`
+	EscalationReason   string  `json:"escalationReason"`
+	FastDurationMS     int64   `json:"fastDurationMs"`
+	AccurateDurationMS int64   `json:"accurateDurationMs"`
+	Cached             bool    `json:"cached"`
+	DurationMS         int64   `json:"durationMs"`
+	WriteTags          bool    `json:"writeTags"`
+	OnlyMissing        bool    `json:"onlyMissing"`
+	Written            bool    `json:"written"`
+	Skipped            bool    `json:"skipped"`
+	ChangeSetID        int64   `json:"changeSetId"`
 }
 
 // CreateEssentiaAnalysisJob queues BPM/key analysis for selected tracks.
@@ -107,17 +113,23 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 	if err != nil {
 		return jobqueue.ItemResult{}, err
 	}
+	hint, err := a.essentiaAdaptiveHint(ctx, track.ID)
+	if err != nil {
+		return jobqueue.ItemResult{}, err
+	}
+	profile := a.bpmKey.AnalysisProfile(hint)
 	performance := a.bpmKey.Performance()
 	analysisStarted := time.Now()
 	cached := false
 	var result model.BPMKey
+	var run audio.AnalysisRun
 
 	if opts.SkipUnchanged {
 		stored, ok, loadErr := a.store.EssentiaAnalysis(ctx, track.ID)
 		if loadErr != nil {
 			return jobqueue.ItemResult{}, loadErr
 		}
-		if ok && essentiaAnalysisFreshForTrack(stored, track) {
+		if ok && essentiaAnalysisFreshForTrack(stored, track, profile) {
 			result = model.BPMKey{
 				BPM: stored.BPM, Key: stored.Key, Scale: stored.Scale, Strength: stored.Strength,
 				Camelot: stored.Camelot, OpenKey: stored.OpenKey,
@@ -125,16 +137,25 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 			if result.Camelot == "" && result.Key != "" {
 				result.Camelot, result.OpenKey, _ = audio.DJKeyFormats(result.Key, result.Scale)
 			}
+			run = audio.AnalysisRun{
+				Result: result, RequestedMode: stored.RequestedMode, EffectiveMode: stored.EffectiveMode, Profile: profile,
+			}
+			if run.RequestedMode == "" {
+				run.RequestedMode = performance.Mode
+			}
+			if run.EffectiveMode == "" {
+				run.EffectiveMode = run.RequestedMode
+			}
 			cached = true
 		}
 	}
 
 	if !cached {
-		result, err = a.bpmKey.Analyze(ctx, track.Path)
+		run, err = a.bpmKey.AnalyzeDetailed(ctx, track.Path, hint)
 		if err != nil {
 			return jobqueue.ItemResult{}, err
 		}
-		result, err = normalizeEssentiaAnalysisResult(result)
+		result, err = normalizeEssentiaAnalysisResult(run.Result)
 		if err != nil {
 			return jobqueue.ItemResult{}, err
 		}
@@ -142,19 +163,25 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 	analysisDuration := time.Since(analysisStarted).Milliseconds()
 
 	item := essentiaAnalysisItemResult{
-		TrackID:     track.ID,
-		Path:        track.Path,
-		BPM:         result.BPM,
-		Key:         result.Key,
-		Scale:       result.Scale,
-		Strength:    result.Strength,
-		Camelot:     result.Camelot,
-		OpenKey:     result.OpenKey,
-		Mode:        performance.Mode,
-		Cached:      cached,
-		DurationMS:  analysisDuration,
-		WriteTags:   opts.WriteTags,
-		OnlyMissing: opts.OnlyMissing,
+		TrackID:            track.ID,
+		Path:               track.Path,
+		BPM:                result.BPM,
+		Key:                result.Key,
+		Scale:              result.Scale,
+		Strength:           result.Strength,
+		Camelot:            result.Camelot,
+		OpenKey:            result.OpenKey,
+		Mode:               run.RequestedMode,
+		EffectiveMode:      run.EffectiveMode,
+		Profile:            run.Profile,
+		Escalated:          run.Escalated,
+		EscalationReason:   run.EscalationReason,
+		FastDurationMS:     run.FastDurationMS,
+		AccurateDurationMS: run.AccurateDurationMS,
+		Cached:             cached,
+		DurationMS:         analysisDuration,
+		WriteTags:          opts.WriteTags,
+		OnlyMissing:        opts.OnlyMissing,
 	}
 
 	if opts.WriteTags {
@@ -172,7 +199,9 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 		}
 		item.Skipped = cached
 	}
-	if err := a.store.PutEssentiaAnalysis(ctx, track.ID, result); err != nil {
+	if err := a.store.PutEssentiaAnalysisRun(
+		ctx, track.ID, result, run.Profile, run.RequestedMode, run.EffectiveMode,
+	); err != nil {
 		return jobqueue.ItemResult{}, err
 	}
 
@@ -187,8 +216,11 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 	return jobqueue.ItemResult{Status: status, ResultJSON: string(raw)}, nil
 }
 
-func essentiaAnalysisFreshForTrack(analysis model.EssentiaAnalysis, track model.Track) bool {
+func essentiaAnalysisFreshForTrack(analysis model.EssentiaAnalysis, track model.Track, profile string) bool {
 	if strings.TrimSpace(analysis.AnalyzedAt) == "" || track.ModifiedUnix <= 0 {
+		return false
+	}
+	if strings.TrimSpace(profile) == "" || strings.TrimSpace(analysis.Profile) != strings.TrimSpace(profile) {
 		return false
 	}
 	analyzedAt, err := time.Parse(time.RFC3339Nano, analysis.AnalyzedAt)

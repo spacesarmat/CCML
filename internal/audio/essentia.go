@@ -34,6 +34,7 @@ type EssentiaAnalyzer struct {
 	mode            string
 	workers         int
 	fastSeconds     int
+	minKeyStrength  float64
 	tools           *Toolchain
 }
 
@@ -197,65 +198,13 @@ func validateEssentiaPath(path string) error {
 	return nil
 }
 
-// Analyze extracts BPM and key using Essentia's music extractor JSON output.
-// If Essentia's bundled AudioLoader cannot decode the source but CCML's FFmpeg
-// is available, CCML retries through a canonical temporary PCM WAV.
+// Analyze extracts BPM and key using the configured performance policy.
 func (a *EssentiaAnalyzer) Analyze(ctx context.Context, input string) (model.BPMKey, error) {
-	path := a.Path()
-	if path == "" {
-		return model.BPMKey{}, errors.New("Essentia is not configured; choose essentia_streaming_extractor_music in Settings, set CCML_ESSENTIA, or install it on PATH")
+	run, err := a.AnalyzeDetailed(ctx, input, AdaptiveHint{})
+	if err != nil {
+		return model.BPMKey{}, err
 	}
-
-	if a.Performance().Mode == "fast" {
-		fastPath, cleanup, used, prepErr := a.prepareEssentiaFastWAV(ctx, input)
-		if prepErr == nil && used {
-			fastResult, _, fastErr := runEssentiaExtractor(ctx, path, fastPath)
-			cleanup()
-			if fastErr == nil {
-				return fastResult, nil
-			}
-			if ctx.Err() != nil {
-				return model.BPMKey{}, ctx.Err()
-			}
-		}
-	}
-
-	result, output, err := runEssentiaExtractor(ctx, path, input)
-	if err == nil {
-		return result, nil
-	}
-	if ctx.Err() != nil {
-		return model.BPMKey{}, ctx.Err()
-	}
-	directErr := fmt.Errorf("run Essentia for %q: %w: %s", filepath.Base(input), err, tail(output, 3000))
-	if !essentiaNeedsFFmpegFallback(output) {
-		return model.BPMKey{}, directErr
-	}
-
-	ffmpeg := a.ffmpegPath()
-	if ffmpeg == "" {
-		return model.BPMKey{}, fmt.Errorf("%w; CCML FFmpeg compatibility fallback is unavailable", directErr)
-	}
-
-	wavPath, cleanup, prepErr := prepareEssentiaFallbackWAV(ctx, ffmpeg, input)
-	if prepErr != nil {
-		return model.BPMKey{}, fmt.Errorf("%w; prepare FFmpeg compatibility WAV: %v", directErr, prepErr)
-	}
-	defer cleanup()
-
-	fallback, fallbackOutput, fallbackErr := runEssentiaExtractor(ctx, path, wavPath)
-	if fallbackErr != nil {
-		if ctx.Err() != nil {
-			return model.BPMKey{}, ctx.Err()
-		}
-		return model.BPMKey{}, fmt.Errorf(
-			"%w; Essentia retry through CCML FFmpeg WAV failed: %v: %s",
-			directErr,
-			fallbackErr,
-			tail(fallbackOutput, 3000),
-		)
-	}
-	return fallback, nil
+	return run.Result, nil
 }
 
 func runEssentiaExtractor(ctx context.Context, executable, input string) (result model.BPMKey, output string, resultErr error) {

@@ -18,9 +18,9 @@ export function CancelScan():Promise<boolean>;
 
 export function Close():Promise<void>;
 
-export function CreateEssentiaAnalysisJob(arg1:Array<number>,arg2:boolean,arg3:boolean):Promise<model.BackgroundJob>;
+export function CreateEssentiaAnalysisJob(arg1:Array<number>,arg2:boolean,arg3:boolean,arg4:boolean):Promise<model.BackgroundJob>;
 
-export function CreateLibraryEssentiaAnalysisJob(arg1:boolean,arg2:boolean):Promise<model.BackgroundJob>;
+export function CreateLibraryEssentiaAnalysisJob(arg1:boolean,arg2:boolean,arg3:boolean):Promise<model.BackgroundJob>;
 
 export function CreateLibraryMetadataEnrichmentJob(arg1:model.MetadataEnrichmentOptions):Promise<model.BackgroundJob>;
 
@@ -33,6 +33,8 @@ export function EnrichMetadata(arg1:Array<number>,arg2:model.MetadataEnrichmentO
 export function FindDuplicates():Promise<Array<model.DuplicateGroup>>;
 
 export function GenerateSpectrograms(arg1:number,arg2:string):Promise<model.SpectrogramComparison>;
+
+export function GetEssentiaPerformance():Promise<model.EssentiaPerformance>;
 
 export function GetMetadataSettings():Promise<model.MetadataSettings>;
 
@@ -89,6 +91,8 @@ export function ResetEssentiaExecutable():Promise<model.SystemStatus>;
 export function ResumeBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
 
 export function RetryFailedBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
+
+export function SaveEssentiaPerformance(arg1:model.EssentiaPerformance):Promise<model.EssentiaPerformance>;
 
 export function SaveMetadataSettings(arg1:model.MetadataSettings):Promise<model.MetadataSettings>;
 

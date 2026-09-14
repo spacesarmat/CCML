@@ -34,12 +34,12 @@ export function Close() {
   return window['go']['main']['App']['Close']();
 }
 
-export function CreateEssentiaAnalysisJob(arg1, arg2, arg3) {
-  return window['go']['main']['App']['CreateEssentiaAnalysisJob'](arg1, arg2, arg3);
+export function CreateEssentiaAnalysisJob(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['CreateEssentiaAnalysisJob'](arg1, arg2, arg3, arg4);
 }
 
-export function CreateLibraryEssentiaAnalysisJob(arg1, arg2) {
-  return window['go']['main']['App']['CreateLibraryEssentiaAnalysisJob'](arg1, arg2);
+export function CreateLibraryEssentiaAnalysisJob(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateLibraryEssentiaAnalysisJob'](arg1, arg2, arg3);
 }
 
 export function CreateLibraryMetadataEnrichmentJob(arg1) {
@@ -64,6 +64,10 @@ export function FindDuplicates() {
 
 export function GenerateSpectrograms(arg1, arg2) {
   return window['go']['main']['App']['GenerateSpectrograms'](arg1, arg2);
+}
+
+export function GetEssentiaPerformance() {
+  return window['go']['main']['App']['GetEssentiaPerformance']();
 }
 
 export function GetMetadataSettings() {
@@ -176,6 +180,10 @@ export function ResumeBackgroundJob(arg1) {
 
 export function RetryFailedBackgroundJob(arg1) {
   return window['go']['main']['App']['RetryFailedBackgroundJob'](arg1);
+}
+
+export function SaveEssentiaPerformance(arg1) {
+  return window['go']['main']['App']['SaveEssentiaPerformance'](arg1);
 }
 
 export function SaveMetadataSettings(arg1) {

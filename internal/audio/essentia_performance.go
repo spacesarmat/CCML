@@ -16,15 +16,16 @@ import (
 
 const (
 	essentiaPerformanceConfigFileName = "essentia-performance.json"
-	defaultEssentiaMode               = "fast"
+	defaultEssentiaMode               = "adaptive"
 	defaultEssentiaWorkers            = 2
 	defaultEssentiaFastSeconds        = 120
+	defaultEssentiaMinKeyStrength     = 0.62
 )
 
 func normalizeEssentiaPerformance(config model.EssentiaPerformance) model.EssentiaPerformance {
 	switch strings.ToLower(strings.TrimSpace(config.Mode)) {
-	case "accurate":
-		config.Mode = "accurate"
+	case "fast", "accurate", "adaptive":
+		config.Mode = strings.ToLower(strings.TrimSpace(config.Mode))
 	default:
 		config.Mode = defaultEssentiaMode
 	}
@@ -40,6 +41,15 @@ func normalizeEssentiaPerformance(config model.EssentiaPerformance) model.Essent
 	if config.FastSeconds > 300 {
 		config.FastSeconds = 300
 	}
+	if config.MinKeyStrength <= 0 {
+		config.MinKeyStrength = defaultEssentiaMinKeyStrength
+	}
+	if config.MinKeyStrength < 0.30 {
+		config.MinKeyStrength = 0.30
+	}
+	if config.MinKeyStrength > 0.95 {
+		config.MinKeyStrength = 0.95
+	}
 	return config
 }
 
@@ -49,6 +59,7 @@ func (a *EssentiaAnalyzer) loadPerformance() {
 	}
 	config := model.EssentiaPerformance{
 		Mode: defaultEssentiaMode, Workers: defaultEssentiaWorkers, FastSeconds: defaultEssentiaFastSeconds,
+		MinKeyStrength: defaultEssentiaMinKeyStrength,
 	}
 	if strings.TrimSpace(a.performancePath) != "" {
 		if raw, err := os.ReadFile(a.performancePath); err == nil {
@@ -60,6 +71,7 @@ func (a *EssentiaAnalyzer) loadPerformance() {
 	a.mode = config.Mode
 	a.workers = config.Workers
 	a.fastSeconds = config.FastSeconds
+	a.minKeyStrength = config.MinKeyStrength
 	a.mu.Unlock()
 }
 
@@ -69,7 +81,9 @@ func (a *EssentiaAnalyzer) Performance() model.EssentiaPerformance {
 		return normalizeEssentiaPerformance(model.EssentiaPerformance{})
 	}
 	a.mu.RLock()
-	config := model.EssentiaPerformance{Mode: a.mode, Workers: a.workers, FastSeconds: a.fastSeconds}
+	config := model.EssentiaPerformance{
+		Mode: a.mode, Workers: a.workers, FastSeconds: a.fastSeconds, MinKeyStrength: a.minKeyStrength,
+	}
 	a.mu.RUnlock()
 	return normalizeEssentiaPerformance(config)
 }
@@ -93,6 +107,7 @@ func (a *EssentiaAnalyzer) ConfigurePerformance(config model.EssentiaPerformance
 	a.mode = config.Mode
 	a.workers = config.Workers
 	a.fastSeconds = config.FastSeconds
+	a.minKeyStrength = config.MinKeyStrength
 	a.mu.Unlock()
 	return config, nil
 }
@@ -114,7 +129,7 @@ func (a *EssentiaAnalyzer) ffprobePath() string {
 // Short tracks keep the direct path because transcoding would not save work.
 func (a *EssentiaAnalyzer) prepareEssentiaFastWAV(ctx context.Context, input string) (string, func(), bool, error) {
 	performance := a.Performance()
-	if performance.Mode != "fast" {
+	if performance.Mode != "fast" && performance.Mode != "adaptive" {
 		return "", func() {}, false, nil
 	}
 	ffmpeg := a.ffmpegPath()

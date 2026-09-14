@@ -244,6 +244,7 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
                 <label>
                   <span>{t('settings.essentiaMode')}</span>
                   <select value={essentiaPerformance.mode} onChange={(event) => changeEssentia('mode', event.target.value)}>
+                    <option value="adaptive">{t('settings.essentiaModeAdaptive')}</option>
                     <option value="fast">{t('settings.essentiaModeFast')}</option>
                     <option value="accurate">{t('settings.essentiaModeAccurate')}</option>
                   </select>
@@ -257,9 +258,16 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
                 </label>
                 <label>
                   <span>{t('settings.essentiaFastSeconds')}</span>
-                  <input type="number" min={30} max={300} step={15} disabled={essentiaPerformance.mode !== 'fast'} value={essentiaPerformance.fastSeconds} onChange={(event) => {
+                  <input type="number" min={30} max={300} step={15} disabled={essentiaPerformance.mode === 'accurate'} value={essentiaPerformance.fastSeconds} onChange={(event) => {
                     const value = Number(event.target.value)
                     changeEssentia('fastSeconds', Number.isFinite(value) ? Math.min(300, Math.max(30, Math.round(value))) : 120)
+                  }} />
+                </label>
+                <label>
+                  <span>{t('settings.essentiaMinKeyStrength')}</span>
+                  <input type="number" min={0.30} max={0.95} step={0.05} disabled={essentiaPerformance.mode !== 'adaptive'} value={essentiaPerformance.minKeyStrength} onChange={(event) => {
+                    const value = Number(event.target.value)
+                    changeEssentia('minKeyStrength', Number.isFinite(value) ? Math.min(0.95, Math.max(0.30, value)) : 0.62)
                   }} />
                 </label>
                 <small>{t('settings.essentiaPerformanceHint')}</small>

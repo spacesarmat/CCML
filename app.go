@@ -793,18 +793,24 @@ func (a *App) AnalyzeBPMKey(trackID int64) (model.BPMKey, error) {
 	if err != nil {
 		return model.BPMKey{}, err
 	}
-	result, err := a.bpmKey.Analyze(a.context(), track.Path)
+	hint, err := a.essentiaAdaptiveHint(a.context(), trackID)
 	if err != nil {
 		return model.BPMKey{}, err
 	}
-	result, err = normalizeEssentiaAnalysisResult(result)
+	run, err := a.bpmKey.AnalyzeDetailed(a.context(), track.Path, hint)
+	if err != nil {
+		return model.BPMKey{}, err
+	}
+	result, err := normalizeEssentiaAnalysisResult(run.Result)
 	if err != nil {
 		return model.BPMKey{}, err
 	}
 	if err := a.store.UpdateBPMKey(a.context(), trackID, result); err != nil {
 		return model.BPMKey{}, err
 	}
-	if err := a.store.PutEssentiaAnalysis(a.context(), trackID, result); err != nil {
+	if err := a.store.PutEssentiaAnalysisRun(
+		a.context(), trackID, result, run.Profile, run.RequestedMode, run.EffectiveMode,
+	); err != nil {
 		return model.BPMKey{}, err
 	}
 	return result, nil

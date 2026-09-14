@@ -305,14 +305,31 @@ type BPMKey struct {
 
 // EssentiaAnalysis is the latest persisted local BPM/key evidence for one track.
 type EssentiaAnalysis struct {
+	TrackID       int64   `json:"trackId"`
+	BPM           float64 `json:"bpm"`
+	Key           string  `json:"key"`
+	Scale         string  `json:"scale"`
+	Strength      float64 `json:"strength"`
+	Camelot       string  `json:"camelot"`
+	OpenKey       string  `json:"openKey"`
+	Profile       string  `json:"profile"`
+	RequestedMode string  `json:"requestedMode"`
+	EffectiveMode string  `json:"effectiveMode"`
+	AnalyzedAt    string  `json:"analyzedAt"`
+}
+
+// DJPoolConsensus is the latest provider-only BPM/key consensus captured by
+// Find metadata. Adaptive Essentia uses only multi-source evidence as an
+// escalation hint; it never overwrites metadata automatically.
+type DJPoolConsensus struct {
 	TrackID    int64   `json:"trackId"`
 	BPM        float64 `json:"bpm"`
-	Key        string  `json:"key"`
-	Scale      string  `json:"scale"`
-	Strength   float64 `json:"strength"`
+	BPMSupport int     `json:"bpmSupport"`
+	BPMQuality float64 `json:"bpmQuality"`
 	Camelot    string  `json:"camelot"`
-	OpenKey    string  `json:"openKey"`
-	AnalyzedAt string  `json:"analyzedAt"`
+	KeySupport int     `json:"keySupport"`
+	KeyQuality float64 `json:"keyQuality"`
+	UpdatedAt  string  `json:"updatedAt"`
 }
 
 // MetadataAudioComparison compares local Essentia evidence with DJ-pool
@@ -598,9 +615,10 @@ func (s *MetadataSettings) Normalize() {
 
 // SystemStatus reports optional runtime dependencies.
 type EssentiaPerformance struct {
-	Mode        string `json:"mode"`
-	Workers     int    `json:"workers"`
-	FastSeconds int    `json:"fastSeconds"`
+	Mode           string  `json:"mode"`
+	Workers        int     `json:"workers"`
+	FastSeconds    int     `json:"fastSeconds"`
+	MinKeyStrength float64 `json:"minKeyStrength"`
 }
 
 type SystemStatus struct {

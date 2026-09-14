@@ -278,6 +278,12 @@ type EssentiaItemResult = {
   scale?: string
   strength?: number
   mode?: string
+  effectiveMode?: string
+  profile?: string
+  escalated?: boolean
+  escalationReason?: string
+  fastDurationMs?: number
+  accurateDurationMs?: number
   cached?: boolean
   durationMs?: number
   writeTags?: boolean
@@ -303,15 +309,46 @@ function formatEssentiaResult(result: EssentiaItemResult, t: (key: TranslationKe
     scale: result.scale || '—',
     confidence: Math.round(Math.max(0, Math.min(1, result.strength ?? 0)) * 100),
   })
-  const performance = result.cached
+  let performance = result.cached
     ? t('jobs.essentiaCached')
     : t('jobs.essentiaTiming', {
-        mode: result.mode || 'accurate',
+        mode: result.effectiveMode || result.mode || 'accurate',
         seconds: ((result.durationMs ?? 0) / 1000).toFixed(1),
       })
+  if (!result.cached && result.mode === 'adaptive') {
+    performance = result.escalated
+      ? t('jobs.essentiaAdaptiveEscalated', {
+          fast: ((result.fastDurationMs ?? 0) / 1000).toFixed(1),
+          accurate: ((result.accurateDurationMs ?? 0) / 1000).toFixed(1),
+          reason: essentiaEscalationReason(result.escalationReason, t),
+        })
+      : result.effectiveMode === 'fast'
+        ? t('jobs.essentiaAdaptiveAccepted', {seconds: ((result.fastDurationMs ?? result.durationMs ?? 0) / 1000).toFixed(1)})
+        : performance
+  }
   if (!result.writeTags) return `${summary} · ${performance} · ${t('jobs.essentiaStored')}`
   if (result.written) return `${summary} · ${performance} · ${t('jobs.essentiaWritten')}`
   return `${summary} · ${performance} · ${t('jobs.essentiaNoChanges')}`
+}
+
+function essentiaEscalationReason(
+  reason: string | undefined,
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string,
+): string {
+  const key = (() => {
+    switch (reason) {
+      case 'missing_bpm': return 'jobs.essentiaReasonMissingBPM'
+      case 'missing_key': return 'jobs.essentiaReasonMissingKey'
+      case 'low_key_strength': return 'jobs.essentiaReasonLowKeyStrength'
+      case 'dj_pool_bpm_half_double': return 'jobs.essentiaReasonPoolHalfDouble'
+      case 'dj_pool_bpm_conflict': return 'jobs.essentiaReasonPoolBPMConflict'
+      case 'dj_pool_key_conflict': return 'jobs.essentiaReasonPoolKeyConflict'
+      case 'fast_failed': return 'jobs.essentiaReasonFastFailed'
+      case 'fast_unavailable': return 'jobs.essentiaReasonFastUnavailable'
+      default: return 'jobs.essentiaReasonReview'
+    }
+  })() as TranslationKey
+  return t(key)
 }
 
 export default JobsPanel

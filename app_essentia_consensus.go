@@ -16,6 +16,11 @@ func (a *App) attachEssentiaDJComparison(ctx context.Context, trackID int64, res
 	if a.store == nil {
 		return result
 	}
+	if consensus, ok := extractDJPoolConsensus(trackID, result.FieldOptions, result.ProviderReports); ok {
+		if err := a.store.PutDJPoolConsensus(ctx, consensus); err != nil {
+			result.Warnings = append(result.Warnings, err.Error())
+		}
+	}
 	analysis, ok, err := a.store.EssentiaAnalysis(ctx, trackID)
 	if err != nil {
 		result.Warnings = append(result.Warnings, err.Error())

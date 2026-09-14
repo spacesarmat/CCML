@@ -26,9 +26,9 @@ func TestEssentiaAnalysisPersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := db.PutEssentiaAnalysis(ctx, trackID, model.BPMKey{
+	if err := db.PutEssentiaAnalysisRun(ctx, trackID, model.BPMKey{
 		BPM: 128.2, Key: "A", Scale: "minor", Strength: 0.84,
-	}); err != nil {
+	}, "essentia-v3:adaptive:test", "adaptive", "fast"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -39,7 +39,8 @@ func TestEssentiaAnalysisPersistence(t *testing.T) {
 	if !ok {
 		t.Fatal("Essentia analysis not found")
 	}
-	if got.TrackID != trackID || got.BPM != 128.2 || got.Key != "A" || got.Scale != "minor" || got.Strength != 0.84 || got.AnalyzedAt == "" {
+	if got.TrackID != trackID || got.BPM != 128.2 || got.Key != "A" || got.Scale != "minor" || got.Strength != 0.84 ||
+		got.Profile != "essentia-v3:adaptive:test" || got.RequestedMode != "adaptive" || got.EffectiveMode != "fast" || got.AnalyzedAt == "" {
 		t.Fatalf("analysis = %+v", got)
 	}
 }
