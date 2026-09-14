@@ -104,7 +104,7 @@ func NewApp() (*App, error) {
 		scanner:             library.NewScanner(db, probe),
 		processor:           processor,
 		duplicateComparator: audio.NewDuplicateComparator(tools),
-		bpmKey:              audio.NewEssentiaAnalyzer(),
+		bpmKey:              audio.NewEssentiaAnalyzer(appDir),
 		metadata:            metaService,
 		settings:            settingsService,
 		metadataConfig:      metadataConfig,
@@ -205,9 +205,47 @@ func (a *App) SystemStatus() model.SystemStatus {
 		FFmpegUpdateError:         updateErr,
 		FFmpegAutoUpdateSupported: autoUpdateSupported,
 		EssentiaPath:              a.bpmKey.Path(),
+		EssentiaSource:            a.bpmKey.Source(),
 		EssentiaReady:             a.bpmKey.Available(),
 		MetadataProviders:         a.metadataService().ProviderNames(),
 	}
+}
+
+// SelectEssentiaExecutable stores a user-selected external Essentia extractor.
+func (a *App) SelectEssentiaExecutable() (model.SystemStatus, error) {
+	if a.ctx == nil {
+		return model.SystemStatus{}, errors.New("application is not ready")
+	}
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select essentia_streaming_extractor_music",
+	})
+	if err != nil {
+		return model.SystemStatus{}, fmt.Errorf("select Essentia executable: %w", err)
+	}
+	if strings.TrimSpace(path) == "" {
+		return a.SystemStatus(), nil
+	}
+	if err := a.bpmKey.Configure(path); err != nil {
+		return model.SystemStatus{}, err
+	}
+	return a.SystemStatus(), nil
+}
+
+// ResetEssentiaExecutable removes the saved override and restores env/PATH discovery.
+func (a *App) ResetEssentiaExecutable() (model.SystemStatus, error) {
+	if err := a.bpmKey.ClearConfiguredPath(); err != nil {
+		return model.SystemStatus{}, err
+	}
+	return a.SystemStatus(), nil
+}
+
+// OpenEssentiaDownloadPage opens the official Essentia download page.
+func (a *App) OpenEssentiaDownloadPage() error {
+	if a.ctx == nil {
+		return errors.New("application is not ready")
+	}
+	runtime.BrowserOpenURL(a.ctx, "https://essentia.upf.edu/download.html")
+	return nil
 }
 
 // GetMetadataSettings returns the locally stored metadata provider configuration.

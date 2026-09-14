@@ -12,15 +12,17 @@ type Props = {
   status: SystemStatus | null
   onClose: () => void
   onSaved: (settings: MetadataSettings) => Promise<void> | void
+  onStatusChanged: (status: SystemStatus) => void
   onMessage: (message: string) => void
   onThemeChange: (theme: AppTheme) => void
   onUIScaleChange: (scale: AppUIScale) => void
 }
 
-function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved, onMessage, onThemeChange, onUIScaleChange}: Props) {
+function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved, onStatusChanged, onMessage, onThemeChange, onUIScaleChange}: Props) {
   const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(language, key, params)
   const [settings, setSettings] = useState<MetadataSettings | null>(null)
   const [loading, setLoading] = useState(false)
+  const [essentiaBusy, setEssentiaBusy] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [testing, setTesting] = useState(false)
@@ -73,6 +75,43 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setTesting(false)
+    }
+  }
+
+  async function chooseEssentia() {
+    setEssentiaBusy(true)
+    setError('')
+    try {
+      const refreshed = await window.go.main.App.SelectEssentiaExecutable()
+      onStatusChanged(refreshed)
+      if (refreshed.essentiaSource === 'configured') onMessage(t('settings.essentiaConfigured'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setEssentiaBusy(false)
+    }
+  }
+
+  async function resetEssentia() {
+    setEssentiaBusy(true)
+    setError('')
+    try {
+      const refreshed = await window.go.main.App.ResetEssentiaExecutable()
+      onStatusChanged(refreshed)
+      onMessage(t('settings.essentiaAutoRestored'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setEssentiaBusy(false)
+    }
+  }
+
+  async function openEssentiaDownload() {
+    setError('')
+    try {
+      await window.go.main.App.OpenEssentiaDownloadPage()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -160,6 +199,30 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
                     {scale}%
                   </button>
                 ))}
+              </div>
+            </div>
+          </section>
+
+          <div className="settings-section-divider" />
+
+          <section className="settings-appearance-section">
+            <div className="settings-section-title">
+              <h3>{t('settings.audioToolsTitle')}</h3>
+              <p>{t('settings.essentiaHint')}</p>
+              <small>{t('settings.essentiaLicense')}</small>
+            </div>
+
+            <div className="ui-scale-setting">
+              <div className="ui-scale-copy">
+                <strong>Essentia · {status?.essentiaReady ? t('settings.essentiaReady', {source: status.essentiaSource || 'detected'}) : t('settings.essentiaMissing')}</strong>
+                <small title={status?.essentiaPath || undefined}>
+                  {status?.essentiaPath ? t('settings.essentiaPath', {path: status.essentiaPath}) : t('settings.essentiaNoPath')}
+                </small>
+              </div>
+              <div className="ui-scale-options">
+                <button type="button" onClick={() => void chooseEssentia()} disabled={essentiaBusy || saving}>{t('settings.essentiaChoose')}</button>
+                <button type="button" onClick={() => void resetEssentia()} disabled={essentiaBusy || saving || status?.essentiaSource !== 'configured'}>{t('settings.essentiaAuto')}</button>
+                <button type="button" onClick={() => void openEssentiaDownload()} disabled={essentiaBusy}>{t('settings.essentiaDownload')}</button>
               </div>
             </div>
           </section>

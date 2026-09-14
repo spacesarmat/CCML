@@ -949,6 +949,7 @@ export namespace model {
 	    ffmpegUpdateError: string;
 	    ffmpegAutoUpdateSupported: boolean;
 	    essentiaPath: string;
+	    essentiaSource: string;
 	    essentiaReady: boolean;
 	    metadataProviders: string[];
 	
@@ -967,6 +968,7 @@ export namespace model {
 	        this.ffmpegUpdateError = source["ffmpegUpdateError"];
 	        this.ffmpegAutoUpdateSupported = source["ffmpegAutoUpdateSupported"];
 	        this.essentiaPath = source["essentiaPath"];
+	        this.essentiaSource = source["essentiaSource"];
 	        this.essentiaReady = source["essentiaReady"];
 	        this.metadataProviders = source["metadataProviders"];
 	    }

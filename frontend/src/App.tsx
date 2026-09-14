@@ -1495,7 +1495,7 @@ function App() {
 
       <HelpModal language={language} open={helpOpen} version={t('footer.version')} onClose={() => setHelpOpen(false)} />
       <JobsPanel language={language} open={jobsOpen} onClose={() => setJobsOpen(false)} onMessage={setMessage} onRevealTrack={revealJobTrack} />
-      <SettingsModal language={language} theme={theme} uiScale={uiScale} open={settingsOpen} status={status} onClose={() => setSettingsOpen(false)} onSaved={async () => { await refreshStatus() }} onMessage={setMessage} onThemeChange={changeTheme} onUIScaleChange={changeUIScale} />
+      <SettingsModal language={language} theme={theme} uiScale={uiScale} open={settingsOpen} status={status} onClose={() => setSettingsOpen(false)} onSaved={async () => { await refreshStatus() }} onStatusChanged={setStatus} onMessage={setMessage} onThemeChange={changeTheme} onUIScaleChange={changeUIScale} />
 
       <footer className="workspace-statusbar">
         <div><span className={scanning ? 'status-busy-dot' : busy ? 'status-busy-dot' : 'status-ready-dot'} />{scanning ? t('footer.scanning') : busy ? t('footer.working') : message}</div>

@@ -464,6 +464,7 @@ export type SystemStatus = {
   ffmpegUpdateError: string
   ffmpegAutoUpdateSupported: boolean
   essentiaPath: string
+  essentiaSource: string
   essentiaReady: boolean
   metadataProviders: string[]
 }

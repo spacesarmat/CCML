@@ -4,6 +4,12 @@ import {model} from '../models';
 
 export function AnalyzeBPMKey(arg1:number):Promise<model.BPMKey>;
 
+export function SelectEssentiaExecutable():Promise<model.SystemStatus>;
+
+export function ResetEssentiaExecutable():Promise<model.SystemStatus>;
+
+export function OpenEssentiaDownloadPage():Promise<void>;
+
 export function AnalyzeLoudness(arg1:number):Promise<model.Loudness>;
 
 export function ApplyMetadataCandidate(arg1:number,arg2:model.MetadataCandidate,arg3:boolean):Promise<model.TagApplyResult>;

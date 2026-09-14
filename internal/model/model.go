@@ -570,6 +570,7 @@ type SystemStatus struct {
 	FFmpegUpdateError         string   `json:"ffmpegUpdateError"`
 	FFmpegAutoUpdateSupported bool     `json:"ffmpegAutoUpdateSupported"`
 	EssentiaPath              string   `json:"essentiaPath"`
+	EssentiaSource            string   `json:"essentiaSource"`
 	EssentiaReady             bool     `json:"essentiaReady"`
 	MetadataProviders         []string `json:"metadataProviders"`
 }

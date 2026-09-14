@@ -6,6 +6,18 @@ export function AnalyzeBPMKey(arg1) {
   return window['go']['main']['App']['AnalyzeBPMKey'](arg1);
 }
 
+export function SelectEssentiaExecutable() {
+  return window['go']['main']['App']['SelectEssentiaExecutable']();
+}
+
+export function ResetEssentiaExecutable() {
+  return window['go']['main']['App']['ResetEssentiaExecutable']();
+}
+
+export function OpenEssentiaDownloadPage() {
+  return window['go']['main']['App']['OpenEssentiaDownloadPage']();
+}
+
 export function AnalyzeLoudness(arg1) {
   return window['go']['main']['App']['AnalyzeLoudness'](arg1);
 }

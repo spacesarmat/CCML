@@ -67,6 +67,9 @@ declare global {
           NormalizeTrack(trackID: number, opts: ProcessingOptions): Promise<ProcessingResult>
           WriteReplayGain(trackID: number, targetLUFS: number): Promise<Loudness>
           AnalyzeBPMKey(trackID: number): Promise<BPMKey>
+          SelectEssentiaExecutable(): Promise<SystemStatus>
+          ResetEssentiaExecutable(): Promise<SystemStatus>
+          OpenEssentiaDownloadPage(): Promise<void>
           LookupMetadata(trackID: number): Promise<MetadataLookupResult>
           RefreshMetadata(trackID: number): Promise<MetadataLookupResult>
           TestMetadataProviders(settings: MetadataSettings): Promise<import('./types').MetadataProviderReport[]>
