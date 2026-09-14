@@ -59,9 +59,8 @@ func (p *BananaStreetProvider) Search(ctx context.Context, query model.MetadataQ
 		return nil, fmt.Errorf("artist or title is required")
 	}
 
-	values := url.Values{}
-	values.Set("q", term)
-	target := p.baseURL + "/search?" + values.Encode()
+	target := bananaStreetSearchURL(p.baseURL, term)
+	bananaStreetDebugf("search start artist=%q title=%q term=%q url=%s", query.Artist, query.Title, term, target)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
@@ -75,18 +74,29 @@ func (p *BananaStreetProvider) Search(ctx context.Context, query model.MetadataQ
 		req.Header.Set("User-Agent", "CCML metadata client")
 	}
 
+	bananaStreetDebugf("HTTP GET %s", target)
 	body, err := fetchProviderBytes(ctx, p.client, req, p.Name(), 2)
 	if err != nil {
+		bananaStreetDebugf("HTTP FAIL url=%s error=%v", target, err)
 		return nil, err
 	}
+	bananaStreetDebugf("HTTP OK url=%s bytes=%d", target, len(body))
 
-	items := bananaStreetCandidatesFromHTML(string(body), target, query)
+	doc := string(body)
+	bananaStreetDebugDocument(target, query, doc)
+	if bananaStreetDebugEnabled() {
+		raw := bananaStreetCandidatesFromHTML(doc, target, model.MetadataQuery{})
+		bananaStreetDebugCandidates("raw", query, raw)
+	}
+	items := bananaStreetCandidatesFromHTML(doc, target, query)
+	bananaStreetDebugCandidates("matched", query, items)
 	sort.SliceStable(items, func(i, j int) bool {
 		return bananaStreetQueryFit(query, items[i]) > bananaStreetQueryFit(query, items[j])
 	})
 	if len(items) > 12 {
 		items = items[:12]
 	}
+	bananaStreetDebugf("search finished matches=%d", len(items))
 	return items, nil
 }
 
@@ -95,12 +105,16 @@ func bananaStreetSearchTerm(query model.MetadataQuery) string {
 	title := strings.TrimSpace(query.Title)
 	switch {
 	case artist != "" && title != "":
-		return artist + " " + title
+		return artist + " - " + title
 	case artist != "":
 		return artist
 	default:
 		return title
 	}
+}
+
+func bananaStreetSearchURL(baseURL, term string) string {
+	return strings.TrimRight(baseURL, "/") + "/search?q=" + url.PathEscape(strings.TrimSpace(term))
 }
 
 func bananaStreetCandidatesFromHTML(doc, sourceURL string, query model.MetadataQuery) []model.MetadataCandidate {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/spacesarmat/CCML/internal/model"
@@ -131,14 +130,19 @@ func TestBananaStreetBaseTitleFallbackCanMatchVersionedTrack(t *testing.T) {
 	}
 }
 
-func TestBananaStreetSearchUsesConfirmedPublicSearchPage(t *testing.T) {
+func TestBananaStreetSearchUsesBrowserCompatiblePublicSearchPage(t *testing.T) {
 	t.Parallel()
+
+	const expectedQuery = "Винтаж, DJ Smash - Москва (Nei Blend)"
+	const expectedRawQuery = "q=%D0%92%D0%B8%D0%BD%D1%82%D0%B0%D0%B6%2C%20DJ%20Smash%20-%20%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0%20%28Nei%20Blend%29"
 
 	var requestedPath string
 	var requestedQuery string
+	var requestedRawQuery string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestedPath = r.URL.Path
 		requestedQuery = r.URL.Query().Get("q")
+		requestedRawQuery = r.URL.RawQuery
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte(bananaStreetFixture))
 	}))
@@ -155,8 +159,11 @@ func TestBananaStreetSearchUsesConfirmedPublicSearchPage(t *testing.T) {
 	if requestedPath != "/search" {
 		t.Fatalf("path = %q, want /search", requestedPath)
 	}
-	if !strings.Contains(requestedQuery, "Винтаж, DJ Smash") || !strings.Contains(requestedQuery, "Москва (Nei Blend)") {
-		t.Fatalf("q = %q", requestedQuery)
+	if requestedQuery != expectedQuery {
+		t.Fatalf("q = %q, want %q", requestedQuery, expectedQuery)
+	}
+	if requestedRawQuery != expectedRawQuery {
+		t.Fatalf("raw query = %q, want %q", requestedRawQuery, expectedRawQuery)
 	}
 	if len(items) != 1 {
 		t.Fatalf("unexpected search result: %+v", items)
