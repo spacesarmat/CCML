@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react'
-import { translate, type AppLanguage } from './i18n'
+import { translate, type AppLanguage, type TranslationKey } from './i18n'
+import {APP_THEMES, type AppTheme} from './theme'
 import type { MetadataProviderReport, MetadataSettings, SystemStatus } from './types'
 
 type Props = {
   language: AppLanguage
+  theme: AppTheme
   open: boolean
   status: SystemStatus | null
   onClose: () => void
   onSaved: (settings: MetadataSettings) => Promise<void> | void
   onMessage: (message: string) => void
+  onThemeChange: (theme: AppTheme) => void
 }
 
-function SettingsModal({language, open, status, onClose, onSaved, onMessage}: Props) {
+function SettingsModal({language, theme, open, status, onClose, onSaved, onMessage, onThemeChange}: Props) {
   const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(language, key, params)
   const [settings, setSettings] = useState<MetadataSettings | null>(null)
   const [loading, setLoading] = useState(false)
@@ -100,6 +103,45 @@ function SettingsModal({language, open, status, onClose, onSaved, onMessage}: Pr
         </div>
 
         <div className="settings-body">
+          <section className="settings-appearance-section">
+            <div className="settings-section-title">
+              <h3>{t('settings.appearanceTitle')}</h3>
+              <p>{t('settings.appearanceHint')}</p>
+              <small>{t('settings.themeAppliesImmediately')}</small>
+            </div>
+
+            <div className="theme-choice-grid" role="radiogroup" aria-label={t('settings.theme')}>
+              {APP_THEMES.map((themeID) => {
+                const nameKey = (`settings.theme.${themeID}`) as TranslationKey
+                const descriptionKey = (`settings.theme.${themeID}.description`) as TranslationKey
+                return (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === themeID}
+                    className={`theme-choice ${theme === themeID ? 'active' : ''}`}
+                    key={themeID}
+                    onClick={() => onThemeChange(themeID)}
+                  >
+                    <span className={`theme-choice-preview theme-choice-preview-${themeID}`} aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                    <span className="theme-choice-copy">
+                      <strong>{t(nameKey)}</strong>
+                      <small>{t(descriptionKey)}</small>
+                    </span>
+                    <b aria-hidden="true">{theme === themeID ? '✓' : ''}</b>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          <div className="settings-section-divider" />
+
           <div className="settings-section-title">
             <h3>{t('settings.metadataTitle')}</h3>
             <p>{t('settings.metadataHint')}</p>
