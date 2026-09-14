@@ -21,6 +21,8 @@ const (
 	duplicateVerifyMaxShift   = 60 // 6 seconds at 100 ms/frame.
 )
 
+var duplicateVerifySpectrumFrequencies = [...]float64{80, 140, 220, 350, 550, 850, 1300, 1750}
+
 // DuplicateComparator compares decoded waveforms using low-rate mono PCM.
 //
 // This is intentionally a conservative heuristic, not a cryptographic or
@@ -39,6 +41,7 @@ type duplicateFeatures struct {
 	energy    []float64
 	roughness []float64
 	zcr       []float64
+	spectrum  []float64
 }
 
 // Compare compares every track against one reference track.
@@ -179,7 +182,9 @@ func extractDuplicateFeatures(samples []int16) duplicateFeatures {
 		energy:    make([]float64, 0, frameCount),
 		roughness: make([]float64, 0, frameCount),
 		zcr:       make([]float64, 0, frameCount),
+		spectrum:  make([]float64, len(duplicateVerifySpectrumFrequencies)),
 	}
+	spectrumFrames := 0
 
 	for frame := 0; frame < frameCount; frame++ {
 		start := frame * duplicateVerifyFrameSize
@@ -208,11 +213,42 @@ func extractDuplicateFeatures(samples []int16) duplicateFeatures {
 		features.energy = append(features.energy, math.Log1p(rms*1000))
 		features.roughness = append(features.roughness, diffSum/float64(maxInt(len(block)-1, 1)))
 		features.zcr = append(features.zcr, float64(zeroCrossings)/float64(maxInt(len(block)-1, 1)))
+
+		frameSpectrum := make([]float64, len(duplicateVerifySpectrumFrequencies))
+		frameSpectrumTotal := 0.0
+		for bin, frequency := range duplicateVerifySpectrumFrequencies {
+			coefficient := 2 * math.Cos(2*math.Pi*frequency/float64(duplicateVerifySampleRate))
+			var previous float64
+			var previousPrevious float64
+			for _, sample := range block {
+				value := float64(sample) / 32768.0
+				current := value + coefficient*previous - previousPrevious
+				previousPrevious = previous
+				previous = current
+			}
+			power := previous*previous + previousPrevious*previousPrevious - coefficient*previous*previousPrevious
+			if power < 0 {
+				power = 0
+			}
+			frameSpectrum[bin] = power
+			frameSpectrumTotal += power
+		}
+		if frameSpectrumTotal > 1e-12 {
+			for bin, power := range frameSpectrum {
+				features.spectrum[bin] += power / frameSpectrumTotal
+			}
+			spectrumFrames++
+		}
 	}
 
 	features.energy = zNormalize(features.energy)
 	features.roughness = zNormalize(features.roughness)
 	features.zcr = zNormalize(features.zcr)
+	if spectrumFrames > 0 {
+		for bin := range features.spectrum {
+			features.spectrum[bin] /= float64(spectrumFrames)
+		}
+	}
 	return features
 }
 
@@ -253,8 +289,13 @@ func bestDuplicateFeatureSimilarity(left, right duplicateFeatures) (float64, int
 			left.zcr[leftStart:leftStart+overlap],
 			right.zcr[rightStart:rightStart+overlap],
 		)
+		spectrumScore := duplicateSpectrumSimilarity(left.spectrum, right.spectrum)
 
-		contentScore := 0.58*energyCorr + 0.27*roughCorr + 0.15*zcrCorr
+		// Envelope/rhythm alone can make unrelated tracks at the same tempo look
+		// deceptively similar. The coarse gain-independent spectral profile adds
+		// timbral/pitch evidence while keeping waveform alignment as the primary
+		// signal.
+		contentScore := 0.46*energyCorr + 0.20*roughCorr + 0.10*zcrCorr + 0.24*spectrumScore
 		durationRatio := float64(minFrames) / float64(maxFrames)
 		// Duration matters, but only modestly: an edit can still be reported
 		// "similar" without being misclassified as the same full recording.
@@ -283,6 +324,33 @@ func classifyDuplicateSimilarity(similarity float64, durationDeltaMS int64) stri
 	default:
 		return "different"
 	}
+}
+
+func duplicateSpectrumSimilarity(left, right []float64) float64 {
+	if len(left) != len(right) || len(left) == 0 {
+		return 0
+	}
+
+	var dot float64
+	var leftSquares float64
+	var rightSquares float64
+	for i := range left {
+		dot += left[i] * right[i]
+		leftSquares += left[i] * left[i]
+		rightSquares += right[i] * right[i]
+	}
+	if leftSquares <= 1e-12 || rightSquares <= 1e-12 {
+		return 0
+	}
+
+	value := dot / math.Sqrt(leftSquares*rightSquares)
+	if value < 0 {
+		return 0
+	}
+	if value > 1 {
+		return 1
+	}
+	return value
 }
 
 func positiveCorrelation(left, right []float64) float64 {

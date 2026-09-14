@@ -56,6 +56,24 @@ func TestDuplicateFeatureSimilarityRejectsDifferentShape(t *testing.T) {
 	}
 }
 
+func TestDuplicateFeatureSimilarityRejectsSameEnvelopeDifferentPitch(t *testing.T) {
+	t.Parallel()
+
+	left := syntheticPCM(120, 1.0, 0)
+	right := syntheticSameEnvelopeDifferentPitchPCM(120)
+
+	leftFeatures := extractDuplicateFeatures(left)
+	rightFeatures := extractDuplicateFeatures(right)
+	similarity, _ := bestDuplicateFeatureSimilarity(leftFeatures, rightFeatures)
+
+	if similarity >= 0.93 {
+		t.Fatalf("similarity = %.4f, want < 0.93 for same envelope with different spectrum", similarity)
+	}
+	if spectrum := duplicateSpectrumSimilarity(leftFeatures.spectrum, rightFeatures.spectrum); spectrum >= 0.50 {
+		t.Fatalf("spectrum similarity = %.4f, want clearly different profiles", spectrum)
+	}
+}
+
 func TestClassifyDuplicateSimilarityRequiresCloseDurationForSame(t *testing.T) {
 	t.Parallel()
 
@@ -90,6 +108,29 @@ func syntheticPCM(seconds int, gain float64, offsetFrames int) []int16 {
 			value = -0.95
 		}
 		out[i+offsetSamples] = int16(value * 32767)
+	}
+	return out
+}
+
+func syntheticSameEnvelopeDifferentPitchPCM(seconds int) []int16 {
+	sampleRate := duplicateVerifySampleRate
+	total := seconds * sampleRate
+	out := make([]int16, total)
+
+	for i := 0; i < total; i++ {
+		t := float64(i) / float64(sampleRate)
+		envelope := 0.25 +
+			0.20*math.Sin(2*math.Pi*0.17*t) +
+			0.10*math.Sin(2*math.Pi*0.041*t)
+		carrier := math.Sin(2 * math.Pi * (690 + 55*math.Sin(2*math.Pi*0.023*t)) * t)
+		value := envelope * carrier
+		if value > 0.95 {
+			value = 0.95
+		}
+		if value < -0.95 {
+			value = -0.95
+		}
+		out[i] = int16(value * 32767)
 	}
 	return out
 }
