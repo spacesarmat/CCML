@@ -1,7 +1,7 @@
 import type { Track } from './types'
 
 export type TableColumnID =
-  | 'trackNumber' | 'artist' | 'title' | 'album' | 'albumArtist'
+  | 'cover' | 'trackNumber' | 'artist' | 'title' | 'album' | 'albumArtist'
   | 'year' | 'genre' | 'label' | 'catalogNumber' | 'releaseDate'
   | 'duration' | 'codec' | 'sampleRate' | 'bitRate' | 'channels'
   | 'lufs' | 'truePeak' | 'bpmKey' | 'isrc' | 'fileName' | 'path'
@@ -99,6 +99,7 @@ export function sortTracks(tracks: Track[], sort: TableSort[], locale: string): 
 
 function sortValue(track: Track, column: TableColumnID): string | number | null {
   switch (column) {
+    case 'cover': return null
     case 'trackNumber': return track.trackNumber > 0 ? track.trackNumber : null
     case 'artist': return clean(track.artist)
     case 'title': return clean(track.title || track.fileName)
@@ -130,7 +131,7 @@ function clean(value: string): string | null {
 
 function isColumnID(value: unknown): value is TableColumnID {
   return typeof value === 'string' && [
-    'trackNumber', 'artist', 'title', 'album', 'albumArtist', 'year', 'genre',
+    'cover', 'trackNumber', 'artist', 'title', 'album', 'albumArtist', 'year', 'genre',
     'label', 'catalogNumber', 'releaseDate', 'duration', 'codec', 'sampleRate',
     'bitRate', 'channels', 'lufs', 'truePeak', 'bpmKey', 'isrc', 'fileName', 'path',
   ].includes(value)

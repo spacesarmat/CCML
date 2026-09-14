@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import type { AppLanguage } from './i18n'
 import type { Track } from './types'
 import {nextTableSort, type TableColumnID, type TableSort} from './tableSort'
+import TrackCoverCell from './TrackCoverCell'
 
 type TableLayout = {
   order: TableColumnID[]
@@ -12,6 +13,7 @@ type TableLayout = {
 type Props = {
   language: AppLanguage
   tracks: Track[]
+  coverRevision: number
   selectedIDs: number[]
   sort: TableSort[]
   onSortChange: (sort: TableSort[]) => void
@@ -27,12 +29,13 @@ type Props = {
 }
 
 const ALL_COLUMNS: TableColumnID[] = [
-  'trackNumber', 'artist', 'title', 'album', 'albumArtist', 'year', 'genre',
+  'cover', 'trackNumber', 'artist', 'title', 'album', 'albumArtist', 'year', 'genre',
   'label', 'catalogNumber', 'releaseDate', 'duration', 'codec', 'sampleRate',
   'bitRate', 'channels', 'lufs', 'truePeak', 'bpmKey', 'isrc', 'fileName', 'path',
 ]
 
 const DEFAULT_WIDTHS: Record<TableColumnID, number> = {
+  cover: 58,
   trackNumber: 58,
   artist: 170,
   title: 220,
@@ -62,7 +65,7 @@ const SELECTION_COLUMN_WIDTH = 34
 
 const DEFAULT_LAYOUT: TableLayout = {
   order: [...ALL_COLUMNS],
-  visible: ['trackNumber', 'artist', 'title', 'album', 'duration', 'codec', 'lufs', 'bpmKey'],
+  visible: ['cover', 'trackNumber', 'artist', 'title', 'album', 'duration', 'codec', 'lufs', 'bpmKey'],
   widths: {},
 }
 
@@ -70,6 +73,7 @@ const STORAGE_KEY = 'ccml.table-layout.v1'
 
 const LABELS: Record<AppLanguage, Record<TableColumnID, string>> = {
   ru: {
+    cover: 'Обложка',
     trackNumber: '#',
     artist: 'Исполнитель',
     title: 'Название',
@@ -93,6 +97,7 @@ const LABELS: Record<AppLanguage, Record<TableColumnID, string>> = {
     path: 'Путь',
   },
   en: {
+    cover: 'Cover',
     trackNumber: '#',
     artist: 'Artist',
     title: 'Title',
@@ -120,6 +125,7 @@ const LABELS: Record<AppLanguage, Record<TableColumnID, string>> = {
 function ConfigurableTrackTable({
   language,
   tracks,
+  coverRevision,
   selectedIDs,
   sort,
   onSortChange,
@@ -380,20 +386,24 @@ function ConfigurableTrackTable({
                     setDragging(null)
                   }}
                 >
-                  <button
-                    type="button"
-                    className="column-sort-button"
-                    title={copy.sort}
-                    onClick={(event) => onSortChange(nextTableSort(sort, column, event.shiftKey))}
-                  >
-                    <span>{LABELS[language][column]}</span>
-                    {sortRule && (
-                      <b className="column-sort-indicator">
-                        {sortRule.direction === 'asc' ? '↑' : '↓'}
-                        {sort.length > 1 ? sortIndex + 1 : ''}
-                      </b>
-                    )}
-                  </button>
+                  {column === 'cover' ? (
+                    <span className="column-static-label">{LABELS[language][column]}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="column-sort-button"
+                      title={copy.sort}
+                      onClick={(event) => onSortChange(nextTableSort(sort, column, event.shiftKey))}
+                    >
+                      <span>{LABELS[language][column]}</span>
+                      {sortRule && (
+                        <b className="column-sort-indicator">
+                          {sortRule.direction === 'asc' ? '↑' : '↓'}
+                          {sort.length > 1 ? sortIndex + 1 : ''}
+                        </b>
+                      )}
+                    </button>
+                  )}
                   <i
                     className="column-drag-handle"
                     aria-hidden="true"
@@ -451,7 +461,7 @@ function ConfigurableTrackTable({
                   title={column === 'path' ? track.path : undefined}
                   style={{width: `${columnWidth(layout, column)}px`}}
                 >
-                  {renderColumn(column, track, unknownArtistLabel)}
+                  {renderColumn(column, track, unknownArtistLabel, coverRevision)}
                 </td>
               ))}
             </tr>
@@ -490,6 +500,7 @@ function saveLayout(layout: TableLayout) {
 }
 
 function normalizeLayout(value: Partial<TableLayout>): TableLayout {
+  const hadCoverColumn = (value.order ?? []).some((candidate) => candidate === 'cover')
   const seen = new Set<TableColumnID>()
   const order: TableColumnID[] = []
 
@@ -501,6 +512,12 @@ function normalizeLayout(value: Partial<TableLayout>): TableLayout {
   }
   for (const id of ALL_COLUMNS) {
     if (!seen.has(id)) order.push(id)
+  }
+
+  if ((value.order?.length ?? 0) > 0 && !hadCoverColumn) {
+    const coverIndex = order.indexOf('cover')
+    if (coverIndex >= 0) order.splice(coverIndex, 1)
+    order.unshift('cover')
   }
 
   const visible = (value.visible ?? [])
@@ -515,9 +532,14 @@ function normalizeLayout(value: Partial<TableLayout>): TableLayout {
     }
   }
 
+  let normalizedVisible = visible.length > 0 ? visible : [...DEFAULT_LAYOUT.visible]
+  if ((value.order?.length ?? 0) > 0 && !hadCoverColumn && !normalizedVisible.includes('cover')) {
+    normalizedVisible = ['cover', ...normalizedVisible]
+  }
+
   return {
     order,
-    visible: visible.length > 0 ? visible : [...DEFAULT_LAYOUT.visible],
+    visible: normalizedVisible,
     widths,
   }
 }
@@ -542,8 +564,10 @@ function isColumnID(value: string): value is TableColumnID {
   return (ALL_COLUMNS as string[]).includes(value)
 }
 
-function renderColumn(id: TableColumnID, track: Track, unknownArtistLabel: string): ReactNode {
+function renderColumn(id: TableColumnID, track: Track, unknownArtistLabel: string, coverRevision: number): ReactNode {
   switch (id) {
+    case 'cover':
+      return <TrackCoverCell track={track} revision={coverRevision} />
     case 'trackNumber':
       return track.trackNumber || '–'
     case 'artist':
@@ -592,6 +616,7 @@ function renderColumn(id: TableColumnID, track: Track, unknownArtistLabel: strin
 }
 
 function cellClass(id: TableColumnID): string {
+  if (id === 'cover') return 'cover-cell'
   if (id === 'title') return 'title-cell'
   if (id === 'path' || id === 'fileName') return 'file-cell'
   if (['trackNumber', 'year', 'duration', 'sampleRate', 'bitRate', 'channels', 'lufs', 'truePeak'].includes(id)) {

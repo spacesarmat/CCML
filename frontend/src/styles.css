@@ -3311,3 +3311,82 @@ button:disabled:hover {
   background: #fff1f2;
   color: #a8444c;
 }
+/* Stage 12.2 — lazy library cover thumbnails */
+.workspace-table td.cover-cell {
+  padding: 3px 7px;
+  text-align: center;
+  overflow: visible;
+}
+
+.column-static-label {
+  min-width: 0;
+  max-width: calc(100% - 28px);
+  display: inline-block;
+  overflow: hidden;
+  color: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.track-cover-thumb {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--ccml-border);
+  border-radius: 5px;
+  background: var(--ccml-surface-2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .14);
+}
+
+.track-cover-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.track-cover-placeholder {
+  color: var(--ccml-text-dim);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.track-cover-loading {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background:
+    linear-gradient(
+      110deg,
+      var(--ccml-surface-2) 8%,
+      var(--ccml-surface-3) 18%,
+      var(--ccml-surface-2) 33%
+    );
+  background-size: 200% 100%;
+  animation: ccml-cover-loading 1.2s linear infinite;
+}
+
+@keyframes ccml-cover-loading {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+.workspace-table tbody tr.selected .track-cover-thumb {
+  border-color: var(--ccml-accent-border);
+}
+
+:root[data-ccml-theme='light'] .track-cover-thumb {
+  background: #eef3f7;
+  box-shadow: 0 1px 3px rgba(39, 57, 76, .12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-cover-loading {
+    animation: none;
+  }
+}

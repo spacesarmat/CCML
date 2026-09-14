@@ -1135,6 +1135,7 @@ function App() {
               <ConfigurableTrackTable
                 language={language}
                 tracks={visibleTracks}
+                coverRevision={tagRevision}
                 selectedIDs={selectedIDs}
                 sort={tableSort}
                 onSortChange={changeTableSort}

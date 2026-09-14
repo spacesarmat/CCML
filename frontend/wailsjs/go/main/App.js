@@ -110,6 +110,10 @@ export function PrepareTrackMedia(arg1) {
   return window['go']['main']['App']['PrepareTrackMedia'](arg1);
 }
 
+export function PrepareTrackCover(arg1) {
+  return window['go']['main']['App']['PrepareTrackCover'](arg1);
+}
+
 export function PreviewRename(arg1, arg2) {
   return window['go']['main']['App']['PreviewRename'](arg1, arg2);
 }

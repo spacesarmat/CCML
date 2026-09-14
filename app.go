@@ -579,6 +579,14 @@ func (a *App) PrepareTrackMedia(trackID int64) (model.TrackMedia, error) {
 	return a.media.PrepareTrack(a.context(), trackID)
 }
 
+// PrepareTrackCover returns the embedded front cover URL without preparing audio.
+func (a *App) PrepareTrackCover(trackID int64) (string, error) {
+	if a.media == nil {
+		return "", errors.New("media service is not available")
+	}
+	return a.media.PrepareCover(a.context(), trackID)
+}
+
 // PrepareTrackAudioPreview creates a compatibility MP3 only when native WebView playback fails.
 func (a *App) PrepareTrackAudioPreview(trackID int64) (string, error) {
 	if a.media == nil {

@@ -51,6 +51,7 @@ declare global {
           ListTagHistory(limit: number): Promise<TagHistory[]>
           UndoTagChange(changeSetID: number): Promise<TagApplyResult>
           PrepareTrackMedia(trackID: number): Promise<TrackMedia>
+          PrepareTrackCover(trackID: number): Promise<string>
           PrepareTrackAudioPreview(trackID: number): Promise<string>
           GenerateSpectrograms(trackID: number, processedPath: string): Promise<SpectrogramComparison>
           AnalyzeLoudness(trackID: number): Promise<Loudness>

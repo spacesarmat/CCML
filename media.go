@@ -198,6 +198,29 @@ func (m *mediaService) PrepareTrack(ctx context.Context, trackID int64) (model.T
 	return result, nil
 }
 
+// PrepareCover returns only the cached embedded artwork URL for Library
+// thumbnails. Unlike PrepareTrack it never prepares/transcodes audio.
+func (m *mediaService) PrepareCover(ctx context.Context, trackID int64) (string, error) {
+	track, err := m.store.TrackByID(ctx, trackID)
+	if err != nil {
+		return "", err
+	}
+
+	coverPath, err := m.ensureArtwork(track.Path)
+	if err != nil {
+		return "", err
+	}
+	if coverPath == "" {
+		return "", nil
+	}
+
+	url := m.resourceURL(coverPath)
+	if url == "" {
+		return "", errors.New("failed to create artwork URL")
+	}
+	return url, nil
+}
+
 // PrepareAudioPreview forces a browser-compatible MP3 preview. The frontend
 // uses this only after native WebView playback rejects the direct stream.
 func (m *mediaService) PrepareAudioPreview(ctx context.Context, trackID int64) (string, error) {
