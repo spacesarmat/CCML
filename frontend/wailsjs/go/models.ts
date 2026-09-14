@@ -191,11 +191,11 @@ export namespace model {
 	    metadataScore: number;
 	    formatClass: string;
 	    reasons: string[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new DuplicateTrackQuality(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.trackId = source["trackId"];
@@ -206,7 +206,6 @@ export namespace model {
 	        this.reasons = source["reasons"];
 	    }
 	}
-
 	export class DuplicateGroup {
 	    key: string;
 	    artist: string;
@@ -259,6 +258,7 @@ export namespace model {
 		    return a;
 		}
 	}
+	
 	export class FFmpegUpdateResult {
 	    version: string;
 	    changed: boolean;
