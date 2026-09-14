@@ -32,11 +32,11 @@ export function LibraryStatistics():Promise<model.LibraryStats>;
 
 export function ListBackgroundJobItems(arg1:number,arg2:number,arg3:number):Promise<Array<model.BackgroundJobItem>>;
 
-export function ListRunningBackgroundJobItems(arg1:number,arg2:number):Promise<Array<model.BackgroundJobItem>>;
-
 export function ListBackgroundJobs(arg1:number):Promise<Array<model.BackgroundJob>>;
 
 export function ListLibraryRoots():Promise<Array<model.LibraryRoot>>;
+
+export function ListRunningBackgroundJobItems(arg1:number,arg2:number):Promise<Array<model.BackgroundJobItem>>;
 
 export function ListTagHistory(arg1:number):Promise<Array<model.TagHistory>>;
 
