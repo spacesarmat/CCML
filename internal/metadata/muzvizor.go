@@ -63,9 +63,7 @@ func (p *MuzvizorProvider) Search(ctx context.Context, query model.MetadataQuery
 	// First try the confirmed public search route. MUZVIZOR can return only a
 	// JavaScript shell to a backend HTTP client even though the browser later
 	// renders track rows. If no rows are available, use public genre pages.
-	values := url.Values{}
-	values.Set("query", term)
-	searchURL := p.baseURL + "/tracks?" + values.Encode()
+	searchURL := muzvizorSearchURL(p.baseURL, term)
 
 	var directErr error
 	doc, err := p.fetchHTML(ctx, searchURL)
@@ -101,6 +99,13 @@ func muzvizorSearchTerm(query model.MetadataQuery) string {
 	}
 }
 
+func muzvizorSearchURL(baseURL, term string) string {
+	// MUZVIZOR's browser search uses encodeURIComponent-style escaping.
+	// url.Values.Encode would turn spaces into '+', while the site-generated
+	// public URL uses %20. Keep the backend request byte-compatible with it.
+	return strings.TrimRight(baseURL, "/") + "/tracks?query=" + url.PathEscape(strings.TrimSpace(term))
+}
+
 func (p *MuzvizorProvider) fetchHTML(ctx context.Context, target string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
@@ -115,7 +120,7 @@ func (p *MuzvizorProvider) fetchHTML(ctx context.Context, target string) (string
 		req.Header.Set("User-Agent", "CCML metadata client")
 	}
 
-	body, err := fetchProviderBytes(ctx, p.client, req, p.Name(), 2)
+	body, err := fetchProviderBytes(ctx, p.client, req, p.Name(), 1)
 	if err != nil {
 		return "", err
 	}

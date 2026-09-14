@@ -130,6 +130,47 @@ func TestMuzvizorSearchFallsBackFromJSShellToPublicGenrePage(t *testing.T) {
 	}
 }
 
+func TestMuzvizorFallbackContinuesAfterTemporaryPageError(t *testing.T) {
+	t.Parallel()
+
+	requested := map[string]int{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requested[r.URL.Path]++
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		switch r.URL.Path {
+		case "/tracks":
+			http.Error(w, "temporary search failure", http.StatusServiceUnavailable)
+		case "/genres":
+			_, _ = w.Write([]byte(`
+				<a href="/genres/house">House</a>
+				<a href="/genres/pop">Pop</a>
+			`))
+		case "/genres/house":
+			http.Error(w, "temporary house failure", http.StatusServiceUnavailable)
+		case "/genres/pop":
+			_, _ = w.Write([]byte(muzvizorRenderedRowFixture))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	provider := newMuzvizorProviderWithBaseURL(server.URL, "CCML test")
+	items, err := provider.Search(context.Background(), model.MetadataQuery{
+		Artist: "Винтаж, DJ Smash",
+		Title:  "Москва (Nei Blend)",
+	})
+	if err != nil {
+		t.Fatalf("one failed public page must not hide a healthy fallback page: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("unexpected fallback result: %+v", items)
+	}
+	if requested["/tracks"] != 1 || requested["/genres/house"] != 1 || requested["/genres/pop"] != 1 {
+		t.Fatalf("unexpected request sequence: %+v", requested)
+	}
+}
+
 func TestMuzvizorGenreFallbackCachesPublicPages(t *testing.T) {
 	t.Parallel()
 

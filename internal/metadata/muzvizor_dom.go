@@ -14,7 +14,10 @@ import (
 	"github.com/spacesarmat/CCML/internal/model"
 )
 
-const muzvizorGenreCacheTTL = 15 * time.Minute
+const (
+	muzvizorGenreCacheTTL         = 15 * time.Minute
+	muzvizorMaxGenreFallbackPages = 6
+)
 
 var (
 	muzvizorDOMDivTag     = regexp.MustCompile(`(?is)</?div\b[^>]*>`)
@@ -246,7 +249,10 @@ func (p *MuzvizorProvider) searchPublicGenrePages(ctx context.Context, query mod
 	var firstErr error
 	successfulPages := 0
 
-	for _, genreURL := range genreURLs {
+	for index, genreURL := range genreURLs {
+		if index >= muzvizorMaxGenreFallbackPages {
+			break
+		}
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}

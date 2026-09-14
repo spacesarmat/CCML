@@ -802,7 +802,7 @@ func (a *App) metadataCacheKey(query model.MetadataQuery) (string, error) {
 		Version int                    `json:"version"`
 		Query   model.MetadataQuery    `json:"query"`
 		Config  model.MetadataSettings `json:"config"`
-	}{Version: 2, Query: query, Config: config})
+	}{Version: 3, Query: query, Config: config})
 	if err != nil {
 		return "", fmt.Errorf("encode metadata cache key: %w", err)
 	}

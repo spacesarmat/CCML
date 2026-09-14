@@ -92,18 +92,22 @@ func TestMuzvizorParserRejectsUnrelatedTracks(t *testing.T) {
 	}
 }
 
-func TestMuzvizorSearchUsesConfirmedPublicTrackQuery(t *testing.T) {
+func TestMuzvizorSearchUsesBrowserCompatiblePublicTrackQuery(t *testing.T) {
 	t.Parallel()
 
+	const expectedRawQuery = "query=%D0%92%D0%B8%D0%BD%D1%82%D0%B0%D0%B6%2C%20DJ%20Smash%20-%20%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0%20%28Nei%20Blend%29"
+
 	var requestedPath string
+	var requestedRawQuery string
 	var requestedQuery string
-	var legacySearch string
-	var legacyQ string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestedPath = r.URL.Path
+		requestedRawQuery = r.URL.RawQuery
 		requestedQuery = r.URL.Query().Get("query")
-		legacySearch = r.URL.Query().Get("search")
-		legacyQ = r.URL.Query().Get("q")
+		if r.URL.RawQuery != expectedRawQuery {
+			http.Error(w, "browser-compatible query encoding required", http.StatusServiceUnavailable)
+			return
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte(muzvizorFixture))
 	}))
@@ -120,11 +124,11 @@ func TestMuzvizorSearchUsesConfirmedPublicTrackQuery(t *testing.T) {
 	if requestedPath != "/tracks" {
 		t.Fatalf("path = %q, want /tracks", requestedPath)
 	}
-	if requestedQuery != "Винтаж, DJ Smash - Москва (Nei Blend)" {
-		t.Fatalf("query = %q", requestedQuery)
+	if requestedRawQuery != expectedRawQuery {
+		t.Fatalf("raw query = %q, want %q", requestedRawQuery, expectedRawQuery)
 	}
-	if legacySearch != "" || legacyQ != "" {
-		t.Fatalf("legacy guessed query parameters must not be used: search=%q q=%q", legacySearch, legacyQ)
+	if requestedQuery != "Винтаж, DJ Smash - Москва (Nei Blend)" {
+		t.Fatalf("decoded query = %q", requestedQuery)
 	}
 	if len(items) != 1 {
 		t.Fatalf("unexpected result count: %d: %+v", len(items), items)
