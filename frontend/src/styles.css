@@ -1086,3 +1086,53 @@ body { min-width: 1080px; overflow: hidden; }
 @media (max-width: 760px) {
   .job-item-warning { grid-column: auto; }
 }
+/* Stage 10 — persistent resizable library columns. */
+.configurable-workspace-table {
+  table-layout: fixed;
+}
+.configurable-workspace-table th.table-column-header {
+  position: sticky;
+  overflow: visible;
+}
+.configurable-workspace-table td {
+  max-width: none;
+}
+.configurable-workspace-table .column-sort-button {
+  max-width: calc(100% - 28px);
+}
+.column-resize-handle {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+}
+.column-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 20%;
+  bottom: 20%;
+  left: 3px;
+  width: 1px;
+  background: transparent;
+}
+.table-column-header:hover .column-resize-handle::after,
+.table-column-header.resizing .column-resize-handle::after {
+  background: #7189ab;
+}
+.table-column-header.resizing {
+  background: #1b2940 !important;
+}
+body.table-column-resizing,
+body.table-column-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.table-column-option small {
+  min-width: 48px;
+  font-variant-numeric: tabular-nums;
+}

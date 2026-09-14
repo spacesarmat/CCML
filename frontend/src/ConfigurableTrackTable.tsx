@@ -6,6 +6,7 @@ import {nextTableSort, type TableColumnID, type TableSort} from './tableSort'
 type TableLayout = {
   order: TableColumnID[]
   visible: TableColumnID[]
+  widths: Partial<Record<TableColumnID, number>>
 }
 
 type Props = {
@@ -31,9 +32,38 @@ const ALL_COLUMNS: TableColumnID[] = [
   'bitRate', 'channels', 'lufs', 'truePeak', 'bpmKey', 'isrc', 'fileName', 'path',
 ]
 
+const DEFAULT_WIDTHS: Record<TableColumnID, number> = {
+  trackNumber: 58,
+  artist: 170,
+  title: 220,
+  album: 180,
+  albumArtist: 180,
+  year: 68,
+  genre: 130,
+  label: 150,
+  catalogNumber: 125,
+  releaseDate: 112,
+  duration: 78,
+  codec: 86,
+  sampleRate: 104,
+  bitRate: 96,
+  channels: 82,
+  lufs: 72,
+  truePeak: 92,
+  bpmKey: 112,
+  isrc: 132,
+  fileName: 280,
+  path: 420,
+}
+
+const MIN_COLUMN_WIDTH = 54
+const MAX_COLUMN_WIDTH = 640
+const SELECTION_COLUMN_WIDTH = 34
+
 const DEFAULT_LAYOUT: TableLayout = {
   order: [...ALL_COLUMNS],
   visible: ['trackNumber', 'artist', 'title', 'album', 'duration', 'codec', 'lufs', 'bpmKey'],
+  widths: {},
 }
 
 const STORAGE_KEY = 'ccml.table-layout.v1'
@@ -105,29 +135,38 @@ function ConfigurableTrackTable({
 }: Props) {
   const [layout, setLayout] = useState<TableLayout>(() => loadLayout())
   const [dragging, setDragging] = useState<TableColumnID | null>(null)
+  const [resizingColumn, setResizingColumn] = useState<TableColumnID | null>(null)
   const visibleColumns = useMemo(
     () => layout.order.filter((id) => layout.visible.includes(id)),
     [layout],
+  )
+  const tableWidth = useMemo(
+    () => SELECTION_COLUMN_WIDTH + visibleColumns.reduce((total, id) => total + columnWidth(layout, id), 0),
+    [layout, visibleColumns],
   )
 
   const copy = language === 'ru'
     ? {
         columns: 'Колонки',
         panelTitle: 'Столбцы таблицы',
-        panelHint: 'Отметьте нужные поля. Перетаскивайте строки списка или заголовки таблицы, чтобы менять порядок.',
+        panelHint: 'Отметьте нужные поля. Маркер ⋮⋮ меняет порядок; правую границу заголовка можно тянуть для изменения ширины.',
         reset: 'Сбросить',
         shown: 'Показано',
+        width: 'Ширина',
         sort: 'Клик — сортировка; Shift+клик — добавить уровень сортировки',
         drag: 'Перетащите маркер для изменения порядка колонок',
+        resize: 'Тяните для изменения ширины; двойной клик — автоширина',
       }
     : {
         columns: 'Columns',
         panelTitle: 'Table columns',
-        panelHint: 'Choose visible fields. Drag list rows or table headers to reorder them.',
+        panelHint: 'Choose visible fields. Drag ⋮⋮ to reorder; drag a header’s right edge to resize.',
         reset: 'Reset',
         shown: 'Shown',
+        width: 'Width',
         sort: 'Click to sort; Shift+click adds another sort level',
         drag: 'Drag the handle to reorder columns',
+        resize: 'Drag to resize; double-click to auto-fit',
       }
 
   function commit(next: TableLayout) {
@@ -161,6 +200,77 @@ function ConfigurableTrackTable({
   function readDragSource(event: React.DragEvent): TableColumnID | null {
     const value = event.dataTransfer.getData('text/plain') || dragging || ''
     return isColumnID(value) ? value : null
+  }
+
+  function startColumnResize(event: React.PointerEvent<HTMLSpanElement>, id: TableColumnID) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const startX = event.clientX
+    const startWidth = columnWidth(layout, id)
+    setResizingColumn(id)
+    document.body.classList.add('table-column-resizing')
+
+    const widthAt = (clientX: number) => clampColumnWidth(startWidth + clientX - startX)
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const width = widthAt(moveEvent.clientX)
+      setLayout((current) => normalizeLayout({
+        ...current,
+        widths: {...current.widths, [id]: width},
+      }))
+    }
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onFinish)
+      window.removeEventListener('pointercancel', onFinish)
+      document.body.classList.remove('table-column-resizing')
+      setResizingColumn(null)
+    }
+
+    const onFinish = (finishEvent: PointerEvent) => {
+      const width = widthAt(finishEvent.clientX)
+      setLayout((current) => {
+        const next = normalizeLayout({
+          ...current,
+          widths: {...current.widths, [id]: width},
+        })
+        saveLayout(next)
+        return next
+      })
+      cleanup()
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onFinish)
+    window.addEventListener('pointercancel', onFinish)
+  }
+
+  function autoFitColumn(id: TableColumnID) {
+    const selector = `[data-column-id="${id}"]`
+    const header = document.querySelector<HTMLElement>(`th${selector}`)
+    const cells = Array.from(document.querySelectorAll<HTMLElement>(`td${selector}`)).slice(0, 500)
+    const elements = header ? [header, ...cells] : cells
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
+    let width = DEFAULT_WIDTHS[id]
+
+    if (context) {
+      for (const element of elements) {
+        const text = (element.textContent ?? '').trim()
+        if (!text) continue
+        const style = window.getComputedStyle(element)
+        context.font = style.font
+        const padding = parseFloat(style.paddingLeft || '0') + parseFloat(style.paddingRight || '0')
+        width = Math.max(width, Math.ceil(context.measureText(text).width + padding + 28))
+      }
+    }
+
+    commit({
+      ...layout,
+      widths: {...layout.widths, [id]: clampColumnWidth(width)},
+    })
   }
 
   const allVisibleSelected = tracks.length > 0 && tracks.every((track) => selectedIDs.includes(track.id))
@@ -219,7 +329,9 @@ function ConfigurableTrackTable({
                       />
                       <span>{LABELS[language][id]}</span>
                     </label>
-                    <small>{checked ? copy.shown : ''}</small>
+                    <small title={checked ? `${copy.width}: ${columnWidth(layout, id)} px` : undefined}>
+                      {checked ? `${columnWidth(layout, id)} px` : ''}
+                    </small>
                   </div>
                 )
               })}
@@ -228,7 +340,16 @@ function ConfigurableTrackTable({
         </details>
       </div>
 
-      <table className="workspace-table configurable-workspace-table">
+      <table
+        className="workspace-table configurable-workspace-table"
+        style={{width: `${tableWidth}px`, minWidth: '100%'}}
+      >
+        <colgroup>
+          <col style={{width: `${SELECTION_COLUMN_WIDTH}px`}} />
+          {visibleColumns.map((column) => (
+            <col key={column} style={{width: `${columnWidth(layout, column)}px`}} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
             <th className="selection-col">
@@ -245,8 +366,9 @@ function ConfigurableTrackTable({
               return (
                 <th
                   key={column}
-                  className={`table-column-header${dragging === column ? ' dragging' : ''}${sortRule ? ' sorted' : ''}`}
+                  className={`table-column-header${dragging === column ? ' dragging' : ''}${resizingColumn === column ? ' resizing' : ''}${sortRule ? ' sorted' : ''}`}
                   data-column-id={column}
+                  style={{width: `${columnWidth(layout, column)}px`}}
                   onDragOver={(event) => {
                     event.preventDefault()
                     event.dataTransfer.dropEffect = 'move'
@@ -284,6 +406,20 @@ function ConfigurableTrackTable({
                     }}
                     onDragEnd={() => setDragging(null)}
                   >⋮⋮</i>
+                  <span
+                    className="column-resize-handle"
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label={`${copy.width}: ${LABELS[language][column]}`}
+                    title={copy.resize}
+                    onClick={(event) => event.stopPropagation()}
+                    onDoubleClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      autoFitColumn(column)
+                    }}
+                    onPointerDown={(event) => startColumnResize(event, column)}
+                  />
                 </th>
               )
             })}
@@ -310,8 +446,10 @@ function ConfigurableTrackTable({
               {visibleColumns.map((column) => (
                 <td
                   key={column}
+                  data-column-id={column}
                   className={cellClass(column)}
                   title={column === 'path' ? track.path : undefined}
+                  style={{width: `${columnWidth(layout, column)}px`}}
                 >
                   {renderColumn(column, track, unknownArtistLabel)}
                 </td>
@@ -369,9 +507,18 @@ function normalizeLayout(value: Partial<TableLayout>): TableLayout {
     .filter((candidate): candidate is TableColumnID => typeof candidate === 'string' && isColumnID(candidate))
     .filter((candidate, index, values) => values.indexOf(candidate) === index)
 
+  const widths: Partial<Record<TableColumnID, number>> = {}
+  if (value.widths && typeof value.widths === 'object') {
+    for (const [key, rawWidth] of Object.entries(value.widths)) {
+      if (!isColumnID(key) || typeof rawWidth !== 'number' || !Number.isFinite(rawWidth)) continue
+      widths[key] = clampColumnWidth(rawWidth)
+    }
+  }
+
   return {
     order,
     visible: visible.length > 0 ? visible : [...DEFAULT_LAYOUT.visible],
+    widths,
   }
 }
 
@@ -379,7 +526,16 @@ function cloneDefault(): TableLayout {
   return {
     order: [...DEFAULT_LAYOUT.order],
     visible: [...DEFAULT_LAYOUT.visible],
+    widths: {...DEFAULT_LAYOUT.widths},
   }
+}
+
+function columnWidth(layout: TableLayout, id: TableColumnID): number {
+  return clampColumnWidth(layout.widths[id] ?? DEFAULT_WIDTHS[id])
+}
+
+function clampColumnWidth(value: number): number {
+  return Math.max(MIN_COLUMN_WIDTH, Math.min(MAX_COLUMN_WIDTH, Math.round(value)))
 }
 
 function isColumnID(value: string): value is TableColumnID {
