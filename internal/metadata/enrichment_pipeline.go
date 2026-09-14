@@ -292,12 +292,13 @@ func earlyStopThreshold(minimumConfidence float64) float64 {
 	return minimumConfidence
 }
 
-// Deferred providers have explicit request pacing, higher failure latency, or
-// both. They remain fully available in Auto fallback and Full mode.
+// Deferred providers have explicit request pacing, serialized fallback work,
+// higher failure latency, or a combination of those traits. They remain fully
+// available in Auto fallback and Full mode.
 func partitionEnrichmentProviders(providers []Provider) (fast []Provider, deferred []Provider) {
 	for _, provider := range providers {
 		switch strings.ToLower(strings.TrimSpace(provider.Name())) {
-		case "musicbrainz", "apple itunes", "theaudiodb", "discogs", "traxsource":
+		case "musicbrainz", "apple itunes", "theaudiodb", "discogs", "traxsource", "muzvizor":
 			deferred = append(deferred, provider)
 		default:
 			fast = append(fast, provider)

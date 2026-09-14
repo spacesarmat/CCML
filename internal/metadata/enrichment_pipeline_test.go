@@ -141,6 +141,61 @@ func TestSearchEnrichmentFastAvoidsDeferredProviders(t *testing.T) {
 	}
 }
 
+func TestPartitionEnrichmentProvidersDefersMuzvizor(t *testing.T) {
+	t.Parallel()
+
+	deezer := &pipelineProvider{name: "Deezer"}
+	muzvizor := &pipelineProvider{name: "MUZVIZOR"}
+
+	fast, deferred := partitionEnrichmentProviders([]Provider{deezer, muzvizor})
+	if len(fast) != 1 || fast[0].Name() != "Deezer" {
+		t.Fatalf("fast providers = %+v, want Deezer only", providerNamesForTest(fast))
+	}
+	if len(deferred) != 1 || deferred[0].Name() != "MUZVIZOR" {
+		t.Fatalf("deferred providers = %+v, want MUZVIZOR only", providerNamesForTest(deferred))
+	}
+}
+
+func TestSearchEnrichmentAutoStopsBeforeDeferredMuzvizor(t *testing.T) {
+	fast := &pipelineProvider{
+		name: "Deezer",
+		candidate: model.MetadataCandidate{
+			Source: "Deezer", Title: "One More Time", Artist: "Daft Punk", DurationMS: 320000,
+		},
+	}
+	muzvizor := &pipelineProvider{
+		name: "MUZVIZOR",
+		candidate: model.MetadataCandidate{
+			Source: "MUZVIZOR", Title: "One More Time", Artist: "Daft Punk", DurationMS: 320000,
+		},
+	}
+
+	service := NewService(fast, muzvizor)
+	_, diag, err := service.SearchEnrichment(
+		context.Background(),
+		model.MetadataQuery{Title: "One More Time", Artist: "Daft Punk", DurationMS: 320000},
+		EnrichmentSearchAuto,
+		0.86,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := muzvizor.calls.Load(); got != 0 {
+		t.Fatalf("MUZVIZOR calls = %d, want 0 after exact fast result", got)
+	}
+	if diag.ProvidersSkipped != 1 {
+		t.Fatalf("providers skipped = %d, want 1", diag.ProvidersSkipped)
+	}
+}
+
+func providerNamesForTest(providers []Provider) []string {
+	names := make([]string, 0, len(providers))
+	for _, provider := range providers {
+		names = append(names, provider.Name())
+	}
+	return names
+}
+
 func TestSearchEnrichmentFullQueriesEveryProvider(t *testing.T) {
 	fast := &pipelineProvider{
 		name:      "Deezer",
