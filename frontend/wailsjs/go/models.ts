@@ -100,6 +100,20 @@ export namespace model {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class DJMixPin {
+	    trackId: number;
+	    position: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DJMixPin(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.trackId = source["trackId"];
+	        this.position = source["position"];
+	    }
+	}
 	export class Track {
 	    id: number;
 	    path: string;
@@ -197,6 +211,10 @@ export namespace model {
 	    tempoFactor: number;
 	    tempoDeltaPct: number;
 	    keyRelation: string;
+	    genreRelation: string;
+	    energy: number;
+	    energyDelta: number;
+	    pinned: boolean;
 	    score: number;
 	    warnings: string[];
 	
@@ -214,6 +232,10 @@ export namespace model {
 	        this.tempoFactor = source["tempoFactor"];
 	        this.tempoDeltaPct = source["tempoDeltaPct"];
 	        this.keyRelation = source["keyRelation"];
+	        this.genreRelation = source["genreRelation"];
+	        this.energy = source["energy"];
+	        this.energyDelta = source["energyDelta"];
+	        this.pinned = source["pinned"];
 	        this.score = source["score"];
 	        this.warnings = source["warnings"];
 	    }
@@ -245,6 +267,9 @@ export namespace model {
 	    averageScore: number;
 	    totalDurationMs: number;
 	    startTrackId: number;
+	    lookahead: number;
+	    pinnedCount: number;
+	    ignoredPins: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new DJMixPlan(source);
@@ -260,6 +285,9 @@ export namespace model {
 	        this.averageScore = source["averageScore"];
 	        this.totalDurationMs = source["totalDurationMs"];
 	        this.startTrackId = source["startTrackId"];
+	        this.lookahead = source["lookahead"];
+	        this.pinnedCount = source["pinnedCount"];
+	        this.ignoredPins = source["ignoredPins"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -287,6 +315,10 @@ export namespace model {
 	    direction: string;
 	    preferHarmonic: boolean;
 	    avoidSameArtist: boolean;
+	    lookahead: number;
+	    preferGenreContinuity: boolean;
+	    preferEnergyFlow: boolean;
+	    pinnedTracks: DJMixPin[];
 	
 	    static createFrom(source: any = {}) {
 	        return new DJMixPlanOptions(source);
@@ -300,7 +332,29 @@ export namespace model {
 	        this.direction = source["direction"];
 	        this.preferHarmonic = source["preferHarmonic"];
 	        this.avoidSameArtist = source["avoidSameArtist"];
+	        this.lookahead = source["lookahead"];
+	        this.preferGenreContinuity = source["preferGenreContinuity"];
+	        this.preferEnergyFlow = source["preferEnergyFlow"];
+	        this.pinnedTracks = this.convertValues(source["pinnedTracks"], DJMixPin);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	
 	export class DuplicateActionResult {

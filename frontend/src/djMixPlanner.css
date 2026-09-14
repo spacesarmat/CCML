@@ -13,7 +13,7 @@
   width: min(1180px, calc(100vw - 48px));
   max-height: min(860px, calc(100vh - 48px));
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   overflow: hidden;
   border: 1px solid var(--ccml-border);
   border-radius: var(--ccml-radius-xl);
@@ -60,6 +60,42 @@
   height: 30px;
   min-height: 30px;
   padding: 0;
+}
+
+.mix-planner-savedbar {
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+  background: var(--ccml-surface-1);
+}
+
+.mix-planner-savedbar select {
+  min-width: 190px;
+  max-width: 260px;
+}
+
+.mix-planner-savedbar input {
+  min-width: 180px;
+  max-width: 280px;
+  flex: 1 1 220px;
+}
+
+.mix-planner-savedbar select,
+.mix-planner-savedbar input,
+.mix-planner-savedbar button {
+  min-height: 28px;
+}
+
+.mix-planner-savedbar button {
+  padding: 4px 8px;
+  font-size: 6px;
+  white-space: nowrap;
+}
+
+.mix-planner-saved-spacer {
+  flex: 1 1 auto;
 }
 
 .mix-planner-controls {
@@ -324,6 +360,17 @@
   .mix-planner-modal {
     width: calc(100vw - 20px);
     max-height: calc(100vh - 20px);
+  }
+
+  .mix-planner-savedbar {
+    flex-wrap: wrap;
+  }
+
+  .mix-planner-savedbar select,
+  .mix-planner-savedbar input {
+    min-width: 0;
+    max-width: none;
+    flex: 1 1 180px;
   }
 
   .mix-planner-summary {

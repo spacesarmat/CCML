@@ -7,6 +7,7 @@ import type {
   DuplicateGroup,
   DJMixPlan,
   DJMixPlanOptions,
+  DJMixSavedPlan,
   EssentiaPerformance,
   FFmpegUpdateResult,
   LibraryRoot,
@@ -47,6 +48,11 @@ declare global {
           LibraryStatistics(): Promise<LibraryStats>
           ListTracks(search: string, limit: number, offset: number): Promise<Track[]>
           PlanDJMix(trackIDs: number[], options: DJMixPlanOptions): Promise<DJMixPlan>
+          SaveDJMixPlan(id: number, name: string, scopeTrackIDs: number[], options: DJMixPlanOptions, plan: DJMixPlan): Promise<DJMixSavedPlan>
+          ListSavedDJMixPlans(limit: number): Promise<DJMixSavedPlan[]>
+          LoadSavedDJMixPlan(id: number): Promise<DJMixSavedPlan>
+          DeleteSavedDJMixPlan(id: number): Promise<void>
+          ExportDJMixPlan(name: string, format: string, plan: DJMixPlan): Promise<string>
           FindDuplicates(): Promise<DuplicateGroup[]>
           VerifyDuplicateAudio(trackIDs: number[]): Promise<DuplicateAudioVerification>
           SelectDuplicateQuarantineFolder(): Promise<string>

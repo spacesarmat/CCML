@@ -357,6 +357,18 @@ type DJMixPlan struct {
 	IgnoredPins        int             `json:"ignoredPins"`
 }
 
+// DJMixSavedPlan stores a named planner snapshot plus the scope/options needed
+// to reopen it after an application restart and rebuild it against current data.
+type DJMixSavedPlan struct {
+	ID            int64            `json:"id"`
+	Name          string           `json:"name"`
+	ScopeTrackIDs []int64          `json:"scopeTrackIds"`
+	Options       DJMixPlanOptions `json:"options"`
+	Plan          DJMixPlan        `json:"plan"`
+	CreatedAt     string           `json:"createdAt"`
+	UpdatedAt     string           `json:"updatedAt"`
+}
+
 // EssentiaAnalysis is the latest persisted local BPM/key evidence for one track.
 type EssentiaAnalysis struct {
 	TrackID       int64   `json:"trackId"`

@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react'
 import {translate, type AppLanguage, type TranslationKey} from './i18n'
-import type {DJMixPin, DJMixPlan, DJMixPlanOptions, DJMixPlanStep} from './types'
+import type {DJMixPin, DJMixPlan, DJMixPlanOptions, DJMixPlanStep, DJMixSavedPlan} from './types'
 import './djMixPlanner.css'
 
 type Props = {
@@ -35,21 +35,33 @@ function DJMixPlannerModal({
   const [preferEnergyFlow, setPreferEnergyFlow] = useState(true)
   const [avoidSameArtist, setAvoidSameArtist] = useState(true)
   const [pins, setPins] = useState<Record<number, number>>({})
+  const [savedPlans, setSavedPlans] = useState<DJMixSavedPlan[]>([])
+  const [savedPlanID, setSavedPlanID] = useState(0)
+  const [planName, setPlanName] = useState('')
+  const [savedScopeIDs, setSavedScopeIDs] = useState<number[] | null>(null)
+  const [savedLoading, setSavedLoading] = useState(false)
 
   const t = (key: TranslationKey, params?: Record<string, string | number>) => translate(language, key, params)
   const scopeIDs = useMemo(() => selectedIDs.length >= 2 ? selectedIDs : [], [selectedIDs])
-  const scopeLabel = scopeIDs.length > 0
-    ? t('mixPlanner.scopeSelected', {count: scopeIDs.length})
-    : t('mixPlanner.scopeLibrary', {count: libraryCount})
+  const effectiveScopeIDs = savedScopeIDs ?? scopeIDs
+  const scopeLabel = savedScopeIDs !== null
+    ? t('mixPlanner.scopeSaved', {count: savedScopeIDs.length > 0 ? savedScopeIDs.length : libraryCount})
+    : scopeIDs.length > 0
+      ? t('mixPlanner.scopeSelected', {count: scopeIDs.length})
+      : t('mixPlanner.scopeLibrary', {count: libraryCount})
 
   useEffect(() => {
     if (!open) return
     const seed = selectedIDs.length === 1 ? selectedIDs[0] : 0
     setStartTrackID(seed)
     setPins({})
+    setSavedPlanID(0)
+    setPlanName(t('mixPlanner.defaultName'))
+    setSavedScopeIDs(null)
     setError('')
     setPlan(null)
-    void build(seed, {})
+    void refreshSavedPlans()
+    void build(seed, {}, scopeIDs)
   }, [open])
 
   useEffect(() => {
@@ -63,28 +75,31 @@ function DJMixPlannerModal({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [open, onClose])
 
-  async function build(seed = startTrackID, pinState = pins) {
+  function plannerOptions(seed = startTrackID, pinState = pins): DJMixPlanOptions {
+    const pinnedTracks: DJMixPin[] = Object.entries(pinState)
+      .map(([position, trackId]) => ({position: Number(position), trackId}))
+      .filter((pin) => Number.isFinite(pin.position) && pin.position > 0 && pin.trackId > 0)
+      .sort((left, right) => left.position - right.position)
+    return {
+      startTrackId: seed,
+      limit,
+      maxTempoShiftPct,
+      direction,
+      preferHarmonic,
+      avoidSameArtist,
+      lookahead,
+      preferGenreContinuity,
+      preferEnergyFlow,
+      pinnedTracks,
+    }
+  }
+
+  async function build(seed = startTrackID, pinState = pins, planScope = effectiveScopeIDs) {
     if (!window.go?.main?.App) return
     setLoading(true)
     setError('')
     try {
-      const pinnedTracks: DJMixPin[] = Object.entries(pinState)
-        .map(([position, trackId]) => ({position: Number(position), trackId}))
-        .filter((pin) => Number.isFinite(pin.position) && pin.position > 0 && pin.trackId > 0)
-        .sort((left, right) => left.position - right.position)
-      const options: DJMixPlanOptions = {
-        startTrackId: seed,
-        limit,
-        maxTempoShiftPct,
-        direction,
-        preferHarmonic,
-        avoidSameArtist,
-        lookahead,
-        preferGenreContinuity,
-        preferEnergyFlow,
-        pinnedTracks,
-      }
-      const result = await window.go.main.App.PlanDJMix(scopeIDs, options)
+      const result = await window.go.main.App.PlanDJMix(planScope, plannerOptions(seed, pinState))
       setPlan(result)
       setStartTrackID(result.startTrackId || seed)
       onMessage(t('mixPlanner.ready', {count: result.steps?.length ?? 0}))
@@ -93,6 +108,122 @@ function DJMixPlannerModal({
     } finally {
       setLoading(false)
     }
+  }
+
+  async function refreshSavedPlans() {
+    if (!window.go?.main?.App) return
+    try {
+      const saved = await window.go.main.App.ListSavedDJMixPlans(100)
+      setSavedPlans(saved ?? [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  async function saveCurrentPlan(asNew: boolean) {
+    if (!window.go?.main?.App || !plan) return
+    const name = planName.trim()
+    if (!name) {
+      setError(t('mixPlanner.nameRequired'))
+      return
+    }
+    setSavedLoading(true)
+    setError('')
+    try {
+      const saved = await window.go.main.App.SaveDJMixPlan(
+        asNew ? 0 : savedPlanID,
+        name,
+        effectiveScopeIDs,
+        plannerOptions(),
+        plan,
+      )
+      setSavedPlanID(saved.id)
+      setPlanName(saved.name)
+      setSavedScopeIDs(saved.scopeTrackIds ?? [])
+      await refreshSavedPlans()
+      onMessage(t('mixPlanner.saved', {name: saved.name}))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSavedLoading(false)
+    }
+  }
+
+  async function loadSavedPlan(id: number) {
+    if (!window.go?.main?.App || id <= 0) return
+    setSavedLoading(true)
+    setError('')
+    try {
+      const saved = await window.go.main.App.LoadSavedDJMixPlan(id)
+      const options = saved.options
+      const nextPins: Record<number, number> = {}
+      for (const pin of options.pinnedTracks ?? []) {
+        if (pin.position > 0 && pin.trackId > 0) nextPins[pin.position] = pin.trackId
+      }
+      setSavedPlanID(saved.id)
+      setPlanName(saved.name)
+      setSavedScopeIDs(saved.scopeTrackIds ?? [])
+      setStartTrackID(options.startTrackId || saved.plan.startTrackId || 0)
+      setLimit(options.limit || 20)
+      setMaxTempoShiftPct(options.maxTempoShiftPct || 8)
+      setLookahead(options.lookahead || 3)
+      setDirection(options.direction === 'up' || options.direction === 'down' ? options.direction : 'any')
+      setPreferHarmonic(options.preferHarmonic)
+      setAvoidSameArtist(options.avoidSameArtist)
+      setPreferGenreContinuity(options.preferGenreContinuity)
+      setPreferEnergyFlow(options.preferEnergyFlow)
+      setPins(nextPins)
+      setPlan(saved.plan)
+      onMessage(t('mixPlanner.loaded', {name: saved.name}))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSavedLoading(false)
+    }
+  }
+
+  async function deleteSavedPlan() {
+    if (!window.go?.main?.App || savedPlanID <= 0) return
+    const current = savedPlans.find((item) => item.id === savedPlanID)
+    if (!window.confirm(t('mixPlanner.deleteConfirm', {name: current?.name || planName}))) return
+    setSavedLoading(true)
+    setError('')
+    try {
+      await window.go.main.App.DeleteSavedDJMixPlan(savedPlanID)
+      setSavedPlanID(0)
+      setPlanName(t('mixPlanner.defaultName'))
+      setSavedScopeIDs(null)
+      await refreshSavedPlans()
+      onMessage(t('mixPlanner.deleted'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSavedLoading(false)
+    }
+  }
+
+  async function exportPlan(format: 'm3u8' | 'csv') {
+    if (!window.go?.main?.App || !plan) return
+    setSavedLoading(true)
+    setError('')
+    try {
+      const path = await window.go.main.App.ExportDJMixPlan(planName.trim() || t('mixPlanner.defaultName'), format, plan)
+      if (path) onMessage(t('mixPlanner.exported', {path}))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSavedLoading(false)
+    }
+  }
+
+  function newPlan() {
+    const seed = selectedIDs.length === 1 ? selectedIDs[0] : 0
+    setSavedPlanID(0)
+    setPlanName(t('mixPlanner.defaultName'))
+    setSavedScopeIDs(null)
+    setStartTrackID(seed)
+    setPins({})
+    void build(seed, {}, scopeIDs)
   }
 
   function useAsStart(trackID: number) {
@@ -130,6 +261,37 @@ function DJMixPlannerModal({
           </div>
           <button type="button" onClick={onClose} aria-label={t('mixPlanner.close')} title={t('mixPlanner.close')}>×</button>
         </header>
+
+        <div className="mix-planner-savedbar">
+          <select
+            value={savedPlanID || ''}
+            onChange={(event) => {
+              const id = Number(event.target.value)
+              if (id > 0) void loadSavedPlan(id)
+            }}
+            disabled={savedLoading}
+            aria-label={t('mixPlanner.savedPlans')}
+          >
+            <option value="">{t('mixPlanner.savedChoose')}</option>
+            {savedPlans.map((saved) => (
+              <option key={saved.id} value={saved.id}>{saved.name}</option>
+            ))}
+          </select>
+          <input
+            value={planName}
+            maxLength={120}
+            onChange={(event) => setPlanName(event.target.value)}
+            placeholder={t('mixPlanner.name')}
+            aria-label={t('mixPlanner.name')}
+          />
+          <button type="button" onClick={newPlan} disabled={savedLoading}>{t('mixPlanner.newPlan')}</button>
+          <button type="button" onClick={() => void saveCurrentPlan(false)} disabled={savedLoading || !plan}>{t('mixPlanner.save')}</button>
+          <button type="button" onClick={() => void saveCurrentPlan(true)} disabled={savedLoading || !plan}>{t('mixPlanner.saveAs')}</button>
+          <button type="button" onClick={() => void deleteSavedPlan()} disabled={savedLoading || savedPlanID <= 0}>{t('mixPlanner.delete')}</button>
+          <span className="mix-planner-saved-spacer" />
+          <button type="button" onClick={() => void exportPlan('m3u8')} disabled={savedLoading || !plan}>{t('mixPlanner.exportM3U8')}</button>
+          <button type="button" onClick={() => void exportPlan('csv')} disabled={savedLoading || !plan}>{t('mixPlanner.exportCSV')}</button>
+        </div>
 
         <div className="mix-planner-controls">
           <label>

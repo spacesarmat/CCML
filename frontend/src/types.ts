@@ -89,6 +89,16 @@ export type DJMixPlan = {
   ignoredPins: number
 }
 
+export type DJMixSavedPlan = {
+  id: number
+  name: string
+  scopeTrackIds: number[]
+  options: DJMixPlanOptions
+  plan: DJMixPlan
+  createdAt: string
+  updatedAt: string
+}
+
 export type ScanResult = {
   root: string
   found: number
