@@ -1024,3 +1024,55 @@ body { min-width: 1080px; overflow: hidden; }
 @media (max-width: 760px) {
   .job-item-pipeline { grid-column: auto; }
 }
+/* Stage 8.1C — reveal background-job tracks in the library. */
+.job-track-link,
+.job-active-track-link {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.job-track-link {
+  padding: 0;
+  overflow: hidden;
+}
+.job-track-link code {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.job-track-link:hover code,
+.job-track-link:focus-visible code {
+  color: #9fc4f5;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.job-active-track-link {
+  width: 100%;
+  padding: 0;
+  border-radius: 5px;
+}
+.job-active-track-link code {
+  display: flex;
+  width: 100%;
+  min-height: 26px;
+  align-items: center;
+  padding: 5px 8px;
+  overflow: hidden;
+  color: #b8c7da;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.job-active-track-link:hover,
+.job-active-track-link:focus-visible {
+  background: #16283b;
+}
+.job-active-track-link:hover code,
+.job-active-track-link:focus-visible code {
+  color: #a8c9f3;
+}

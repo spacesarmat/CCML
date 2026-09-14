@@ -617,6 +617,24 @@ function App() {
     clearTrackSelection()
   }
 
+  async function revealJobTrack(trackID: number) {
+    setJobsOpen(false)
+    setMainView('library')
+    setMetadataFilter('all')
+
+    // A search query can hide the requested track even though it exists in the
+    // library. Clear it and reload the complete library before selecting.
+    if (search.trim() !== '' || !tracks.some((track) => track.id === trackID)) {
+      setSearch('')
+      await refreshTracks('')
+    }
+
+    selectionAnchor.current = trackID
+    setSelectedIDs([trackID])
+    setActiveTrackID(trackID)
+    setMessage(t('jobs.trackRevealed'))
+  }
+
   function toggleAllVisible() {
     if (visibleTracks.length > 0 && visibleTracks.every((track) => selectedIDs.includes(track.id))) {
       clearTrackSelection()
@@ -1199,7 +1217,7 @@ function App() {
       </div>
 
       <HelpModal language={language} open={helpOpen} version={t('footer.version')} onClose={() => setHelpOpen(false)} />
-      <JobsPanel language={language} open={jobsOpen} onClose={() => setJobsOpen(false)} onMessage={setMessage} />
+      <JobsPanel language={language} open={jobsOpen} onClose={() => setJobsOpen(false)} onMessage={setMessage} onRevealTrack={revealJobTrack} />
       <SettingsModal language={language} open={settingsOpen} status={status} onClose={() => setSettingsOpen(false)} onSaved={async () => { await refreshStatus() }} onMessage={setMessage} />
 
       <footer className="workspace-statusbar">

@@ -8,9 +8,10 @@ type Props = {
   open: boolean
   onClose: () => void
   onMessage: (message: string) => void
+  onRevealTrack: (trackID: number) => void | Promise<void>
 }
 
-function JobsPanel({language, open, onClose, onMessage}: Props) {
+function JobsPanel({language, open, onClose, onMessage, onRevealTrack}: Props) {
   const t = (key: TranslationKey, params?: Record<string, string | number>) => translate(language, key, params)
   const [jobs, setJobs] = useState<BackgroundJob[]>([])
   const [items, setItems] = useState<Record<number, BackgroundJobItem[]>>({})
@@ -158,7 +159,15 @@ function JobsPanel({language, open, onClose, onMessage}: Props) {
                       {runningItems.length > 0 && (
                         <div className="job-active-items">
                           {runningItems.map((item) => (
-                            <code key={item.id} title={item.path}>{item.path}</code>
+                            <button
+                              type="button"
+                              className="job-active-track-link"
+                              key={item.id}
+                              title={t('jobs.revealTrackHint')}
+                              onClick={() => void onRevealTrack(item.trackId)}
+                            >
+                              <code title={item.path}>{item.path}</code>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -182,7 +191,14 @@ function JobsPanel({language, open, onClose, onMessage}: Props) {
                         return (
                           <div className={`job-item ${item.status}`} key={item.id}>
                             <span>{t((`jobs.item.${item.status}`) as TranslationKey)}</span>
-                            <code title={item.path}>{item.path}</code>
+                            <button
+                              type="button"
+                              className="job-track-link"
+                              title={t('jobs.revealTrackHint')}
+                              onClick={() => void onRevealTrack(item.trackId)}
+                            >
+                              <code title={item.path}>{item.path}</code>
+                            </button>
                             <small>{t('jobs.attempts')}: {item.attempts}</small>
                             {resultText && <small className="job-item-result">{resultText}</small>}
                             {pipelineText && <small className="job-item-pipeline">{pipelineText}</small>}
