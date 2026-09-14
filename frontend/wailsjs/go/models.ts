@@ -359,6 +359,9 @@ export namespace model {
 	    strength: number;
 	    camelot: string;
 	    openKey: string;
+	    profile: string;
+	    requestedMode: string;
+	    effectiveMode: string;
 	    analyzedAt: string;
 	
 	    static createFrom(source: any = {}) {
@@ -374,6 +377,9 @@ export namespace model {
 	        this.strength = source["strength"];
 	        this.camelot = source["camelot"];
 	        this.openKey = source["openKey"];
+	        this.profile = source["profile"];
+	        this.requestedMode = source["requestedMode"];
+	        this.effectiveMode = source["effectiveMode"];
 	        this.analyzedAt = source["analyzedAt"];
 	    }
 	}
@@ -381,6 +387,7 @@ export namespace model {
 	    mode: string;
 	    workers: number;
 	    fastSeconds: number;
+	    minKeyStrength: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new EssentiaPerformance(source);
@@ -391,6 +398,7 @@ export namespace model {
 	        this.mode = source["mode"];
 	        this.workers = source["workers"];
 	        this.fastSeconds = source["fastSeconds"];
+	        this.minKeyStrength = source["minKeyStrength"];
 	    }
 	}
 	export class FFmpegUpdateResult {

@@ -282,6 +282,8 @@ type EssentiaItemResult = {
   profile?: string
   escalated?: boolean
   escalationReason?: string
+  fastEngine?: string
+  accurateEngine?: string
   fastDurationMs?: number
   accurateDurationMs?: number
   cached?: boolean
@@ -314,21 +316,42 @@ function formatEssentiaResult(result: EssentiaItemResult, t: (key: TranslationKe
     : t('jobs.essentiaTiming', {
         mode: result.effectiveMode || result.mode || 'accurate',
         seconds: ((result.durationMs ?? 0) / 1000).toFixed(1),
+        engine: essentiaEngineLabel(
+          result.effectiveMode === 'fast' ? result.fastEngine : result.accurateEngine,
+          t,
+        ),
       })
   if (!result.cached && result.mode === 'adaptive') {
     performance = result.escalated
       ? t('jobs.essentiaAdaptiveEscalated', {
           fast: ((result.fastDurationMs ?? 0) / 1000).toFixed(1),
           accurate: ((result.accurateDurationMs ?? 0) / 1000).toFixed(1),
+          fastEngine: essentiaEngineLabel(result.fastEngine, t),
+          accurateEngine: essentiaEngineLabel(result.accurateEngine, t),
           reason: essentiaEscalationReason(result.escalationReason, t),
         })
       : result.effectiveMode === 'fast'
-        ? t('jobs.essentiaAdaptiveAccepted', {seconds: ((result.fastDurationMs ?? result.durationMs ?? 0) / 1000).toFixed(1)})
+        ? t('jobs.essentiaAdaptiveAccepted', {
+            seconds: ((result.fastDurationMs ?? result.durationMs ?? 0) / 1000).toFixed(1),
+            engine: essentiaEngineLabel(result.fastEngine, t),
+          })
         : performance
   }
   if (!result.writeTags) return `${summary} · ${performance} · ${t('jobs.essentiaStored')}`
   if (result.written) return `${summary} · ${performance} · ${t('jobs.essentiaWritten')}`
   return `${summary} · ${performance} · ${t('jobs.essentiaNoChanges')}`
+}
+
+function essentiaEngineLabel(
+  engine: string | undefined,
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string,
+): string {
+  switch (engine) {
+    case 'profile': return t('jobs.essentiaEngineProfile')
+    case 'ffmpeg': return t('jobs.essentiaEngineFFmpeg')
+    case 'direct': return t('jobs.essentiaEngineDirect')
+    default: return t('jobs.essentiaEngineUnknown')
+  }
 }
 
 function essentiaEscalationReason(

@@ -207,7 +207,7 @@ func (a *EssentiaAnalyzer) Analyze(ctx context.Context, input string) (model.BPM
 	return run.Result, nil
 }
 
-func runEssentiaExtractor(ctx context.Context, executable, input string) (result model.BPMKey, output string, resultErr error) {
+func runEssentiaExtractor(ctx context.Context, executable, input string, profile ...string) (result model.BPMKey, output string, resultErr error) {
 	temp, err := os.CreateTemp("", "ccml-essentia-*.json")
 	if err != nil {
 		return model.BPMKey{}, "", fmt.Errorf("create Essentia result file: %w", err)
@@ -223,7 +223,11 @@ func runEssentiaExtractor(ctx context.Context, executable, input string) (result
 		}
 	}()
 
-	cmd := exec.CommandContext(ctx, executable, input, resultPath)
+	args := []string{input, resultPath}
+	if len(profile) > 0 && strings.TrimSpace(profile[0]) != "" {
+		args = append(args, strings.TrimSpace(profile[0]))
+	}
+	cmd := exec.CommandContext(ctx, executable, args...)
 	raw, err := cmd.CombinedOutput()
 	output = string(raw)
 	if err != nil {

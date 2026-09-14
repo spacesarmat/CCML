@@ -29,6 +29,8 @@ type AnalysisRun struct {
 	Profile            string
 	Escalated          bool
 	EscalationReason   string
+	FastEngine         string
+	AccurateEngine     string
 	FastDurationMS     int64
 	AccurateDurationMS int64
 }
@@ -39,12 +41,12 @@ func (a *EssentiaAnalyzer) AnalysisProfile(hint AdaptiveHint) string {
 	config := a.Performance()
 	switch config.Mode {
 	case "accurate":
-		return "essentia-v3:accurate"
+		return "essentia-v4:lean-profile:accurate"
 	case "fast":
-		return fmt.Sprintf("essentia-v3:fast:%d", config.FastSeconds)
+		return fmt.Sprintf("essentia-v4:lean-profile:fast:%d", config.FastSeconds)
 	default:
 		return fmt.Sprintf(
-			"essentia-v3:adaptive:%d:%.3f:pool:%.1f/%d:%s/%d",
+			"essentia-v4:lean-profile:adaptive:%d:%.3f:pool:%.1f/%d:%s/%d",
 			config.FastSeconds,
 			config.MinKeyStrength,
 			hint.PoolBPM,
@@ -56,7 +58,9 @@ func (a *EssentiaAnalyzer) AnalysisProfile(hint AdaptiveHint) string {
 }
 
 // AnalyzeDetailed applies Fast, Accurate, or Adaptive policy and records enough
-// telemetry for Jobs and profile-aware caching.
+// telemetry for Jobs and profile-aware caching. Stage 19.6 prefers Essentia's
+// native profile/slicing support and keeps the Stage 19.4 FFmpeg window plus
+// Stage 19.2.1 decoder recovery as compatibility fallbacks.
 func (a *EssentiaAnalyzer) AnalyzeDetailed(ctx context.Context, input string, hint AdaptiveHint) (AnalysisRun, error) {
 	path := a.Path()
 	if path == "" {
@@ -71,51 +75,51 @@ func (a *EssentiaAnalyzer) AnalyzeDetailed(ctx context.Context, input string, hi
 
 	if config.Mode == "accurate" {
 		started := time.Now()
-		result, err := a.analyzeEssentiaFull(ctx, path, input)
+		result, engine, err := a.analyzeEssentiaAccurateLean(ctx, path, input)
 		run.AccurateDurationMS = time.Since(started).Milliseconds()
+		run.AccurateEngine = engine
 		run.Result = result
 		run.EffectiveMode = "accurate"
 		return run, err
 	}
 
-	fastPath, cleanup, used, prepErr := a.prepareEssentiaFastWAV(ctx, input)
-	if prepErr == nil && used {
-		started := time.Now()
-		fastResult, _, fastErr := runEssentiaExtractor(ctx, path, fastPath)
-		run.FastDurationMS = time.Since(started).Milliseconds()
-		cleanup()
-		if fastErr == nil {
-			fastResult = sanitizeAdaptiveEvidence(fastResult)
-			if config.Mode == "fast" {
-				run.Result = fastResult
-				run.EffectiveMode = "fast"
-				return run, nil
-			}
-			if reason := adaptiveEscalationReason(fastResult, hint, config.MinKeyStrength); reason == "" {
-				run.Result = fastResult
-				run.EffectiveMode = "fast"
-				return run, nil
-			} else {
-				run.Escalated = true
-				run.EscalationReason = reason
-			}
-		} else {
-			if ctx.Err() != nil {
-				return AnalysisRun{}, ctx.Err()
-			}
-			run.Escalated = config.Mode == "adaptive"
-			run.EscalationReason = "fast_failed"
+	started := time.Now()
+	fastResult, fastEngine, used, fastErr := a.analyzeEssentiaFastLean(ctx, path, input)
+	run.FastDurationMS = time.Since(started).Milliseconds()
+	run.FastEngine = fastEngine
+	if fastErr == nil && used {
+		fastResult = sanitizeAdaptiveEvidence(fastResult)
+		if config.Mode == "fast" {
+			run.Result = fastResult
+			run.EffectiveMode = "fast"
+			return run, nil
 		}
-	} else if config.Mode == "adaptive" {
-		run.Escalated = prepErr != nil
-		if prepErr != nil {
-			run.EscalationReason = "fast_unavailable"
+		if reason := adaptiveEscalationReason(fastResult, hint, config.MinKeyStrength); reason == "" {
+			run.Result = fastResult
+			run.EffectiveMode = "fast"
+			return run, nil
+		} else {
+			run.Escalated = true
+			run.EscalationReason = reason
+		}
+	} else {
+		if ctx.Err() != nil {
+			return AnalysisRun{}, ctx.Err()
+		}
+		if config.Mode == "adaptive" {
+			run.Escalated = true
+			if fastErr != nil {
+				run.EscalationReason = "fast_failed"
+			} else {
+				run.EscalationReason = "fast_unavailable"
+			}
 		}
 	}
 
-	started := time.Now()
-	result, err := a.analyzeEssentiaFull(ctx, path, input)
+	started = time.Now()
+	result, engine, err := a.analyzeEssentiaAccurateLean(ctx, path, input)
 	run.AccurateDurationMS = time.Since(started).Milliseconds()
+	run.AccurateEngine = engine
 	run.Result = result
 	run.EffectiveMode = "accurate"
 	return run, err

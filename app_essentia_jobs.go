@@ -38,6 +38,8 @@ type essentiaAnalysisItemResult struct {
 	Profile            string  `json:"profile"`
 	Escalated          bool    `json:"escalated"`
 	EscalationReason   string  `json:"escalationReason"`
+	FastEngine         string  `json:"fastEngine"`
+	AccurateEngine     string  `json:"accurateEngine"`
 	FastDurationMS     int64   `json:"fastDurationMs"`
 	AccurateDurationMS int64   `json:"accurateDurationMs"`
 	Cached             bool    `json:"cached"`
@@ -176,6 +178,8 @@ func (a *App) runEssentiaJobItem(ctx context.Context, job model.BackgroundJob, w
 		Profile:            run.Profile,
 		Escalated:          run.Escalated,
 		EscalationReason:   run.EscalationReason,
+		FastEngine:         run.FastEngine,
+		AccurateEngine:     run.AccurateEngine,
 		FastDurationMS:     run.FastDurationMS,
 		AccurateDurationMS: run.AccurateDurationMS,
 		Cached:             cached,
