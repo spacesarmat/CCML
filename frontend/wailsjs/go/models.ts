@@ -896,6 +896,35 @@ export namespace model {
 	        this.discTotal = source["discTotal"];
 	    }
 	}
+	export class TagTransformRequest {
+	    operation: string;
+	    fields: string[];
+	    search: string;
+	    replace: string;
+	    prefix: string;
+	    suffix: string;
+	    sourceField: string;
+	    targetField: string;
+	    caseSensitive: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new TagTransformRequest(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.operation = source["operation"];
+	        this.fields = source["fields"];
+	        this.search = source["search"];
+	        this.replace = source["replace"];
+	        this.prefix = source["prefix"];
+	        this.suffix = source["suffix"];
+	        this.sourceField = source["sourceField"];
+	        this.targetField = source["targetField"];
+	        this.caseSensitive = source["caseSensitive"];
+	    }
+	}
+
 	export class TagSnapshot {
 	    title: string;
 	    artist: string;

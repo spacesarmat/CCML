@@ -529,6 +529,16 @@ func (a *App) ApplyTagEdits(trackIDs []int64, patch model.TagPatch) (model.TagAp
 	return a.tagEditor.Apply(a.context(), trackIDs, patch)
 }
 
+// PreviewTagTransforms previews per-track text transformations.
+func (a *App) PreviewTagTransforms(trackIDs []int64, request model.TagTransformRequest) ([]model.TagPreview, error) {
+	return a.tagEditor.PreviewTransform(a.context(), trackIDs, request)
+}
+
+// ApplyTagTransforms applies per-track transformations as one undoable operation.
+func (a *App) ApplyTagTransforms(trackIDs []int64, request model.TagTransformRequest) (model.TagApplyResult, error) {
+	return a.tagEditor.ApplyTransform(a.context(), trackIDs, request)
+}
+
 // SelectCoverArt opens a native JPEG/PNG picker.
 func (a *App) SelectCoverArt() (string, error) {
 	if a.ctx == nil {

@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -97,6 +98,101 @@ func (s *Service) Apply(ctx context.Context, trackIDs []int64, patch model.TagPa
 		return model.TagApplyResult{}, err
 	}
 	return s.apply(ctx, ids, patch, coverMutation{}, "tags.edit")
+}
+
+// PreviewTransform computes a per-track transformation without writing files.
+func (s *Service) PreviewTransform(ctx context.Context, trackIDs []int64, request model.TagTransformRequest) ([]model.TagPreview, error) {
+	ids, request, err := validateTransformRequest(trackIDs, request)
+	if err != nil {
+		return nil, err
+	}
+
+	previews := make([]model.TagPreview, 0, len(ids))
+	for _, id := range ids {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		track, err := s.store.TrackByID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		before, _, err := readState(track.Path, false)
+		if err != nil {
+			return nil, err
+		}
+		patch, err := transformPatch(before, request)
+		if err != nil {
+			return nil, err
+		}
+		previews = append(previews, model.TagPreview{
+			TrackID: id,
+			Path:    track.Path,
+			Before:  before,
+			After:   applyPatch(before, patch),
+		})
+	}
+	return previews, nil
+}
+
+// ApplyTransform derives an individual patch per track and records the whole
+// operation as one undoable change set.
+func (s *Service) ApplyTransform(ctx context.Context, trackIDs []int64, request model.TagTransformRequest) (model.TagApplyResult, error) {
+	ids, request, err := validateTransformRequest(trackIDs, request)
+	if err != nil {
+		return model.TagApplyResult{}, err
+	}
+
+	changeSetID, err := s.store.BeginTagChange(ctx, "tags.transform")
+	if err != nil {
+		return model.TagApplyResult{}, err
+	}
+	result := model.TagApplyResult{ChangeSetID: changeSetID}
+
+	for _, id := range ids {
+		if err := ctx.Err(); err != nil {
+			if finishErr := s.store.FinishTagChange(context.Background(), changeSetID, result.Changed, "applied"); finishErr != nil {
+				return result, errors.Join(err, finishErr)
+			}
+			return result, err
+		}
+
+		track, err := s.store.TrackByID(ctx, id)
+		if err != nil {
+			result.Failed++
+			result.Errors = appendLimited(result.Errors, err.Error())
+			continue
+		}
+		before, _, err := readState(track.Path, false)
+		if err != nil {
+			result.Failed++
+			result.Errors = appendLimited(result.Errors, err.Error())
+			continue
+		}
+		patch, err := transformPatch(before, request)
+		if err != nil {
+			result.Failed++
+			result.Errors = appendLimited(result.Errors, err.Error())
+			continue
+		}
+
+		changed, applyErr := s.applyOne(ctx, changeSetID, id, patch, coverMutation{})
+		if applyErr != nil {
+			result.Failed++
+			result.Errors = appendLimited(result.Errors, applyErr.Error())
+			continue
+		}
+		if changed {
+			result.Changed++
+		}
+	}
+
+	if err := s.store.FinishTagChange(ctx, changeSetID, result.Changed, "applied"); err != nil {
+		return result, err
+	}
+	if result.Changed == 0 {
+		result.ChangeSetID = 0
+	}
+	return result, nil
 }
 
 // SetCoverArt embeds the same JPEG/PNG cover into all selected tracks.
@@ -225,6 +321,182 @@ func (s *Service) Undo(ctx context.Context, changeSetID int64) (model.TagApplyRe
 // History returns recent metadata change sets.
 func (s *Service) History(ctx context.Context, limit int) ([]model.TagHistory, error) {
 	return s.store.ListTagHistory(ctx, limit)
+}
+
+var transformTextFields = map[string]struct{}{
+	"title":         {},
+	"artist":        {},
+	"album":         {},
+	"albumArtist":   {},
+	"genre":         {},
+	"composer":      {},
+	"comment":       {},
+	"label":         {},
+	"catalogNumber": {},
+	"isrc":          {},
+	"releaseDate":   {},
+}
+
+func validateTransformRequest(trackIDs []int64, request model.TagTransformRequest) ([]int64, model.TagTransformRequest, error) {
+	ids, err := validateIDs(trackIDs)
+	if err != nil {
+		return nil, model.TagTransformRequest{}, err
+	}
+
+	request.Operation = strings.ToLower(strings.TrimSpace(request.Operation))
+	switch request.Operation {
+	case "trim", "upper", "lower", "replace", "prefix", "suffix":
+		seen := make(map[string]struct{}, len(request.Fields))
+		fields := make([]string, 0, len(request.Fields))
+		for _, field := range request.Fields {
+			field = strings.TrimSpace(field)
+			if _, ok := transformTextFields[field]; !ok {
+				return nil, model.TagTransformRequest{}, fmt.Errorf("unsupported transform field %q", field)
+			}
+			if _, ok := seen[field]; ok {
+				continue
+			}
+			seen[field] = struct{}{}
+			fields = append(fields, field)
+		}
+		if len(fields) == 0 {
+			return nil, model.TagTransformRequest{}, errors.New("select at least one transform field")
+		}
+		request.Fields = fields
+
+		if request.Operation == "replace" && request.Search == "" {
+			return nil, model.TagTransformRequest{}, errors.New("replace search text cannot be empty")
+		}
+		if request.Operation == "prefix" && request.Prefix == "" {
+			return nil, model.TagTransformRequest{}, errors.New("prefix cannot be empty")
+		}
+		if request.Operation == "suffix" && request.Suffix == "" {
+			return nil, model.TagTransformRequest{}, errors.New("suffix cannot be empty")
+		}
+
+	case "copy":
+		if !((request.SourceField == "artist" && request.TargetField == "albumArtist") ||
+			(request.SourceField == "albumArtist" && request.TargetField == "artist")) {
+			return nil, model.TagTransformRequest{}, errors.New("copy supports only Artist ↔ Album Artist")
+		}
+		request.Fields = nil
+
+	default:
+		return nil, model.TagTransformRequest{}, fmt.Errorf("unsupported transform operation %q", request.Operation)
+	}
+
+	return ids, request, nil
+}
+
+func transformPatch(before model.TagSnapshot, request model.TagTransformRequest) (model.TagPatch, error) {
+	patch := model.TagPatch{}
+
+	if request.Operation == "copy" {
+		value, ok := snapshotTextField(before, request.SourceField)
+		if !ok {
+			return model.TagPatch{}, fmt.Errorf("unsupported source field %q", request.SourceField)
+		}
+		if !setPatchTextField(&patch, request.TargetField, value) {
+			return model.TagPatch{}, fmt.Errorf("unsupported target field %q", request.TargetField)
+		}
+		patch.Fields = []string{request.TargetField}
+		return patch, nil
+	}
+
+	for _, field := range request.Fields {
+		value, ok := snapshotTextField(before, field)
+		if !ok {
+			return model.TagPatch{}, fmt.Errorf("unsupported transform field %q", field)
+		}
+
+		switch request.Operation {
+		case "trim":
+			value = strings.TrimSpace(value)
+		case "upper":
+			value = strings.ToUpper(value)
+		case "lower":
+			value = strings.ToLower(value)
+		case "replace":
+			if request.CaseSensitive {
+				value = strings.ReplaceAll(value, request.Search, request.Replace)
+			} else {
+				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(request.Search))
+				value = re.ReplaceAllStringFunc(value, func(string) string { return request.Replace })
+			}
+		case "prefix":
+			value = request.Prefix + value
+		case "suffix":
+			value += request.Suffix
+		default:
+			return model.TagPatch{}, fmt.Errorf("unsupported transform operation %q", request.Operation)
+		}
+
+		if !setPatchTextField(&patch, field, value) {
+			return model.TagPatch{}, fmt.Errorf("unsupported transform field %q", field)
+		}
+		patch.Fields = append(patch.Fields, field)
+	}
+
+	return patch, nil
+}
+
+func snapshotTextField(snapshot model.TagSnapshot, field string) (string, bool) {
+	switch field {
+	case "title":
+		return snapshot.Title, true
+	case "artist":
+		return snapshot.Artist, true
+	case "album":
+		return snapshot.Album, true
+	case "albumArtist":
+		return snapshot.AlbumArtist, true
+	case "genre":
+		return snapshot.Genre, true
+	case "composer":
+		return snapshot.Composer, true
+	case "comment":
+		return snapshot.Comment, true
+	case "label":
+		return snapshot.Label, true
+	case "catalogNumber":
+		return snapshot.CatalogNumber, true
+	case "isrc":
+		return snapshot.ISRC, true
+	case "releaseDate":
+		return snapshot.ReleaseDate, true
+	default:
+		return "", false
+	}
+}
+
+func setPatchTextField(patch *model.TagPatch, field, value string) bool {
+	switch field {
+	case "title":
+		patch.Title = value
+	case "artist":
+		patch.Artist = value
+	case "album":
+		patch.Album = value
+	case "albumArtist":
+		patch.AlbumArtist = value
+	case "genre":
+		patch.Genre = value
+	case "composer":
+		patch.Composer = value
+	case "comment":
+		patch.Comment = value
+	case "label":
+		patch.Label = value
+	case "catalogNumber":
+		patch.CatalogNumber = value
+	case "isrc":
+		patch.ISRC = value
+	case "releaseDate":
+		patch.ReleaseDate = value
+	default:
+		return false
+	}
+	return true
 }
 
 type coverMode int

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { translate, type AppLanguage, type TranslateParams, type TranslationKey } from './i18n'
 import type { TagHistory, TagPatch, TagPreview, TagSnapshot, Track } from './types'
 import BatchTagFields from './BatchTagFields'
+import BatchTagTransforms from './BatchTagTransforms'
 
 type Props = {
   language: AppLanguage
@@ -214,14 +215,28 @@ export default function TagEditor({
       <p className="tag-help">{multi ? t('tags.batchHint') : t('tags.singleHint')}</p>
 
       {multi ? (
-        <BatchTagFields
-          language={language}
-          tracks={tracks}
-          patch={patch}
-          disabled={disabled || localBusy}
-          onToggle={toggleField}
-          onChange={updateField}
-        />
+        <>
+          <BatchTagFields
+            language={language}
+            tracks={tracks}
+            patch={patch}
+            disabled={disabled || localBusy}
+            onToggle={toggleField}
+            onChange={updateField}
+          />
+          <BatchTagTransforms
+            language={language}
+            tracks={tracks}
+            disabled={disabled || localBusy}
+            onBusyChange={(busy) => {
+              setLocalBusy(busy)
+              onBusyChange(busy)
+            }}
+            onMessage={onMessage}
+            onPreview={setPreview}
+            onChanged={onChanged}
+          />
+        </>
       ) : (
         <>
           <div className="tag-grid">

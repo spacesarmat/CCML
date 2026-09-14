@@ -18,6 +18,10 @@ export function ApplyTagEdits(arg1, arg2) {
   return window['go']['main']['App']['ApplyTagEdits'](arg1, arg2);
 }
 
+export function ApplyTagTransforms(arg1, arg2) {
+  return window['go']['main']['App']['ApplyTagTransforms'](arg1, arg2);
+}
+
 export function CancelBackgroundJob(arg1) {
   return window['go']['main']['App']['CancelBackgroundJob'](arg1);
 }
@@ -120,6 +124,10 @@ export function PreviewRename(arg1, arg2) {
 
 export function PreviewTagEdits(arg1, arg2) {
   return window['go']['main']['App']['PreviewTagEdits'](arg1, arg2);
+}
+
+export function PreviewTagTransforms(arg1, arg2) {
+  return window['go']['main']['App']['PreviewTagTransforms'](arg1, arg2);
 }
 
 export function ReadTrackTags(arg1) {

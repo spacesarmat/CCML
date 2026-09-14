@@ -140,6 +140,21 @@ type TagPatch struct {
 	DiscTotal     int      `json:"discTotal"`
 }
 
+// TagTransformRequest describes a per-track text transformation.
+// Unlike TagPatch, each output value is derived independently from each file's
+// current embedded tags.
+type TagTransformRequest struct {
+	Operation     string   `json:"operation"`
+	Fields        []string `json:"fields"`
+	Search        string   `json:"search"`
+	Replace       string   `json:"replace"`
+	Prefix        string   `json:"prefix"`
+	Suffix        string   `json:"suffix"`
+	SourceField   string   `json:"sourceField"`
+	TargetField   string   `json:"targetField"`
+	CaseSensitive bool     `json:"caseSensitive"`
+}
+
 // TagPreview shows the before/after state of a proposed edit.
 type TagPreview struct {
 	TrackID  int64       `json:"trackId"`

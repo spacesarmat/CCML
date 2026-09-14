@@ -22,6 +22,7 @@ import type {
   TagHistory,
   TagPatch,
   TagPreview,
+  TagTransformRequest,
   TagSnapshot,
   Track,
 } from './types'
@@ -44,6 +45,8 @@ declare global {
           ReadTrackTags(trackID: number): Promise<TagSnapshot>
           PreviewTagEdits(trackIDs: number[], patch: TagPatch): Promise<TagPreview[]>
           ApplyTagEdits(trackIDs: number[], patch: TagPatch): Promise<TagApplyResult>
+          PreviewTagTransforms(trackIDs: number[], request: TagTransformRequest): Promise<TagPreview[]>
+          ApplyTagTransforms(trackIDs: number[], request: TagTransformRequest): Promise<TagApplyResult>
           SelectCoverArt(): Promise<string>
           SetCoverArt(trackIDs: number[], imagePath: string): Promise<TagApplyResult>
           RemoveCoverArt(trackIDs: number[]): Promise<TagApplyResult>

@@ -124,6 +124,18 @@ export type TagPatch = {
   discTotal: number
 }
 
+export type TagTransformRequest = {
+  operation: string
+  fields: string[]
+  search: string
+  replace: string
+  prefix: string
+  suffix: string
+  sourceField: string
+  targetField: string
+  caseSensitive: boolean
+}
+
 export type TagPreview = {
   trackId: number
   path: string

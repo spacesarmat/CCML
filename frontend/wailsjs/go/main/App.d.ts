@@ -10,6 +10,8 @@ export function ApplyMetadataCandidate(arg1:number,arg2:model.MetadataCandidate,
 
 export function ApplyTagEdits(arg1:Array<number>,arg2:model.TagPatch):Promise<model.TagApplyResult>;
 
+export function ApplyTagTransforms(arg1:Array<number>,arg2:model.TagTransformRequest):Promise<model.TagApplyResult>;
+
 export function CancelBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
 
 export function CancelScan():Promise<boolean>;
@@ -61,6 +63,8 @@ export function PrepareTrackMedia(arg1:number):Promise<model.TrackMedia>;
 export function PreviewRename(arg1:number,arg2:model.OrganizeRequest):Promise<string>;
 
 export function PreviewTagEdits(arg1:Array<number>,arg2:model.TagPatch):Promise<Array<model.TagPreview>>;
+
+export function PreviewTagTransforms(arg1:Array<number>,arg2:model.TagTransformRequest):Promise<Array<model.TagPreview>>;
 
 export function ReadTrackTags(arg1:number):Promise<model.TagSnapshot>;
 
