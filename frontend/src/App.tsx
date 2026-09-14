@@ -5,6 +5,7 @@ import MetadataMerge from './MetadataMerge'
 import SettingsModal from './SettingsModal'
 import JobsPanel from './JobsPanel'
 import HelpModal from './HelpModal'
+import DuplicateGroupsView from './DuplicateGroupsView'
 import {
   detectInitialLanguage,
   localeFor,
@@ -1200,21 +1201,18 @@ function App() {
               />
             </>
           ) : (
-            <section className="duplicates-view">
-              <div className="workspace-commandbar">
-                <div className="workspace-title-block"><h2>{t('duplicates.title')}</h2><span>{t('message.duplicateGroupsFound', {count: duplicates.length})}</span></div>
-                <div className="workspace-search"><button onClick={() => setMainView('library')}>{t('workspace.backToLibrary')}</button><button onClick={() => void findDuplicates()} disabled={busy}>{t('jobs.refresh')}</button></div>
-              </div>
-              <div className="duplicates-list">
-                {duplicates.length === 0 && <div className="workspace-empty-state">{t('workspace.noDuplicates')}</div>}
-                {duplicates.map((group, index) => (
-                  <details className="duplicate-card" key={`${group.artist}-${group.title}-${index}`} open={index < 3}>
-                    <summary><strong>{group.artist} — {group.title}</strong><span>{t('duplicates.files', {count: group.tracks.length})}</span></summary>
-                    {group.tracks.map((track) => <button className="duplicate-track" key={track.id} onClick={() => { setMainView('library'); selectOnlyTrack(track.id) }}><span>{track.fileName}</span><small>{formatDuration(track.durationMs)} · {track.path}</small></button>)}
-                  </details>
-                ))}
-              </div>
-            </section>
+            <DuplicateGroupsView
+              language={language}
+              groups={duplicates}
+              busy={busy}
+              onBack={() => setMainView('library')}
+              onRefresh={() => void findDuplicates()}
+              onOpenTrack={(track) => {
+                setMainView('library')
+                selectOnlyTrack(track.id)
+                setInspectorTab('tags')
+              }}
+            />
           )}
         </main>
 

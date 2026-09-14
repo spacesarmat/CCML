@@ -185,9 +185,15 @@ export namespace model {
 	    }
 	}
 	export class DuplicateGroup {
+	    key: string;
 	    artist: string;
 	    title: string;
 	    durationMs: number;
+	    durationSpreadMs: number;
+	    matchClass: string;
+	    confidence: number;
+	    reasons: string[];
+	    sharedIsrc: string;
 	    tracks: Track[];
 	
 	    static createFrom(source: any = {}) {
@@ -196,9 +202,15 @@ export namespace model {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
 	        this.artist = source["artist"];
 	        this.title = source["title"];
 	        this.durationMs = source["durationMs"];
+	        this.durationSpreadMs = source["durationSpreadMs"];
+	        this.matchClass = source["matchClass"];
+	        this.confidence = source["confidence"];
+	        this.reasons = source["reasons"];
+	        this.sharedIsrc = source["sharedIsrc"];
 	        this.tracks = this.convertValues(source["tracks"], Track);
 	    }
 	

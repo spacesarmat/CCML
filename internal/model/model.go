@@ -181,12 +181,18 @@ type TagHistory struct {
 	AffectedCount int    `json:"affectedCount"`
 }
 
-// DuplicateGroup is a probable set of duplicate tracks.
+// DuplicateGroup is a probable set of duplicate tracks with matching evidence.
 type DuplicateGroup struct {
-	Artist     string  `json:"artist"`
-	Title      string  `json:"title"`
-	DurationMS int64   `json:"durationMs"`
-	Tracks     []Track `json:"tracks"`
+	Key              string   `json:"key"`
+	Artist           string   `json:"artist"`
+	Title            string   `json:"title"`
+	DurationMS       int64    `json:"durationMs"`
+	DurationSpreadMS int64    `json:"durationSpreadMs"`
+	MatchClass       string   `json:"matchClass"`
+	Confidence       float64  `json:"confidence"`
+	Reasons          []string `json:"reasons"`
+	SharedISRC       string   `json:"sharedIsrc"`
+	Tracks           []Track  `json:"tracks"`
 }
 
 // Loudness contains EBU R128 measurements.

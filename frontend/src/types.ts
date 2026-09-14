@@ -160,9 +160,15 @@ export type TagHistory = {
 }
 
 export type DuplicateGroup = {
+  key: string
   artist: string
   title: string
   durationMs: number
+  durationSpreadMs: number
+  matchClass: 'isrc' | 'metadata' | 'possible' | string
+  confidence: number
+  reasons: string[]
+  sharedIsrc: string
   tracks: Track[]
 }
 

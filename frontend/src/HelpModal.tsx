@@ -101,6 +101,8 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Тема также синхронизирует системное оформление окна. Light использует светлые поверхности во всей библиотеке, Inspector, боковой панели, задачах и настройках.',
           'Во вкладке Инспектор → Метаданные отчёты источников, карточки кандидатов и «Объединение метаданных» также полностью используют цвета выбранной темы.',
           'Таблица загружает все совпавшие треки постранично по 1000 записей, поэтому библиотека больше не ограничена первыми 500 файлами.',
+          'Раздел «Дубликаты» группирует библиотеку по трём уровням уверенности: одинаковый ISRC, точные Artist/Title с близкой длительностью и возможные версии, где из Title временно исключаются пометки Remix/Edit/Intro/Clean и другие version qualifiers. Возможные версии не считаются подтверждёнными дублями.',
+          'Внутри группы можно сравнить файл, кодек, битрейт, sample rate, размер, длительность и ISRC. Stage 16.1 ничего не удаляет и не перемещает — экран только диагностический.',
         ],
       },
       {
@@ -280,6 +282,8 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'The selected theme also synchronizes native window chrome. Light uses light surfaces consistently across Library, Inspector, sidebar, Jobs and Settings.',
           'Inspector → Metadata provider reports, candidate cards and Metadata Merge now fully use the selected theme as well.',
           'The table loads every matching track in 1000-row pages, so the library is no longer limited to the first 500 files.',
+          'Duplicates groups the library at three confidence levels: identical ISRC, exact Artist/Title with close duration, and possible version matches where Remix/Edit/Intro/Clean and similar version qualifiers are temporarily removed from Title. Possible versions are not treated as confirmed duplicates.',
+          'Inside a group you can compare file, codec, bitrate, sample rate, size, duration and ISRC. Stage 16.1 does not delete or move anything; this screen is diagnostic only.',
         ],
       },
       {
