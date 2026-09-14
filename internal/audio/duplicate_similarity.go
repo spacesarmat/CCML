@@ -14,11 +14,13 @@ import (
 )
 
 const (
-	duplicateVerifySampleRate = 4000
-	duplicateVerifyFrameMS    = 100
-	duplicateVerifyFrameSize  = duplicateVerifySampleRate * duplicateVerifyFrameMS / 1000
-	duplicateVerifyMaxSeconds = 900
-	duplicateVerifyMaxShift   = 60 // 6 seconds at 100 ms/frame.
+	duplicateVerifySampleRate             = 4000
+	duplicateVerifyFrameMS                = 100
+	duplicateVerifyFrameSize              = duplicateVerifySampleRate * duplicateVerifyFrameMS / 1000
+	duplicateVerifyMaxSeconds             = 900
+	duplicateVerifyMaxShift               = 60 // 6 seconds at 100 ms/frame.
+	duplicateVerifySameMaxDurationDeltaMS = 1_500
+	duplicateVerifySimilarMaxDurationMS   = 60_000
 )
 
 var duplicateVerifySpectrumFrequencies = [...]float64{80, 140, 220, 350, 550, 850, 1300, 1750}
@@ -317,9 +319,9 @@ func bestDuplicateFeatureSimilarity(left, right duplicateFeatures) (float64, int
 
 func classifyDuplicateSimilarity(similarity float64, durationDeltaMS int64) string {
 	switch {
-	case similarity >= 0.985 && durationDeltaMS <= 1_500:
+	case similarity >= 0.985 && durationDeltaMS <= duplicateVerifySameMaxDurationDeltaMS:
 		return "same"
-	case similarity >= 0.93:
+	case similarity >= 0.93 && durationDeltaMS <= duplicateVerifySimilarMaxDurationMS:
 		return "similar"
 	default:
 		return "different"

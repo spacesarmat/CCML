@@ -81,10 +81,24 @@ func TestClassifyDuplicateSimilarityRequiresCloseDurationForSame(t *testing.T) {
 		t.Fatalf("got %q, want same", got)
 	}
 	if got := classifyDuplicateSimilarity(0.995, 12_000); got != "similar" {
-		t.Fatalf("got %q, want similar for large duration delta", got)
+		t.Fatalf("got %q, want similar for moderate duration delta", got)
 	}
 	if got := classifyDuplicateSimilarity(0.70, 0); got != "different" {
 		t.Fatalf("got %q, want different", got)
+	}
+}
+
+func TestClassifyDuplicateSimilarityRejectsLargeDurationDelta(t *testing.T) {
+	t.Parallel()
+
+	if got := classifyDuplicateSimilarity(0.999, duplicateVerifySimilarMaxDurationMS); got != "similar" {
+		t.Fatalf("boundary got %q, want similar", got)
+	}
+	if got := classifyDuplicateSimilarity(0.999, duplicateVerifySimilarMaxDurationMS+1); got != "different" {
+		t.Fatalf("over-boundary got %q, want different", got)
+	}
+	if got := classifyDuplicateSimilarity(1.0, 180_000); got != "different" {
+		t.Fatalf("three-minute delta got %q, want different", got)
 	}
 }
 
