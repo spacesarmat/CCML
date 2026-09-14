@@ -64,25 +64,40 @@ func (p *MuzvizorProvider) Search(ctx context.Context, query model.MetadataQuery
 	// JavaScript shell to a backend HTTP client even though the browser later
 	// renders track rows. If no rows are available, use public genre pages.
 	searchURL := muzvizorSearchURL(p.baseURL, term)
+	muzvizorDebugf("search start artist=%q title=%q term=%q url=%s", query.Artist, query.Title, term, searchURL)
 
 	var directErr error
 	doc, err := p.fetchHTML(ctx, searchURL)
 	if err != nil {
+		muzvizorDebugf("direct fetch failed: %v", err)
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
 		directErr = err
-	} else if collected := muzvizorCandidatesFromHTML(doc, searchURL, query); len(collected) > 0 {
-		return muzvizorLimitCandidates(query, collected), nil
+	} else {
+		muzvizorDebugDocument("direct page", searchURL, query, doc)
+		collected := muzvizorCandidatesFromHTML(doc, searchURL, query)
+		muzvizorDebugCandidates("direct matched", query, collected)
+		if len(collected) > 0 {
+			return muzvizorLimitCandidates(query, collected), nil
+		}
+		if muzvizorDebugEnabled() {
+			raw := muzvizorCandidatesFromHTML(doc, searchURL, model.MetadataQuery{})
+			muzvizorDebugCandidates("direct raw", query, raw)
+		}
 	}
 
+	muzvizorDebugf("direct page produced no match; starting public genre fallback")
 	fallback, fallbackErr := p.searchPublicGenrePages(ctx, query)
 	if len(fallback) > 0 {
+		muzvizorDebugCandidates("fallback matched", query, fallback)
 		return fallback, nil
 	}
 	if err := muzvizorFallbackError(directErr, fallbackErr); err != nil {
+		muzvizorDebugf("search finished with provider error: %v", err)
 		return nil, err
 	}
+	muzvizorDebugf("search finished with zero matches")
 	return nil, nil
 }
 
@@ -120,10 +135,13 @@ func (p *MuzvizorProvider) fetchHTML(ctx context.Context, target string) (string
 		req.Header.Set("User-Agent", "CCML metadata client")
 	}
 
+	muzvizorDebugf("HTTP GET %s", target)
 	body, err := fetchProviderBytes(ctx, p.client, req, p.Name(), 1)
 	if err != nil {
+		muzvizorDebugf("HTTP FAIL url=%s error=%v", target, err)
 		return "", err
 	}
+	muzvizorDebugf("HTTP OK url=%s bytes=%d", target, len(body))
 	return string(body), nil
 }
 

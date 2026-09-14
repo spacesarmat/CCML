@@ -275,32 +275,42 @@ func (p *MuzvizorProvider) searchPublicGenrePages(ctx context.Context, query mod
 	defer muzvizorGenreSearchMu.Unlock()
 
 	genreURLs := p.muzvizorPublicGenreURLs(ctx)
+	muzvizorDebugf("genre fallback discovered=%d cap=%d urls=%q", len(genreURLs), muzvizorMaxGenreFallbackPages, genreURLs)
 	var firstErr error
 	successfulPages := 0
 
 	for index, genreURL := range genreURLs {
 		if index >= muzvizorMaxGenreFallbackPages {
+			muzvizorDebugf("genre fallback stopped at cap=%d", muzvizorMaxGenreFallbackPages)
 			break
 		}
 		if err := ctx.Err(); err != nil {
+			muzvizorDebugf("genre fallback context ended: %v", err)
 			return nil, err
 		}
-		items, err := p.muzvizorPublicGenrePageCandidates(ctx, genreURL)
+		muzvizorDebugf("genre fallback page[%d] url=%s", index, genreURL)
+		items, err := p.muzvizorPublicGenrePageCandidates(ctx, genreURL, query)
 		if err != nil {
+			muzvizorDebugf("genre fallback page[%d] failed: %v", index, err)
 			if firstErr == nil {
 				firstErr = err
 			}
 			continue
 		}
 		successfulPages++
-		if matches := muzvizorLimitCandidates(query, items); len(matches) > 0 {
+		muzvizorDebugCandidates(fmt.Sprintf("genre raw[%d]", index), query, items)
+		matches := muzvizorLimitCandidates(query, items)
+		muzvizorDebugCandidates(fmt.Sprintf("genre matched[%d]", index), query, matches)
+		if len(matches) > 0 {
 			return matches, nil
 		}
 	}
 
 	if successfulPages == 0 && firstErr != nil {
+		muzvizorDebugf("genre fallback had no successful pages; first error=%v", firstErr)
 		return nil, firstErr
 	}
+	muzvizorDebugf("genre fallback finished successfulPages=%d matches=0", successfulPages)
 	return nil, nil
 }
 
@@ -308,12 +318,18 @@ func (p *MuzvizorProvider) muzvizorPublicGenreURLs(ctx context.Context) []string
 	now := time.Now()
 	cacheKey := strings.TrimRight(p.baseURL, "/")
 	if cached, ok := muzvizorGenreIndexCache[cacheKey]; ok && now.Before(cached.until) {
+		muzvizorDebugf("genre index cache hit urls=%q", cached.urls)
 		return append([]string(nil), cached.urls...)
 	}
 
 	var values []string
-	if doc, err := p.fetchHTML(ctx, cacheKey+"/genres"); err == nil {
+	genreIndexURL := cacheKey + "/genres"
+	if doc, err := p.fetchHTML(ctx, genreIndexURL); err == nil {
+		muzvizorDebugDocument("genre index", genreIndexURL, model.MetadataQuery{}, doc)
 		values = muzvizorGenreURLsFromHTML(doc, cacheKey)
+		muzvizorDebugf("genre index parsed urls=%q", values)
+	} else {
+		muzvizorDebugf("genre index fetch failed: %v", err)
 	}
 
 	// These two public pages are independently confirmed and cover the reported
@@ -322,6 +338,7 @@ func (p *MuzvizorProvider) muzvizorPublicGenreURLs(ctx context.Context) []string
 	values = ensureMuzvizorGenreURL(values, cacheKey+"/genres/house")
 	values = ensureMuzvizorGenreURL(values, cacheKey+"/genres/pop")
 	muzvizorPrioritizeGenreURLs(values)
+	muzvizorDebugf("genre fallback final urls=%q", values)
 
 	muzvizorGenreIndexCache[cacheKey] = muzvizorCachedGenreIndex{
 		until: now.Add(muzvizorGenreCacheTTL),
@@ -330,9 +347,10 @@ func (p *MuzvizorProvider) muzvizorPublicGenreURLs(ctx context.Context) []string
 	return append([]string(nil), values...)
 }
 
-func (p *MuzvizorProvider) muzvizorPublicGenrePageCandidates(ctx context.Context, target string) ([]model.MetadataCandidate, error) {
+func (p *MuzvizorProvider) muzvizorPublicGenrePageCandidates(ctx context.Context, target string, query model.MetadataQuery) ([]model.MetadataCandidate, error) {
 	now := time.Now()
 	if cached, ok := muzvizorGenrePageCache[target]; ok && now.Before(cached.until) {
+		muzvizorDebugf("genre page cache hit url=%s candidates=%d", target, len(cached.items))
 		return cached.items, nil
 	}
 
@@ -340,7 +358,9 @@ func (p *MuzvizorProvider) muzvizorPublicGenrePageCandidates(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
+	muzvizorDebugDocument("genre page", target, query, doc)
 	items := muzvizorCandidatesFromHTML(doc, target, model.MetadataQuery{})
+	muzvizorDebugCandidates("genre page parsed raw", query, items)
 	muzvizorGenrePageCache[target] = muzvizorCachedGenrePage{
 		until: now.Add(muzvizorGenreCacheTTL),
 		items: items,
