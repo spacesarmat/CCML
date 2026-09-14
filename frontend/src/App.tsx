@@ -31,6 +31,8 @@ import type {
 } from './types'
 
 import ConfigurableTrackTable from './ConfigurableTrackTable'
+import {loadTableSort, saveTableSort, sortTracks, type TableSort} from './tableSort'
+
 function compactProviderMessage(value: string | undefined): string {
   if (!value) return ''
   const htmlAt = value.search(/<!doctype\s+html|<html(?:\s|>)/i)
@@ -86,6 +88,7 @@ function App() {
   const [jobsOpen, setJobsOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [metadataFilter, setMetadataFilter] = useState<'all' | 'skipped' | 'failed'>('all')
+  const [tableSort, setTableSort] = useState<TableSort[]>(() => loadTableSort())
   const [mainView, setMainView] = useState<'library' | 'duplicates'>('library')
   const [inspectorTab, setInspectorTab] = useState<'tags' | 'metadata' | 'analysis' | 'organize'>('tags')
   const [trackMedia, setTrackMedia] = useState<TrackMedia | null>(null)
@@ -117,6 +120,11 @@ function App() {
     [tracks, metadataFilter],
   )
 
+  const visibleTracks = useMemo(
+    () => sortTracks(filteredTracks, tableSort, locale),
+    [filteredTracks, tableSort, locale],
+  )
+
   const selectedTracks = useMemo(
     () => tracks.filter((track) => selectedIDs.includes(track.id)),
     [tracks, selectedIDs],
@@ -139,6 +147,11 @@ function App() {
     if (track.lastMetadataJobStatus === 'skipped') return t('table.metadataUnchanged')
     if (track.lastMetadataJobStatus === 'failed') return t('table.metadataFailed')
     return undefined
+  }
+
+  function changeTableSort(next: TableSort[]) {
+    setTableSort(next)
+    saveTableSort(next)
   }
 
   function backend() {
@@ -218,10 +231,10 @@ function App() {
           break
         case 'End':
           event.preventDefault()
-          moveActiveTrackTo(filteredTracks.length - 1, event.shiftKey, command)
+          moveActiveTrackTo(visibleTracks.length - 1, event.shiftKey, command)
           break
         case 'Enter':
-          if (activeTrackID !== null && filteredTracks.some((track) => track.id === activeTrackID)) {
+          if (activeTrackID !== null && visibleTracks.some((track) => track.id === activeTrackID)) {
             event.preventDefault()
             selectOnlyTrack(activeTrackID)
             setInspectorTab('tags')
@@ -246,7 +259,7 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [
     activeTrackID,
-    filteredTracks,
+    visibleTracks,
     jobsOpen,
     helpOpen,
     mainView,
@@ -407,7 +420,17 @@ function App() {
   }
 
   async function refreshTracks(query = search) {
-    const result = await run(t('message.loadingLibrary'), () => backend().ListTracks(query, 500, 0))
+    const result = await run(t('message.loadingLibrary'), async () => {
+      const pageSize = 1000
+      const allTracks: Track[] = []
+      for (let offset = 0; ; offset += pageSize) {
+        const page = await backend().ListTracks(query, pageSize, offset)
+        const rows = page ?? []
+        allTracks.push(...rows)
+        if (rows.length < pageSize) break
+      }
+      return allTracks
+    })
     if (result) {
       setTracks(result)
       const visibleIDs = new Set(result
@@ -528,16 +551,16 @@ function App() {
   }
 
   function selectRangeTo(trackID: number) {
-    const targetIndex = filteredTracks.findIndex((track) => track.id === trackID)
+    const targetIndex = visibleTracks.findIndex((track) => track.id === trackID)
     if (targetIndex < 0) return
 
     const anchorID = selectionAnchor.current ?? activeTrackID ?? selectedIDs[0] ?? trackID
-    let anchorIndex = filteredTracks.findIndex((track) => track.id === anchorID)
+    let anchorIndex = visibleTracks.findIndex((track) => track.id === anchorID)
     if (anchorIndex < 0) anchorIndex = targetIndex
 
     const start = Math.min(anchorIndex, targetIndex)
     const end = Math.max(anchorIndex, targetIndex)
-    setSelectedIDs(filteredTracks.slice(start, end + 1).map((track) => track.id))
+    setSelectedIDs(visibleTracks.slice(start, end + 1).map((track) => track.id))
     setActiveTrackID(trackID)
     if (selectionAnchor.current === null) selectionAnchor.current = anchorID
   }
@@ -555,17 +578,17 @@ function App() {
   }
 
   function moveActiveTrack(delta: number, extendSelection: boolean, preserveSelection: boolean) {
-    if (filteredTracks.length === 0) return
-    let index = filteredTracks.findIndex((track) => track.id === activeTrackID)
-    if (index < 0) index = filteredTracks.findIndex((track) => selectedIDs.includes(track.id))
+    if (visibleTracks.length === 0) return
+    let index = visibleTracks.findIndex((track) => track.id === activeTrackID)
+    if (index < 0) index = visibleTracks.findIndex((track) => selectedIDs.includes(track.id))
     if (index < 0) index = delta > 0 ? -1 : 0
     moveActiveTrackTo(index + delta, extendSelection, preserveSelection)
   }
 
   function moveActiveTrackTo(index: number, extendSelection: boolean, preserveSelection: boolean) {
-    if (filteredTracks.length === 0) return
-    const clamped = Math.max(0, Math.min(index, filteredTracks.length - 1))
-    const trackID = filteredTracks[clamped].id
+    if (visibleTracks.length === 0) return
+    const clamped = Math.max(0, Math.min(index, visibleTracks.length - 1))
+    const trackID = visibleTracks[clamped].id
 
     if (extendSelection) {
       selectRangeTo(trackID)
@@ -580,8 +603,8 @@ function App() {
   }
 
   function selectAllVisibleTracks() {
-    if (filteredTracks.length === 0) return
-    const ids = filteredTracks.map((track) => track.id)
+    if (visibleTracks.length === 0) return
+    const ids = visibleTracks.map((track) => track.id)
     setSelectedIDs(ids)
     const active = activeTrackID !== null && ids.includes(activeTrackID) ? activeTrackID : ids[0]
     setActiveTrackID(active)
@@ -595,7 +618,7 @@ function App() {
   }
 
   function toggleAllVisible() {
-    if (filteredTracks.length > 0 && filteredTracks.every((track) => selectedIDs.includes(track.id))) {
+    if (visibleTracks.length > 0 && visibleTracks.every((track) => selectedIDs.includes(track.id))) {
       clearTrackSelection()
       return
     }
@@ -959,8 +982,10 @@ function App() {
 
               <ConfigurableTrackTable
                 language={language}
-                tracks={filteredTracks}
+                tracks={visibleTracks}
                 selectedIDs={selectedIDs}
+                sort={tableSort}
+                onSortChange={changeTableSort}
                 onToggleAllVisible={toggleAllVisible}
                 onRowClick={handleTrackRowClick}
                 onToggleTrackSelection={toggleTrackSelection}

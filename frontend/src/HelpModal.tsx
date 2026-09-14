@@ -85,7 +85,9 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Фильтры позволяют отдельно показать все треки, записи без изменений после обогащения и записи, где обработка метаданных завершилась ошибкой.',
           'Обычный клик выбирает одну строку. Чекбоксы, Ctrl+клик и Shift+клик используются для массового выделения.',
           'При перемещении клавишами активная строка автоматически прокручивается в видимую область.',
-          'Кнопка «Колонки» над таблицей позволяет включать и скрывать поля. Порядок меняется перетаскиванием в списке или самих заголовков; раскладка сохраняется между запусками.',
+          'Кнопка «Колонки» над таблицей позволяет включать и скрывать поля. Порядок меняется перетаскиванием маркеров; раскладка сохраняется между запусками.',
+          'Клик по заголовку сортирует таблицу, повторный клик меняет направление. Shift+клик добавляет до четырёх уровней сортировки; клавиатурная навигация и Shift-выделение следуют видимому отсортированному порядку.',
+          'Таблица загружает все совпавшие треки постранично по 1000 записей, поэтому библиотека больше не ограничена первыми 500 файлами.',
         ],
       },
       {
@@ -243,7 +245,9 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Filters can show all tracks, unchanged enrichment results, or metadata jobs that failed.',
           'A normal click selects one row. Checkboxes, Ctrl+click and Shift+click are for multi-selection.',
           'Keyboard navigation automatically scrolls the active row into view.',
-          'The Columns control above the table shows or hides fields. Reorder them by dragging list rows or table headers; the layout persists between launches.',
+          'The Columns control above the table shows or hides fields. Reorder them by dragging the handles; the layout persists between launches.',
+          'Click a column header to sort; click again to reverse it. Shift+click adds up to four sort levels. Keyboard navigation and Shift-selection follow the visible sorted order.',
+          'The table loads every matching track in 1000-row pages, so the library is no longer limited to the first 500 files.',
         ],
       },
       {

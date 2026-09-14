@@ -1,12 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import type { AppLanguage } from './i18n'
 import type { Track } from './types'
-
-type TableColumnID =
-  | 'trackNumber' | 'artist' | 'title' | 'album' | 'albumArtist'
-  | 'year' | 'genre' | 'label' | 'catalogNumber' | 'releaseDate'
-  | 'duration' | 'codec' | 'sampleRate' | 'bitRate' | 'channels'
-  | 'lufs' | 'truePeak' | 'bpmKey' | 'isrc' | 'fileName' | 'path'
+import {nextTableSort, type TableColumnID, type TableSort} from './tableSort'
 
 type TableLayout = {
   order: TableColumnID[]
@@ -17,6 +12,8 @@ type Props = {
   language: AppLanguage
   tracks: Track[]
   selectedIDs: number[]
+  sort: TableSort[]
+  onSortChange: (sort: TableSort[]) => void
   onToggleAllVisible: () => void
   onRowClick: (trackID: number, extendSelection: boolean, toggleSelection: boolean) => void
   onToggleTrackSelection: (trackID: number) => void
@@ -94,6 +91,8 @@ function ConfigurableTrackTable({
   language,
   tracks,
   selectedIDs,
+  sort,
+  onSortChange,
   onToggleAllVisible,
   onRowClick,
   onToggleTrackSelection,
@@ -118,7 +117,8 @@ function ConfigurableTrackTable({
         panelHint: 'Отметьте нужные поля. Перетаскивайте строки списка или заголовки таблицы, чтобы менять порядок.',
         reset: 'Сбросить',
         shown: 'Показано',
-        drag: 'Перетащите для изменения порядка',
+        sort: 'Клик — сортировка; Shift+клик — добавить уровень сортировки',
+        drag: 'Перетащите маркер для изменения порядка колонок',
       }
     : {
         columns: 'Columns',
@@ -126,7 +126,8 @@ function ConfigurableTrackTable({
         panelHint: 'Choose visible fields. Drag list rows or table headers to reorder them.',
         reset: 'Reset',
         shown: 'Shown',
-        drag: 'Drag to reorder',
+        sort: 'Click to sort; Shift+click adds another sort level',
+        drag: 'Drag the handle to reorder columns',
       }
 
   function commit(next: TableLayout) {
@@ -180,7 +181,7 @@ function ConfigurableTrackTable({
                 <strong>{copy.panelTitle}</strong>
                 <span>{copy.panelHint}</span>
               </div>
-              <button type="button" onClick={() => commit(DEFAULT_LAYOUT)}>{copy.reset}</button>
+              <button type="button" onClick={() => { commit(DEFAULT_LAYOUT); onSortChange([]) }}>{copy.reset}</button>
             </div>
 
             <div className="table-column-list">
@@ -238,34 +239,54 @@ function ConfigurableTrackTable({
                 onChange={onToggleAllVisible}
               />
             </th>
-            {visibleColumns.map((column) => (
-              <th
-                key={column}
-                className={`table-column-header${dragging === column ? ' dragging' : ''}`}
-                draggable
-                data-column-id={column}
-                title={copy.drag}
-                onDragStart={(event) => {
-                  setDragging(column)
-                  event.dataTransfer.effectAllowed = 'move'
-                  event.dataTransfer.setData('text/plain', column)
-                }}
-                onDragEnd={() => setDragging(null)}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  event.dataTransfer.dropEffect = 'move'
-                }}
-                onDrop={(event) => {
-                  event.preventDefault()
-                  const source = readDragSource(event)
-                  if (source) moveColumn(source, column)
-                  setDragging(null)
-                }}
-              >
-                <span>{LABELS[language][column]}</span>
-                <i className="column-drag-handle" aria-hidden="true">⋮⋮</i>
-              </th>
-            ))}
+            {visibleColumns.map((column) => {
+              const sortIndex = sort.findIndex((item) => item.column === column)
+              const sortRule = sortIndex >= 0 ? sort[sortIndex] : null
+              return (
+                <th
+                  key={column}
+                  className={`table-column-header${dragging === column ? ' dragging' : ''}${sortRule ? ' sorted' : ''}`}
+                  data-column-id={column}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    event.dataTransfer.dropEffect = 'move'
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    const source = readDragSource(event)
+                    if (source) moveColumn(source, column)
+                    setDragging(null)
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="column-sort-button"
+                    title={copy.sort}
+                    onClick={(event) => onSortChange(nextTableSort(sort, column, event.shiftKey))}
+                  >
+                    <span>{LABELS[language][column]}</span>
+                    {sortRule && (
+                      <b className="column-sort-indicator">
+                        {sortRule.direction === 'asc' ? '↑' : '↓'}
+                        {sort.length > 1 ? sortIndex + 1 : ''}
+                      </b>
+                    )}
+                  </button>
+                  <i
+                    className="column-drag-handle"
+                    aria-hidden="true"
+                    draggable
+                    title={copy.drag}
+                    onDragStart={(event) => {
+                      setDragging(column)
+                      event.dataTransfer.effectAllowed = 'move'
+                      event.dataTransfer.setData('text/plain', column)
+                    }}
+                    onDragEnd={() => setDragging(null)}
+                  >⋮⋮</i>
+                </th>
+              )
+            })}
           </tr>
         </thead>
 

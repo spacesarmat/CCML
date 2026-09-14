@@ -929,3 +929,70 @@ body { min-width: 1080px; overflow: hidden; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Stage 9 — table sorting and Jobs activity layout polish. */
+.configurable-workspace-table th.table-column-header {
+  cursor: default;
+}
+.column-sort-button {
+  min-width: 0;
+  max-width: calc(100% - 18px);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+.column-sort-button:hover {
+  color: #d5dfeb;
+  background: transparent;
+  border: 0;
+}
+.column-sort-button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.column-sort-indicator {
+  flex: 0 0 auto;
+  color: #8db0e4;
+  font-size: 8px;
+  font-weight: 800;
+}
+.configurable-workspace-table th.table-column-header.sorted {
+  background: #182235;
+  color: #c5d5eb;
+}
+.configurable-workspace-table th.table-column-header .column-drag-handle {
+  display: inline-block;
+  cursor: grab;
+}
+.configurable-workspace-table th.table-column-header .column-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Keep many active metadata workers readable instead of compressing paths. */
+.job-parallel-status {
+  overflow: hidden;
+}
+.job-active-items {
+  max-height: 260px;
+  grid-auto-rows: minmax(26px, auto);
+  gap: 5px;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
+.job-active-items code {
+  display: flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 5px 8px;
+  line-height: 1.35;
+}
