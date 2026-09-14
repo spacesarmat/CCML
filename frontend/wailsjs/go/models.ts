@@ -96,6 +96,30 @@ export namespace model {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class DuplicateActionResult {
+	    action: string;
+	    requested: number;
+	    completed: number;
+	    failed: number;
+	    destination: string;
+	    paths: string[];
+	    errors: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new DuplicateActionResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.action = source["action"];
+	        this.requested = source["requested"];
+	        this.completed = source["completed"];
+	        this.failed = source["failed"];
+	        this.destination = source["destination"];
+	        this.paths = source["paths"];
+	        this.errors = source["errors"];
+	    }
+	}
 	export class Track {
 	    id: number;
 	    path: string;
@@ -184,31 +208,6 @@ export namespace model {
 	        this.lastMetadataJobUpdatedAt = source["lastMetadataJobUpdatedAt"];
 	    }
 	}
-	export class DuplicateActionResult {
-	    action: string;
-	    requested: number;
-	    completed: number;
-	    failed: number;
-	    destination: string;
-	    paths: string[];
-	    errors: string[];
-
-	    static createFrom(source: any = {}) {
-	        return new DuplicateActionResult(source);
-	    }
-
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.action = source["action"];
-	        this.requested = source["requested"];
-	        this.completed = source["completed"];
-	        this.failed = source["failed"];
-	        this.destination = source["destination"];
-	        this.paths = source["paths"];
-	        this.errors = source["errors"];
-	    }
-	}
-
 	export class DuplicateTrackQuality {
 	    trackId: number;
 	    score: number;

@@ -42,24 +42,16 @@ export function CreateMetadataEnrichmentJob(arg1, arg2) {
   return window['go']['main']['App']['CreateMetadataEnrichmentJob'](arg1, arg2);
 }
 
+export function DeleteDuplicateTracks(arg1, arg2) {
+  return window['go']['main']['App']['DeleteDuplicateTracks'](arg1, arg2);
+}
+
 export function EnrichMetadata(arg1, arg2) {
   return window['go']['main']['App']['EnrichMetadata'](arg1, arg2);
 }
 
 export function FindDuplicates() {
   return window['go']['main']['App']['FindDuplicates']();
-}
-
-export function SelectDuplicateQuarantineFolder() {
-  return window['go']['main']['App']['SelectDuplicateQuarantineFolder']();
-}
-
-export function QuarantineDuplicateTracks(arg1, arg2) {
-  return window['go']['main']['App']['QuarantineDuplicateTracks'](arg1, arg2);
-}
-
-export function DeleteDuplicateTracks(arg1, arg2) {
-  return window['go']['main']['App']['DeleteDuplicateTracks'](arg1, arg2);
 }
 
 export function GenerateSpectrograms(arg1, arg2) {
@@ -142,6 +134,10 @@ export function PreviewTagTransforms(arg1, arg2) {
   return window['go']['main']['App']['PreviewTagTransforms'](arg1, arg2);
 }
 
+export function QuarantineDuplicateTracks(arg1, arg2) {
+  return window['go']['main']['App']['QuarantineDuplicateTracks'](arg1, arg2);
+}
+
 export function ReadTrackTags(arg1) {
   return window['go']['main']['App']['ReadTrackTags'](arg1);
 }
@@ -176,6 +172,10 @@ export function ScanFolder(arg1) {
 
 export function SelectCoverArt() {
   return window['go']['main']['App']['SelectCoverArt']();
+}
+
+export function SelectDuplicateQuarantineFolder() {
+  return window['go']['main']['App']['SelectDuplicateQuarantineFolder']();
 }
 
 export function SelectMusicFolder() {

@@ -22,15 +22,11 @@ export function CreateLibraryMetadataEnrichmentJob(arg1:model.MetadataEnrichment
 
 export function CreateMetadataEnrichmentJob(arg1:Array<number>,arg2:model.MetadataEnrichmentOptions):Promise<model.BackgroundJob>;
 
+export function DeleteDuplicateTracks(arg1:Array<number>,arg2:string):Promise<model.DuplicateActionResult>;
+
 export function EnrichMetadata(arg1:Array<number>,arg2:model.MetadataEnrichmentOptions):Promise<model.MetadataEnrichmentResult>;
 
 export function FindDuplicates():Promise<Array<model.DuplicateGroup>>;
-
-export function SelectDuplicateQuarantineFolder():Promise<string>;
-
-export function QuarantineDuplicateTracks(arg1:Array<number>,arg2:string):Promise<model.DuplicateActionResult>;
-
-export function DeleteDuplicateTracks(arg1:Array<number>,arg2:string):Promise<model.DuplicateActionResult>;
 
 export function GenerateSpectrograms(arg1:number,arg2:string):Promise<model.SpectrogramComparison>;
 
@@ -72,6 +68,8 @@ export function PreviewTagEdits(arg1:Array<number>,arg2:model.TagPatch):Promise<
 
 export function PreviewTagTransforms(arg1:Array<number>,arg2:model.TagTransformRequest):Promise<Array<model.TagPreview>>;
 
+export function QuarantineDuplicateTracks(arg1:Array<number>,arg2:string):Promise<model.DuplicateActionResult>;
+
 export function ReadTrackTags(arg1:number):Promise<model.TagSnapshot>;
 
 export function RefreshMetadata(arg1:number):Promise<model.MetadataLookupResult>;
@@ -89,6 +87,8 @@ export function SaveMetadataSettings(arg1:model.MetadataSettings):Promise<model.
 export function ScanFolder(arg1:string):Promise<model.ScanResult>;
 
 export function SelectCoverArt():Promise<string>;
+
+export function SelectDuplicateQuarantineFolder():Promise<string>;
 
 export function SelectMusicFolder():Promise<string>;
 
