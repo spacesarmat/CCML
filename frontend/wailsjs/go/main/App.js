@@ -50,6 +50,18 @@ export function FindDuplicates() {
   return window['go']['main']['App']['FindDuplicates']();
 }
 
+export function SelectDuplicateQuarantineFolder() {
+  return window['go']['main']['App']['SelectDuplicateQuarantineFolder']();
+}
+
+export function QuarantineDuplicateTracks(arg1, arg2) {
+  return window['go']['main']['App']['QuarantineDuplicateTracks'](arg1, arg2);
+}
+
+export function DeleteDuplicateTracks(arg1, arg2) {
+  return window['go']['main']['App']['DeleteDuplicateTracks'](arg1, arg2);
+}
+
 export function GenerateSpectrograms(arg1, arg2) {
   return window['go']['main']['App']['GenerateSpectrograms'](arg1, arg2);
 }

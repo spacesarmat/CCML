@@ -26,6 +26,12 @@ export function EnrichMetadata(arg1:Array<number>,arg2:model.MetadataEnrichmentO
 
 export function FindDuplicates():Promise<Array<model.DuplicateGroup>>;
 
+export function SelectDuplicateQuarantineFolder():Promise<string>;
+
+export function QuarantineDuplicateTracks(arg1:Array<number>,arg2:string):Promise<model.DuplicateActionResult>;
+
+export function DeleteDuplicateTracks(arg1:Array<number>,arg2:string):Promise<model.DuplicateActionResult>;
+
 export function GenerateSpectrograms(arg1:number,arg2:string):Promise<model.SpectrogramComparison>;
 
 export function GetMetadataSettings():Promise<model.MetadataSettings>;

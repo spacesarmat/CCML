@@ -9,9 +9,17 @@ type Props = {
   onBack: () => void
   onRefresh: () => void
   onOpenTrack: (track: Track) => void
+  onQuarantine: (trackIDs: number[]) => Promise<boolean>
+  onDelete: (trackIDs: number[]) => Promise<boolean>
 }
 
 type FilterMode = 'all' | 'exact' | 'possible'
+
+type PendingDelete = {
+  groupKey: string
+  label: string
+  tracks: Track[]
+}
 
 function formatDuration(ms: number): string {
   if (!ms) return '—'
@@ -52,15 +60,27 @@ function groupTrackCount(groups: DuplicateGroup[]): number {
   return ids.size
 }
 
-function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenTrack}: Props) {
+function DuplicateGroupsView({
+  language,
+  groups,
+  busy,
+  onBack,
+  onRefresh,
+  onOpenTrack,
+  onQuarantine,
+  onDelete,
+}: Props) {
   const [filter, setFilter] = useState<FilterMode>('all')
   const [query, setQuery] = useState('')
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
+  const [selectedIDs, setSelectedIDs] = useState<Set<number>>(new Set())
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
 
   const copy = language === 'ru'
     ? {
         title: 'Дубликаты',
-        subtitle: 'Группы строятся по ISRC, точным Artist/Title и возможным версиям с близкой длительностью.',
+        subtitle: 'Сравните версии, оставьте нужную и безопасно уберите лишние файлы.',
         back: 'Назад к медиатеке',
         refresh: 'Пересчитать',
         search: 'Фильтр по исполнителю, названию, файлу, пути или ISRC…',
@@ -92,6 +112,24 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
         audio: 'аудио',
         metadataScore: 'теги',
         scoreTitle: 'Эвристическая оценка качества. Не является доказательством, что версии идентичны.',
+        selected: (count: number, total: number) => `Выбрано ${count} из ${total}`,
+        keepBest: 'Оставить лучший',
+        keepBestHint: 'Выделить все файлы группы, кроме рекомендованного. Ничего не удаляется автоматически.',
+        noLeader: 'Нет явного лидера',
+        clear: 'Снять выделение',
+        quarantine: 'В карантин…',
+        quarantineConfirm: (count: number) => `Переместить ${count} выбранных файлов в карантин и убрать их из медиатеки?\n\nСледующим шагом CCML попросит выбрать папку ВНЕ папок медиатеки.`,
+        delete: 'Удалить…',
+        deleteTitle: 'Безвозвратное удаление дублей',
+        deleteWarning: 'Файлы будут удалены с диска и из медиатеки. Это действие не входит в Undo истории тегов.',
+        deletePossibleWarning: 'В группе есть возможные версии трека. Убедитесь, что Remix/Edit/Intro действительно не нужны.',
+        deleteType: 'Для подтверждения введите DELETE',
+        deletePlaceholder: 'DELETE',
+        deleteCancel: 'Отмена',
+        deleteConfirmButton: 'Удалить безвозвратно',
+        deleteFiles: (count: number) => `Файлов к удалению: ${count}`,
+        keepOneSafety: 'Backend дополнительно проверит, что в каждой группе останется хотя бы один файл.',
+        selectTrack: 'Выбрать файл для действия',
         qualityReasons: {
           lossless: 'lossless',
           efficient_lossy: 'эффективный lossy-кодек',
@@ -131,7 +169,7 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
       }
     : {
         title: 'Duplicates',
-        subtitle: 'Groups use ISRC, exact Artist/Title and possible version-normalized matches with close duration.',
+        subtitle: 'Compare versions, keep the one you want and safely remove extra files.',
         back: 'Back to library',
         refresh: 'Recalculate',
         search: 'Filter by artist, title, file, path or ISRC…',
@@ -163,6 +201,24 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
         audio: 'audio',
         metadataScore: 'tags',
         scoreTitle: 'Heuristic quality score. It does not prove that the versions are identical.',
+        selected: (count: number, total: number) => `Selected ${count} of ${total}`,
+        keepBest: 'Keep best',
+        keepBestHint: 'Select every file in this group except the recommended one. Nothing is removed automatically.',
+        noLeader: 'No clear leader',
+        clear: 'Clear selection',
+        quarantine: 'Quarantine…',
+        quarantineConfirm: (count: number) => `Move ${count} selected files to quarantine and remove them from the library index?\n\nCCML will next ask for a folder OUTSIDE the managed library folders.`,
+        delete: 'Delete…',
+        deleteTitle: 'Permanently delete duplicates',
+        deleteWarning: 'Files will be removed from disk and from the library. This action is not part of tag Undo history.',
+        deletePossibleWarning: 'This group contains possible track versions. Make sure Remix/Edit/Intro files are really unwanted.',
+        deleteType: 'Type DELETE to confirm',
+        deletePlaceholder: 'DELETE',
+        deleteCancel: 'Cancel',
+        deleteConfirmButton: 'Delete permanently',
+        deleteFiles: (count: number) => `Files to delete: ${count}`,
+        keepOneSafety: 'The backend also verifies that at least one file remains in every affected group.',
+        selectTrack: 'Select file for action',
         qualityReasons: {
           lossless: 'lossless',
           efficient_lossy: 'efficient lossy codec',
@@ -203,6 +259,9 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
 
   useEffect(() => {
     setOpenGroups(new Set(groups.slice(0, 2).map((group) => group.key)))
+    setSelectedIDs(new Set())
+    setPendingDelete(null)
+    setDeleteConfirm('')
   }, [groups])
 
   const filtered = useMemo(() => {
@@ -258,138 +317,336 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
     return `${copy.scoreTitle}\n${quality.score}/100 · ${copy.audio}: ${quality.audioScore}/80 · ${copy.metadataScore}: ${quality.metadataScore}/20\n${reasons.join(' · ')}`
   }
 
+  function selectedTracks(group: DuplicateGroup): Track[] {
+    return group.tracks.filter((track) => selectedIDs.has(track.id))
+  }
+
+  function toggleTrackSelection(trackID: number) {
+    setSelectedIDs((current) => {
+      const next = new Set(current)
+      if (next.has(trackID)) next.delete(trackID)
+      else next.add(trackID)
+      return next
+    })
+  }
+
+  function selectAllExceptRecommended(group: DuplicateGroup) {
+    if (!group.recommendedTrackId) return
+    setSelectedIDs((current) => {
+      const next = new Set(current)
+      for (const track of group.tracks) {
+        next.delete(track.id)
+        if (track.id !== group.recommendedTrackId) next.add(track.id)
+      }
+      return next
+    })
+  }
+
+  function clearGroupSelection(group: DuplicateGroup) {
+    setSelectedIDs((current) => {
+      const next = new Set(current)
+      for (const track of group.tracks) next.delete(track.id)
+      return next
+    })
+  }
+
+  async function quarantineGroup(group: DuplicateGroup) {
+    const tracks = selectedTracks(group)
+    if (tracks.length === 0) return
+    if (!window.confirm(copy.quarantineConfirm(tracks.length))) return
+
+    const ok = await onQuarantine(tracks.map((track) => track.id))
+    if (ok) clearGroupSelection(group)
+  }
+
+  function requestDelete(group: DuplicateGroup) {
+    const tracks = selectedTracks(group)
+    if (tracks.length === 0) return
+    setDeleteConfirm('')
+    setPendingDelete({
+      groupKey: group.key,
+      label: `${group.artist || '—'} — ${group.title || '—'}`,
+      tracks,
+    })
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete || deleteConfirm.trim().toUpperCase() !== 'DELETE') return
+    const ids = pendingDelete.tracks.map((track) => track.id)
+    const ok = await onDelete(ids)
+    if (!ok) return
+    setPendingDelete(null)
+    setDeleteConfirm('')
+    setSelectedIDs((current) => {
+      const next = new Set(current)
+      for (const id of ids) next.delete(id)
+      return next
+    })
+  }
+
   return (
-    <section className="duplicate-workspace">
-      <header className="duplicate-commandbar">
-        <div>
-          <h2>{copy.title}</h2>
-          <span>{copy.subtitle}</span>
+    <>
+      <section className="duplicate-workspace">
+        <header className="duplicate-commandbar">
+          <div>
+            <h2>{copy.title}</h2>
+            <span>{copy.subtitle}</span>
+          </div>
+          <div className="duplicate-command-actions">
+            <button type="button" onClick={onBack}>{copy.back}</button>
+            <button type="button" onClick={onRefresh} disabled={busy}>{copy.refresh}</button>
+          </div>
+        </header>
+
+        <div className="duplicate-summary">
+          <div><strong>{groups.length}</strong><span>{copy.groups}</span></div>
+          <div><strong>{groupTrackCount(groups)}</strong><span>{copy.files}</span></div>
+          <div><strong>{exactCount}</strong><span>{copy.exactGroups}</span></div>
+          <div><strong>{possibleCount}</strong><span>{copy.possibleGroups}</span></div>
         </div>
-        <div className="duplicate-command-actions">
-          <button type="button" onClick={onBack}>{copy.back}</button>
-          <button type="button" onClick={onRefresh} disabled={busy}>{copy.refresh}</button>
-        </div>
-      </header>
 
-      <div className="duplicate-summary">
-        <div><strong>{groups.length}</strong><span>{copy.groups}</span></div>
-        <div><strong>{groupTrackCount(groups)}</strong><span>{copy.files}</span></div>
-        <div><strong>{exactCount}</strong><span>{copy.exactGroups}</span></div>
-        <div><strong>{possibleCount}</strong><span>{copy.possibleGroups}</span></div>
-      </div>
-
-      <div className="duplicate-filterbar">
-        <input
-          value={query}
-          placeholder={copy.search}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <div className="duplicate-filter-buttons">
-          {(['all', 'exact', 'possible'] as FilterMode[]).map((mode) => (
-            <button
-              type="button"
-              key={mode}
-              className={filter === mode ? 'active' : ''}
-              onClick={() => setFilter(mode)}
-            >
-              {mode === 'all' ? copy.all : mode === 'exact' ? copy.exact : copy.filterPossible}
-              <b>
-                {mode === 'all' ? groups.length : mode === 'exact' ? exactCount : possibleCount}
-              </b>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="duplicate-groups-list">
-        {filtered.length === 0 && <div className="duplicate-empty">{copy.none}</div>}
-
-        {filtered.map((group) => {
-          const open = openGroups.has(group.key)
-          const scores = qualityMap(group)
-          const sortedTracks = [...group.tracks].sort((left, right) => {
-            const leftScore = scores.get(left.id)
-            const rightScore = scores.get(right.id)
-            return (rightScore?.score ?? 0) - (leftScore?.score ?? 0)
-              || (rightScore?.audioScore ?? 0) - (leftScore?.audioScore ?? 0)
-              || left.fileName.localeCompare(right.fileName)
-          })
-
-          return (
-            <article className={`duplicate-group-card ${group.matchClass}`} key={group.key}>
+        <div className="duplicate-filterbar">
+          <input
+            value={query}
+            placeholder={copy.search}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <div className="duplicate-filter-buttons">
+            {(['all', 'exact', 'possible'] as FilterMode[]).map((mode) => (
               <button
                 type="button"
-                className="duplicate-group-head"
-                aria-expanded={open}
-                onClick={() => toggleGroup(group.key)}
+                key={mode}
+                className={filter === mode ? 'active' : ''}
+                onClick={() => setFilter(mode)}
               >
-                <span className="duplicate-disclosure" aria-hidden="true">{open ? '⌄' : '›'}</span>
-                <span className={`duplicate-match-badge ${group.matchClass}`}>{badge(group)}</span>
-                <span className="duplicate-group-title">
-                  <strong>{group.artist || '—'} — {group.title || '—'}</strong>
-                  <small>
-                    {group.tracks.length} · {Math.round(group.confidence * 100)}% {copy.confidence}
-                    {' · '}{copy.spread}: {formatSpread(group.durationSpreadMs)}
-                    {group.sharedIsrc ? ` · ${copy.sharedIsrc}: ${group.sharedIsrc}` : ''}
-                    {' · '}{group.recommendedTrackId ? copy.best : copy.tie}
-                  </small>
-                </span>
+                {mode === 'all' ? copy.all : mode === 'exact' ? copy.exact : copy.filterPossible}
+                <b>
+                  {mode === 'all' ? groups.length : mode === 'exact' ? exactCount : possibleCount}
+                </b>
               </button>
+            ))}
+          </div>
+        </div>
 
-              {open && (
-                <div className="duplicate-group-body">
-                  <div className="duplicate-reasons">
-                    {group.reasons.map((reason) => (
-                      <span key={reason}>{copy.reasons[reason] || reason}</span>
-                    ))}
-                  </div>
+        <div className="duplicate-groups-list">
+          {filtered.length === 0 && <div className="duplicate-empty">{copy.none}</div>}
 
-                  <div className="duplicate-compare-table quality-enabled">
-                    <div className="duplicate-compare-row head">
-                      <span>{copy.file}</span>
-                      <span>{copy.quality}</span>
-                      <span>{copy.codec}</span>
-                      <span>{copy.bitrate}</span>
-                      <span>{copy.sampleRate}</span>
-                      <span>{copy.size}</span>
-                      <span>{copy.duration}</span>
-                      <span>{copy.trackIsrc}</span>
-                      <span />
+          {filtered.map((group) => {
+            const open = openGroups.has(group.key)
+            const scores = qualityMap(group)
+            const groupSelected = selectedTracks(group)
+            const sortedTracks = [...group.tracks].sort((left, right) => {
+              const leftScore = scores.get(left.id)
+              const rightScore = scores.get(right.id)
+              return (rightScore?.score ?? 0) - (leftScore?.score ?? 0)
+                || (rightScore?.audioScore ?? 0) - (leftScore?.audioScore ?? 0)
+                || left.fileName.localeCompare(right.fileName)
+            })
+
+            return (
+              <article className={`duplicate-group-card ${group.matchClass}`} key={group.key}>
+                <button
+                  type="button"
+                  className="duplicate-group-head"
+                  aria-expanded={open}
+                  onClick={() => toggleGroup(group.key)}
+                >
+                  <span className="duplicate-disclosure" aria-hidden="true">{open ? '⌄' : '›'}</span>
+                  <span className={`duplicate-match-badge ${group.matchClass}`}>{badge(group)}</span>
+                  <span className="duplicate-group-title">
+                    <strong>{group.artist || '—'} — {group.title || '—'}</strong>
+                    <small>
+                      {group.tracks.length} · {Math.round(group.confidence * 100)}% {copy.confidence}
+                      {' · '}{copy.spread}: {formatSpread(group.durationSpreadMs)}
+                      {group.sharedIsrc ? ` · ${copy.sharedIsrc}: ${group.sharedIsrc}` : ''}
+                      {' · '}{group.recommendedTrackId ? copy.best : copy.tie}
+                    </small>
+                  </span>
+                </button>
+
+                {open && (
+                  <div className="duplicate-group-body">
+                    <div className="duplicate-group-actions">
+                      <span>{copy.selected(groupSelected.length, group.tracks.length)}</span>
+                      <button
+                        type="button"
+                        title={group.recommendedTrackId ? copy.keepBestHint : copy.noLeader}
+                        disabled={busy || !group.recommendedTrackId}
+                        onClick={() => selectAllExceptRecommended(group)}
+                      >
+                        {copy.keepBest}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || groupSelected.length === 0}
+                        onClick={() => clearGroupSelection(group)}
+                      >
+                        {copy.clear}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || groupSelected.length === 0}
+                        onClick={() => void quarantineGroup(group)}
+                      >
+                        {copy.quarantine}
+                      </button>
+                      <button
+                        type="button"
+                        className="duplicate-action-danger"
+                        disabled={busy || groupSelected.length === 0}
+                        onClick={() => requestDelete(group)}
+                      >
+                        {copy.delete}
+                      </button>
                     </div>
 
-                    {sortedTracks.map((track) => {
-                      const quality = scores.get(track.id)
-                      const recommended = group.recommendedTrackId === track.id
+                    <div className="duplicate-reasons">
+                      {group.reasons.map((reason) => (
+                        <span key={reason}>{copy.reasons[reason] || reason}</span>
+                      ))}
+                    </div>
 
-                      return (
-                        <div className={`duplicate-compare-row${recommended ? ' recommended' : ''}`} key={track.id}>
-                          <span className="duplicate-file-cell" title={track.path}>
-                            <strong>{track.fileName}</strong>
-                            <small>{track.path}</small>
-                            {recommended && <em>{copy.best}</em>}
-                          </span>
-                          <span className="duplicate-quality-cell" title={qualityTitle(quality)}>
-                            <strong>{quality?.score ?? 0}</strong>
-                            <small>{copy.audio} {quality?.audioScore ?? 0} · {copy.metadataScore} {quality?.metadataScore ?? 0}</small>
-                          </span>
-                          <span>{track.codec || track.extension.replace('.', '').toUpperCase() || '—'}</span>
-                          <span>{formatBitRate(track.bitRate)}</span>
-                          <span>{formatSampleRate(track.sampleRate)}</span>
-                          <span>{formatSize(track.size)}</span>
-                          <span>{formatDuration(track.durationMs)}</span>
-                          <span title={track.isrc || undefined}>{track.isrc || '—'}</span>
-                          <button type="button" onClick={() => onOpenTrack(track)}>{copy.open}</button>
-                        </div>
-                      )
-                    })}
+                    <div className="duplicate-compare-table quality-enabled action-enabled">
+                      <div className="duplicate-compare-row head">
+                        <span aria-hidden="true" />
+                        <span>{copy.file}</span>
+                        <span>{copy.quality}</span>
+                        <span>{copy.codec}</span>
+                        <span>{copy.bitrate}</span>
+                        <span>{copy.sampleRate}</span>
+                        <span>{copy.size}</span>
+                        <span>{copy.duration}</span>
+                        <span>{copy.trackIsrc}</span>
+                        <span />
+                      </div>
+
+                      {sortedTracks.map((track) => {
+                        const quality = scores.get(track.id)
+                        const recommended = group.recommendedTrackId === track.id
+                        const selected = selectedIDs.has(track.id)
+
+                        return (
+                          <div
+                            className={`duplicate-compare-row${recommended ? ' recommended' : ''}${selected ? ' action-selected' : ''}`}
+                            key={track.id}
+                          >
+                            <span className="duplicate-action-check">
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                disabled={busy}
+                                onChange={() => toggleTrackSelection(track.id)}
+                                aria-label={`${copy.selectTrack}: ${track.fileName}`}
+                              />
+                            </span>
+                            <span className="duplicate-file-cell" title={track.path}>
+                              <strong>{track.fileName}</strong>
+                              <small>{track.path}</small>
+                              {recommended && <em>{copy.best}</em>}
+                            </span>
+                            <span className="duplicate-quality-cell" title={qualityTitle(quality)}>
+                              <strong>{quality?.score ?? 0}</strong>
+                              <small>{copy.audio} {quality?.audioScore ?? 0} · {copy.metadataScore} {quality?.metadataScore ?? 0}</small>
+                            </span>
+                            <span>{track.codec || track.extension.replace('.', '').toUpperCase() || '—'}</span>
+                            <span>{formatBitRate(track.bitRate)}</span>
+                            <span>{formatSampleRate(track.sampleRate)}</span>
+                            <span>{formatSize(track.size)}</span>
+                            <span>{formatDuration(track.durationMs)}</span>
+                            <span title={track.isrc || undefined}>{track.isrc || '—'}</span>
+                            <button type="button" onClick={() => onOpenTrack(track)}>{copy.open}</button>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      {pendingDelete && (
+        <div
+          className="duplicate-delete-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !busy) {
+              setPendingDelete(null)
+              setDeleteConfirm('')
+            }
+          }}
+        >
+          <section className="duplicate-delete-modal" role="dialog" aria-modal="true" aria-labelledby="duplicate-delete-title">
+            <header>
+              <div>
+                <h2 id="duplicate-delete-title">{copy.deleteTitle}</h2>
+                <span>{pendingDelete.label}</span>
+              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setPendingDelete(null)
+                  setDeleteConfirm('')
+                }}
+                aria-label={copy.deleteCancel}
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="duplicate-delete-body">
+              <strong>{copy.deleteFiles(pendingDelete.tracks.length)}</strong>
+              <p>{copy.deleteWarning}</p>
+              {groups.find((group) => group.key === pendingDelete.groupKey)?.matchClass === 'possible' && (
+                <p className="duplicate-delete-possible">{copy.deletePossibleWarning}</p>
               )}
-            </article>
-          )
-        })}
-      </div>
-    </section>
+              <p>{copy.keepOneSafety}</p>
+
+              <div className="duplicate-delete-files">
+                {pendingDelete.tracks.map((track) => (
+                  <span key={track.id} title={track.path}>{track.fileName}</span>
+                ))}
+              </div>
+
+              <label>
+                <span>{copy.deleteType}</span>
+                <input
+                  autoFocus
+                  value={deleteConfirm}
+                  disabled={busy}
+                  placeholder={copy.deletePlaceholder}
+                  onChange={(event) => setDeleteConfirm(event.target.value)}
+                />
+              </label>
+            </div>
+
+            <footer>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setPendingDelete(null)
+                  setDeleteConfirm('')
+                }}
+              >
+                {copy.deleteCancel}
+              </button>
+              <button
+                type="button"
+                className="duplicate-action-danger"
+                disabled={busy || deleteConfirm.trim().toUpperCase() !== 'DELETE'}
+                onClick={() => void confirmDelete()}
+              >
+                {copy.deleteConfirmButton}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
+    </>
   )
 }
 

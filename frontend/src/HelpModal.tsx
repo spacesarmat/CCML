@@ -105,6 +105,9 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Внутри группы можно сравнить файл, кодек, битрейт, sample rate, размер, длительность и ISRC. Stage 16.1 ничего не удаляет и не перемещает — экран только диагностический.',
           'Stage 16.2 добавляет эвристическую оценку качества 0–100: до 80 баллов за аудио-параметры (lossless/lossy, bitrate, sample rate, channels) и до 20 за полноту тегов/ISRC/embedded cover. Файл с уникально лучшим score помечается «Лучшее качество» и поднимается вверх группы.',
           'При полном равенстве score CCML не выбирает искусственного победителя. В группе «Возможный дубль» лидер качества означает только технически предпочтительный файл и не доказывает, что Remix/Edit/Intro являются взаимозаменяемыми версиями.',
+          'Stage 16.3 добавляет ручное выделение файлов в группе. «Оставить лучший» только выделяет все остальные строки — никакое действие не запускается автоматически. Backend не позволяет одной операцией убрать все файлы из затронутой группы.',
+          '«В карантин» просит выбрать папку вне управляемых папок медиатеки, переносит файлы в подпапку «CCML Duplicates» и затем удаляет их записи из индекса. При ошибке SQLite перенос откатывается.',
+          '«Удалить» является безвозвратным действием: перед запуском нужно ввести DELETE. Файлы сначала временно переименовываются, затем записи удаляются одной SQLite-транзакцией; если транзакция не проходит, исходные имена файлов восстанавливаются.',
         ],
       },
       {
@@ -288,6 +291,9 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Inside a group you can compare file, codec, bitrate, sample rate, size, duration and ISRC. Stage 16.1 does not delete or move anything; this screen is diagnostic only.',
           'Stage 16.2 adds a 0–100 heuristic quality score: up to 80 points for audio properties (lossless/lossy, bitrate, sample rate, channels) and up to 20 for metadata completeness, valid ISRC and embedded artwork. A uniquely highest score is marked Best quality and sorted to the top of its group.',
           'When scores are exactly tied, CCML does not invent a winner. In a Possible duplicate group, the quality leader only identifies the technically preferred file; it does not prove Remix/Edit/Intro versions are interchangeable.',
+          'Stage 16.3 adds manual file selection inside each group. Keep best only selects every other row; it never starts a destructive action automatically. The backend refuses any single operation that would remove every file from an affected group.',
+          'Quarantine asks for a folder outside managed library roots, moves files into its CCML Duplicates subfolder, then removes their index rows. If SQLite fails, completed moves are rolled back.',
+          'Delete is permanent and requires typing DELETE. Files are first renamed to temporary siblings, then index rows are removed in one SQLite transaction; if that transaction fails, original filenames are restored.',
         ],
       },
       {

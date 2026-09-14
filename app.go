@@ -514,6 +514,33 @@ func (a *App) FindDuplicates() ([]model.DuplicateGroup, error) {
 	return library.FindDuplicates(tracks, 2_000), nil
 }
 
+// SelectDuplicateQuarantineFolder selects a folder outside the managed library.
+// QuarantineDuplicateTracks creates its own "CCML Duplicates" child directory.
+func (a *App) SelectDuplicateQuarantineFolder() (string, error) {
+	if a.ctx == nil {
+		return "", errors.New("application is not ready")
+	}
+	path, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select duplicate quarantine folder (outside library)",
+	})
+	if err != nil {
+		return "", fmt.Errorf("select duplicate quarantine folder: %w", err)
+	}
+	return path, nil
+}
+
+// QuarantineDuplicateTracks moves selected duplicate files outside the library
+// and removes their index rows. At least one file per duplicate group must remain.
+func (a *App) QuarantineDuplicateTracks(trackIDs []int64, destinationRoot string) (model.DuplicateActionResult, error) {
+	return library.QuarantineDuplicateTracks(a.context(), a.store, trackIDs, destinationRoot)
+}
+
+// DeleteDuplicateTracks permanently removes selected duplicate files.
+// The literal confirmation token is validated again in the Go backend.
+func (a *App) DeleteDuplicateTracks(trackIDs []int64, confirmation string) (model.DuplicateActionResult, error) {
+	return library.DeleteDuplicateTracks(a.context(), a.store, trackIDs, confirmation)
+}
+
 // ReadTrackTags reads editable tags directly from the selected audio file.
 func (a *App) ReadTrackTags(trackID int64) (model.TagSnapshot, error) {
 	return a.tagEditor.Read(a.context(), trackID)

@@ -181,6 +181,17 @@ type TagHistory struct {
 	AffectedCount int    `json:"affectedCount"`
 }
 
+// DuplicateActionResult summarizes a quarantine or permanent delete operation.
+type DuplicateActionResult struct {
+	Action      string   `json:"action"`
+	Requested   int      `json:"requested"`
+	Completed   int      `json:"completed"`
+	Failed      int      `json:"failed"`
+	Destination string   `json:"destination"`
+	Paths       []string `json:"paths"`
+	Errors      []string `json:"errors"`
+}
+
 // DuplicateTrackQuality is a heuristic comparison score inside one duplicate group.
 // AudioScore is capped at 80 and MetadataScore at 20.
 type DuplicateTrackQuality struct {

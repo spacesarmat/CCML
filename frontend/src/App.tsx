@@ -996,6 +996,71 @@ function App() {
     }
   }
 
+  async function reloadAfterDuplicateAction() {
+    const [rows, nextDuplicates, nextStats] = await Promise.all([
+      loadTrackRows(search),
+      backend().FindDuplicates(),
+      backend().LibraryStatistics(),
+    ])
+    return {rows, nextDuplicates, nextStats}
+  }
+
+  async function quarantineDuplicateTracks(trackIDs: number[]): Promise<boolean> {
+    let destination = ''
+    try {
+      destination = await backend().SelectDuplicateQuarantineFolder()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+      return false
+    }
+    if (!destination) return false
+
+    const result = await run(
+      language === 'ru' ? 'Перемещение дублей в карантин…' : 'Moving duplicates to quarantine…',
+      async () => {
+        const action = await backend().QuarantineDuplicateTracks(trackIDs, destination)
+        const refreshed = await reloadAfterDuplicateAction()
+        return {action, ...refreshed}
+      },
+    )
+    if (!result) return false
+
+    applyTrackRows(result.rows)
+    setDuplicates(result.nextDuplicates)
+    setStats(result.nextStats)
+    setMessage(language === 'ru'
+      ? `Карантин: перемещено ${result.action.completed}. Папка: ${result.action.destination}`
+      : `Quarantine: moved ${result.action.completed}. Folder: ${result.action.destination}`)
+    return true
+  }
+
+  async function deleteDuplicateTracks(trackIDs: number[]): Promise<boolean> {
+    const result = await run(
+      language === 'ru' ? 'Удаление выбранных дублей…' : 'Deleting selected duplicates…',
+      async () => {
+        const action = await backend().DeleteDuplicateTracks(trackIDs, 'DELETE')
+        const refreshed = await reloadAfterDuplicateAction()
+        return {action, ...refreshed}
+      },
+    )
+    if (!result) return false
+
+    applyTrackRows(result.rows)
+    setDuplicates(result.nextDuplicates)
+    setStats(result.nextStats)
+
+    if (result.action.failed > 0) {
+      setMessage(language === 'ru'
+        ? `Удалено: ${result.action.completed}. Не удалось физически удалить: ${result.action.failed}. Временные файлы: ${result.action.paths.join(', ')}`
+        : `Deleted: ${result.action.completed}. Physical cleanup failed: ${result.action.failed}. Temporary files: ${result.action.paths.join(', ')}`)
+    } else {
+      setMessage(language === 'ru'
+        ? `Удалено дублей: ${result.action.completed}`
+        : `Duplicates deleted: ${result.action.completed}`)
+    }
+    return true
+  }
+
   async function openMetadataInspector() {
     setInspectorTab('metadata')
     if (selected && metadataLookup === null) await lookupMetadata()
@@ -1212,6 +1277,8 @@ function App() {
                 selectOnlyTrack(track.id)
                 setInspectorTab('tags')
               }}
+              onQuarantine={quarantineDuplicateTracks}
+              onDelete={deleteDuplicateTracks}
             />
           )}
         </main>

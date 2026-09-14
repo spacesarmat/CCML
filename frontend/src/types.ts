@@ -159,6 +159,16 @@ export type TagHistory = {
   affectedCount: number
 }
 
+export type DuplicateActionResult = {
+  action: 'quarantine' | 'delete' | string
+  requested: number
+  completed: number
+  failed: number
+  destination: string
+  paths: string[]
+  errors: string[]
+}
+
 export type DuplicateTrackQuality = {
   trackId: number
   score: number

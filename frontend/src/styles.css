@@ -6063,3 +6063,259 @@ button:disabled:hover {
     ),
     #ffffff;
 }
+/* Stage 16.3 — safe duplicate actions */
+
+.duplicate-group-actions {
+  min-width: 0;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: var(--ccml-radius-md);
+  background: var(--ccml-surface-1);
+}
+
+.duplicate-group-actions > span {
+  margin-right: auto;
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.duplicate-group-actions button {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 7px;
+}
+
+.duplicate-action-danger {
+  border-color: color-mix(in srgb, var(--ccml-danger) 62%, var(--ccml-border)) !important;
+  background: color-mix(in srgb, var(--ccml-danger) 9%, var(--ccml-surface-2)) !important;
+  color: var(--ccml-danger) !important;
+}
+
+.duplicate-action-danger:hover:not(:disabled) {
+  border-color: var(--ccml-danger) !important;
+  background: color-mix(in srgb, var(--ccml-danger) 16%, var(--ccml-surface-hover)) !important;
+}
+
+.duplicate-compare-table.action-enabled {
+  min-width: 1050px;
+}
+
+.duplicate-compare-table.action-enabled .duplicate-compare-row {
+  grid-template-columns:
+    34px
+    minmax(245px, 1.5fr)
+    minmax(86px, .52fr)
+    minmax(66px, .4fr)
+    minmax(78px, .46fr)
+    minmax(86px, .5fr)
+    minmax(70px, .42fr)
+    minmax(60px, .36fr)
+    minmax(108px, .65fr)
+    62px;
+}
+
+.duplicate-action-check {
+  display: grid;
+  place-items: center;
+  padding-inline: 5px !important;
+}
+
+.duplicate-action-check input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--ccml-accent);
+}
+
+.duplicate-compare-row.action-selected {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ccml-accent) 12%, transparent),
+      transparent 28%
+    ),
+    var(--ccml-surface-1);
+}
+
+.duplicate-compare-row.recommended.action-selected {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ccml-success) 9%, transparent),
+      color-mix(in srgb, var(--ccml-accent) 7%, transparent) 26%,
+      transparent 42%
+    ),
+    var(--ccml-surface-1);
+}
+
+.duplicate-delete-backdrop {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: var(--ccml-modal-backdrop);
+  backdrop-filter: blur(2px);
+}
+
+.duplicate-delete-modal {
+  width: min(620px, calc(100vw - 48px));
+  max-height: min(720px, calc(100vh - 48px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ccml-danger) 45%, var(--ccml-border));
+  border-radius: var(--ccml-radius-xl);
+  background: var(--ccml-bg-elevated);
+  box-shadow: var(--ccml-shadow-lg);
+}
+
+.duplicate-delete-modal > header {
+  min-width: 0;
+  padding: 12px 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+  background: color-mix(in srgb, var(--ccml-danger) 6%, var(--ccml-surface-1));
+}
+
+.duplicate-delete-modal > header > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.duplicate-delete-modal h2 {
+  margin: 0;
+  color: var(--ccml-danger);
+  font-size: 14px;
+}
+
+.duplicate-delete-modal header span {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duplicate-delete-modal header button {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.duplicate-delete-body {
+  min-height: 0;
+  padding: 12px 14px;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  overflow: auto;
+}
+
+.duplicate-delete-body > strong {
+  color: var(--ccml-text-strong);
+  font-size: 10px;
+}
+
+.duplicate-delete-body p {
+  margin: 0;
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.duplicate-delete-body .duplicate-delete-possible {
+  padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--ccml-warning) 50%, var(--ccml-border));
+  border-radius: var(--ccml-radius-md);
+  background: color-mix(in srgb, var(--ccml-warning) 8%, transparent);
+  color: var(--ccml-warning);
+}
+
+.duplicate-delete-files {
+  max-height: 180px;
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+  overflow: auto;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: var(--ccml-radius-md);
+  background: var(--ccml-surface-1);
+}
+
+.duplicate-delete-files span {
+  min-width: 0;
+  padding: 4px 5px;
+  overflow: hidden;
+  color: var(--ccml-text);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duplicate-delete-body label {
+  display: grid;
+  gap: 5px;
+}
+
+.duplicate-delete-body label > span {
+  color: var(--ccml-text-strong);
+  font-size: 8px;
+}
+
+.duplicate-delete-body input {
+  width: 100%;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .08em;
+}
+
+.duplicate-delete-modal > footer {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  border-top: 1px solid var(--ccml-border-subtle);
+  background: var(--ccml-surface-1);
+}
+
+:root[data-ccml-theme='light'] .duplicate-group-actions,
+:root[data-ccml-theme='light'] .duplicate-delete-modal,
+:root[data-ccml-theme='light'] .duplicate-delete-files {
+  background: #ffffff;
+}
+
+:root[data-ccml-theme='light'] .duplicate-delete-modal > header,
+:root[data-ccml-theme='light'] .duplicate-delete-modal > footer {
+  background: #f7f9fb;
+}
+
+@media (max-width: 820px) {
+  .duplicate-delete-backdrop {
+    padding: 10px;
+  }
+
+  .duplicate-delete-modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+
+  .duplicate-group-actions > span {
+    width: 100%;
+    margin-right: 0;
+  }
+}
