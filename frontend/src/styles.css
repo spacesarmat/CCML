@@ -3390,3 +3390,139 @@ button:disabled:hover {
     animation: none;
   }
 }
+/* Stage 11.3.2 — Tag Editor theme coverage */
+
+/* Tag Editor container and headings */
+.tag-editor {
+  border-bottom-color: var(--ccml-border-subtle);
+  color: var(--ccml-text);
+}
+
+.tag-editor-empty {
+  border-bottom-color: var(--ccml-border-subtle);
+  color: var(--ccml-text-muted);
+}
+
+.tag-editor-heading h3 {
+  color: var(--ccml-text-strong);
+}
+
+.tag-editor-heading span,
+.tag-help {
+  color: var(--ccml-text-muted);
+}
+
+/* Field labels/checks */
+.tag-field > span,
+.tag-comment-field > span {
+  color: var(--ccml-text-muted);
+}
+
+.tag-field > span input,
+.tag-comment-field > span input,
+.selection-col input {
+  accent-color: var(--ccml-accent);
+}
+
+.tag-field input,
+.tag-field textarea,
+.tag-comment-field textarea {
+  border-color: var(--ccml-border);
+  background: var(--ccml-input);
+  color: var(--ccml-text);
+}
+
+.tag-field input:focus,
+.tag-field textarea:focus,
+.tag-comment-field textarea:focus {
+  border-color: var(--ccml-accent);
+  box-shadow: 0 0 0 2px var(--ccml-accent-soft);
+}
+
+/* Cover action row */
+.cover-row {
+  border-top-color: var(--ccml-border-subtle);
+}
+
+.cover-row strong {
+  color: var(--ccml-text-strong);
+}
+
+.cover-row span {
+  color: var(--ccml-text-muted);
+}
+
+/* Preview and Undo history */
+.tag-preview-list,
+.tag-history {
+  border-top-color: var(--ccml-border-subtle);
+}
+
+.tag-preview-list > strong,
+.tag-history > strong {
+  color: var(--ccml-text-strong);
+}
+
+.tag-preview-item,
+.tag-history-row {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text);
+  box-shadow: none;
+}
+
+.tag-preview-item span,
+.tag-history-row span {
+  color: var(--ccml-text-strong);
+}
+
+.tag-preview-item small,
+.tag-history-row small {
+  color: var(--ccml-text-muted);
+}
+
+.tag-history-row button {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text-strong);
+}
+
+.tag-history-row button:hover:not(:disabled) {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+}
+
+.tag-history-row button:disabled {
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text-dim);
+}
+
+/* Light theme gets explicitly neutral history cards so no legacy dark surface
+   can bleed through if WebView keeps an earlier rule with equal specificity. */
+:root[data-ccml-theme='light'] .tag-preview-item,
+:root[data-ccml-theme='light'] .tag-history-row {
+  border-color: #cfd9e3;
+  background: #ffffff;
+  color: var(--ccml-text);
+}
+
+:root[data-ccml-theme='light'] .tag-preview-item span,
+:root[data-ccml-theme='light'] .tag-history-row span {
+  color: #243342;
+}
+
+:root[data-ccml-theme='light'] .tag-preview-item small,
+:root[data-ccml-theme='light'] .tag-history-row small {
+  color: #6d7d8d;
+}
+
+:root[data-ccml-theme='light'] .tag-history-row button {
+  border-color: #c8d4df;
+  background: #f4f7fa;
+  color: #253342;
+}
+
+:root[data-ccml-theme='light'] .tag-history-row button:hover:not(:disabled) {
+  border-color: #9eafbf;
+  background: #e9eff5;
+}
