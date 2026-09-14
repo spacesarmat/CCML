@@ -141,6 +141,70 @@ func TestMuzvizorAPIParserAcceptsAlternatePublicJSONShape(t *testing.T) {
 	}
 }
 
+func TestMuzvizorAPICollectObjectsStopsAtDepthLimit(t *testing.T) {
+	t.Parallel()
+
+	root := map[string]any{}
+	current := root
+	for depth := 0; depth < muzvizorAPIMaxTraversalDepth+8; depth++ {
+		next := map[string]any{}
+		current["child"] = next
+		current = next
+	}
+	current["title"] = "Too Deep"
+
+	objects := make([]map[string]any, 0)
+	muzvizorAPICollectObjects(root, &objects)
+	if got, wantMax := len(objects), muzvizorAPIMaxTraversalDepth+1; got > wantMax {
+		t.Fatalf("collected objects = %d, want <= %d", got, wantMax)
+	}
+	for _, object := range objects {
+		if title, _ := object["title"].(string); title == "Too Deep" {
+			t.Fatal("collector traversed beyond the configured depth limit")
+		}
+	}
+}
+
+func TestMuzvizorAPIRecursiveValueReadersStopAtDepthLimit(t *testing.T) {
+	t.Parallel()
+
+	deep := any("11A")
+	for depth := 0; depth < muzvizorAPIMaxTraversalDepth+8; depth++ {
+		deep = map[string]any{"value": deep}
+	}
+	if got := muzvizorAPIText(deep); got != "" {
+		t.Fatalf("deep text = %q, want empty after traversal limit", got)
+	}
+	if bpm, ok := muzvizorAPIBPM(deep); ok || bpm != 0 {
+		t.Fatalf("deep BPM = %v, %v; want rejected", bpm, ok)
+	}
+	if key, ok := muzvizorAPICamelot(deep); ok || key != "" {
+		t.Fatalf("deep Camelot = %q, %v; want rejected", key, ok)
+	}
+}
+
+func TestMuzvizorAPIDeepCandidateIsIgnoredSafely(t *testing.T) {
+	t.Parallel()
+
+	candidate := `{"title":"Too Deep","artist":"Artist","bpm":128,"key":"8A"}`
+	body := candidate
+	for depth := 0; depth < muzvizorAPIMaxTraversalDepth+8; depth++ {
+		body = `{"child":` + body + `}`
+	}
+
+	items, err := muzvizorCandidatesFromAPIJSON(
+		[]byte(body),
+		"https://muzvizor.com/tracks?query=example",
+		model.MetadataQuery{Artist: "Artist", Title: "Too Deep"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("deep candidate must be ignored, got %+v", items)
+	}
+}
+
 func TestMuzvizorSearchUsesPublicAPIWithoutBrowserCookies(t *testing.T) {
 	t.Parallel()
 

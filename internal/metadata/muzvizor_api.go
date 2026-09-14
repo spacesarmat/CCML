@@ -12,6 +12,8 @@ import (
 	"github.com/spacesarmat/CCML/internal/model"
 )
 
+const muzvizorAPIMaxTraversalDepth = 16
+
 func muzvizorAPIURL(baseURL, term string) string {
 	return strings.TrimRight(baseURL, "/") + "/api/v1/tracks/?query=" + muzvizorQueryValue(term)
 }
@@ -148,15 +150,29 @@ func muzvizorAPICandidateFromObject(object map[string]any, sourceURL string) (mo
 }
 
 func muzvizorAPICollectObjects(value any, out *[]map[string]any) {
+	muzvizorAPICollectObjectsLimit(value, out, 0)
+}
+
+func muzvizorAPICollectObjectsLimit(value any, out *[]map[string]any, depth int) {
+	if depth > muzvizorAPIMaxTraversalDepth {
+		return
+	}
+
 	switch typed := value.(type) {
 	case map[string]any:
 		*out = append(*out, typed)
+		if depth == muzvizorAPIMaxTraversalDepth {
+			return
+		}
 		for _, child := range typed {
-			muzvizorAPICollectObjects(child, out)
+			muzvizorAPICollectObjectsLimit(child, out, depth+1)
 		}
 	case []any:
+		if depth == muzvizorAPIMaxTraversalDepth {
+			return
+		}
 		for _, child := range typed {
-			muzvizorAPICollectObjects(child, out)
+			muzvizorAPICollectObjectsLimit(child, out, depth+1)
 		}
 	}
 }
@@ -227,6 +243,14 @@ func muzvizorAPINormalizeKey(value string) string {
 }
 
 func muzvizorAPIText(value any) string {
+	return muzvizorAPITextLimit(value, 0)
+}
+
+func muzvizorAPITextLimit(value any, depth int) string {
+	if depth > muzvizorAPIMaxTraversalDepth {
+		return ""
+	}
+
 	switch typed := value.(type) {
 	case string:
 		return strings.TrimSpace(typed)
@@ -241,15 +265,21 @@ func muzvizorAPIText(value any) string {
 	case int64:
 		return strconv.FormatInt(typed, 10)
 	case map[string]any:
+		if depth == muzvizorAPIMaxTraversalDepth {
+			return ""
+		}
 		for _, key := range []string{"name", "title", "label", "value", "text", "code", "slug"} {
 			if child, ok := muzvizorAPIField(typed, key); ok {
-				if text := muzvizorAPIText(child); text != "" {
+				if text := muzvizorAPITextLimit(child, depth+1); text != "" {
 					return text
 				}
 			}
 		}
 	case []any:
-		parts := muzvizorAPITextParts(typed)
+		if depth == muzvizorAPIMaxTraversalDepth {
+			return ""
+		}
+		parts := muzvizorAPITextPartsLimit(typed, depth+1)
 		return strings.Join(parts, ", ")
 	}
 	return ""
@@ -265,10 +295,18 @@ func muzvizorAPITextList(value any) string {
 }
 
 func muzvizorAPITextParts(values []any) []string {
+	return muzvizorAPITextPartsLimit(values, 0)
+}
+
+func muzvizorAPITextPartsLimit(values []any, depth int) []string {
+	if depth > muzvizorAPIMaxTraversalDepth {
+		return nil
+	}
+
 	out := make([]string, 0, len(values))
 	seen := map[string]bool{}
 	for _, value := range values {
-		text := strings.Trim(strings.TrimSpace(muzvizorAPIText(value)), ",")
+		text := strings.Trim(strings.TrimSpace(muzvizorAPITextLimit(value, depth)), ",")
 		if text == "" {
 			continue
 		}
@@ -283,6 +321,14 @@ func muzvizorAPITextParts(values []any) []string {
 }
 
 func muzvizorAPIBPM(value any) (float64, bool) {
+	return muzvizorAPIBPMLimit(value, 0)
+}
+
+func muzvizorAPIBPMLimit(value any, depth int) (float64, bool) {
+	if depth > muzvizorAPIMaxTraversalDepth {
+		return 0, false
+	}
+
 	switch typed := value.(type) {
 	case float64:
 		if typed >= 20 && typed <= 300 {
@@ -306,9 +352,12 @@ func muzvizorAPIBPM(value any) (float64, bool) {
 	case string:
 		return parseMuzvizorBPM(typed)
 	case map[string]any:
+		if depth == muzvizorAPIMaxTraversalDepth {
+			return 0, false
+		}
 		for _, key := range []string{"value", "bpm", "tempo", "name"} {
 			if child, ok := muzvizorAPIField(typed, key); ok {
-				if bpm, ok := muzvizorAPIBPM(child); ok {
+				if bpm, ok := muzvizorAPIBPMLimit(child, depth+1); ok {
 					return bpm, true
 				}
 			}
@@ -318,21 +367,33 @@ func muzvizorAPIBPM(value any) (float64, bool) {
 }
 
 func muzvizorAPICamelot(value any) (string, bool) {
-	if text := muzvizorAPIText(value); text != "" {
+	return muzvizorAPICamelotLimit(value, 0)
+}
+
+func muzvizorAPICamelotLimit(value any, depth int) (string, bool) {
+	if depth > muzvizorAPIMaxTraversalDepth {
+		return "", false
+	}
+
+	if text := muzvizorAPITextLimit(value, depth); text != "" {
 		if key, ok := parseMuzvizorCamelot(text); ok {
 			return key, true
 		}
 	}
+	if depth == muzvizorAPIMaxTraversalDepth {
+		return "", false
+	}
+
 	switch typed := value.(type) {
 	case map[string]any:
 		for _, child := range typed {
-			if key, ok := muzvizorAPICamelot(child); ok {
+			if key, ok := muzvizorAPICamelotLimit(child, depth+1); ok {
 				return key, true
 			}
 		}
 	case []any:
 		for _, child := range typed {
-			if key, ok := muzvizorAPICamelot(child); ok {
+			if key, ok := muzvizorAPICamelotLimit(child, depth+1); ok {
 				return key, true
 			}
 		}
