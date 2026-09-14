@@ -3968,3 +3968,212 @@ button:disabled:hover {
   border-color: #b9c7d4;
   background: #f4f7fa;
 }
+/* Stage 14 — saved table views */
+.table-columns-toolbar {
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.table-view-picker {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.table-view-picker > summary {
+  min-height: var(--ccml-control-h-sm);
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-md);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text-muted);
+  font-size: 8px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.table-view-picker > summary::-webkit-details-marker {
+  display: none;
+}
+
+.table-view-picker > summary:hover,
+.table-view-picker[open] > summary {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+  color: var(--ccml-text-strong);
+}
+
+.table-view-picker > summary b {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--ccml-accent-soft);
+  color: var(--ccml-text-strong);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-view-panel {
+  position: absolute;
+  z-index: 85;
+  top: calc(100% + 7px);
+  right: 0;
+  width: min(520px, calc(100vw - 28px));
+  max-height: min(620px, 72vh);
+  overflow: auto;
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-xl);
+  background: var(--ccml-bg-elevated);
+  box-shadow: var(--ccml-shadow-lg);
+}
+
+.table-view-panel > header {
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+}
+
+.table-view-panel > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.table-view-panel > header strong,
+.table-view-section > strong {
+  color: var(--ccml-text-strong);
+  font-size: 9px;
+}
+
+.table-view-panel > header span {
+  color: var(--ccml-text-muted);
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.table-view-section {
+  padding: 10px 11px;
+  display: grid;
+  gap: 7px;
+  border-bottom: 1px solid var(--ccml-border-subtle);
+}
+
+.table-view-section:last-child {
+  border-bottom: 0;
+}
+
+.table-view-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.table-view-presets button {
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+}
+
+.table-view-save-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.table-view-save-row input {
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 8px;
+}
+
+.table-view-save-row button {
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 8px;
+}
+
+.table-view-custom-list {
+  display: grid;
+  gap: 4px;
+  max-height: 240px;
+  overflow: auto;
+  scrollbar-gutter: auto;
+}
+
+.table-view-custom-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px;
+  align-items: center;
+}
+
+.table-view-custom-row button {
+  min-height: 28px;
+  padding: 4px 7px;
+  font-size: 8px;
+}
+
+.table-view-custom-row .table-view-name {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ccml-text-strong);
+}
+
+.table-view-custom-row .danger-lite {
+  color: var(--ccml-danger);
+}
+
+.table-view-custom-row .danger-lite:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ccml-danger) 50%, var(--ccml-border));
+  background: color-mix(in srgb, var(--ccml-danger) 7%, var(--ccml-surface-2));
+}
+
+.table-view-empty {
+  padding: 8px 4px;
+  color: var(--ccml-text-dim);
+  font-size: 8px;
+}
+
+:root[data-ccml-theme='light'] .table-view-panel {
+  background: #f8fafc;
+}
+
+:root[data-ccml-theme='light'] .table-view-section {
+  background: #ffffff;
+}
+
+@media (max-width: 1080px) {
+  .table-view-panel {
+    right: -42px;
+    width: min(460px, calc(100vw - 20px));
+  }
+
+  .table-view-presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 720px) {
+  .table-view-panel {
+    max-height: 64vh;
+  }
+
+  .table-view-custom-list {
+    max-height: 160px;
+  }
+}
