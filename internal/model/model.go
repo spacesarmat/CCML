@@ -303,6 +303,42 @@ type BPMKey struct {
 	OpenKey  string  `json:"openKey"`
 }
 
+// DJMixPlanOptions controls conservative BPM/Camelot route planning.
+type DJMixPlanOptions struct {
+	StartTrackID     int64   `json:"startTrackId"`
+	Limit            int     `json:"limit"`
+	MaxTempoShiftPct float64 `json:"maxTempoShiftPct"`
+	Direction        string  `json:"direction"`
+	PreferHarmonic   bool    `json:"preferHarmonic"`
+	AvoidSameArtist  bool    `json:"avoidSameArtist"`
+}
+
+// DJMixPlanStep is one ordered track plus the transition from the previous step.
+type DJMixPlanStep struct {
+	Position      int      `json:"position"`
+	Track         Track    `json:"track"`
+	Camelot       string   `json:"camelot"`
+	OpenKey       string   `json:"openKey"`
+	AdjustedBPM   float64  `json:"adjustedBpm"`
+	TempoFactor   float64  `json:"tempoFactor"`
+	TempoDeltaPct float64  `json:"tempoDeltaPct"`
+	KeyRelation   string   `json:"keyRelation"`
+	Score         float64  `json:"score"`
+	Warnings      []string `json:"warnings"`
+}
+
+// DJMixPlan summarizes an ordered route through analyzed library tracks.
+type DJMixPlan struct {
+	Steps              []DJMixPlanStep `json:"steps"`
+	SourceCount        int             `json:"sourceCount"`
+	UsableCount        int             `json:"usableCount"`
+	ExcludedMissingBPM int             `json:"excludedMissingBpm"`
+	TracksMissingKey   int             `json:"tracksMissingKey"`
+	AverageScore       float64         `json:"averageScore"`
+	TotalDurationMS    int64           `json:"totalDurationMs"`
+	StartTrackID       int64           `json:"startTrackId"`
+}
+
 // EssentiaAnalysis is the latest persisted local BPM/key evidence for one track.
 type EssentiaAnalysis struct {
 	TrackID       int64   `json:"trackId"`

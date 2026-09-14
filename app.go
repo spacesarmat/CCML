@@ -589,6 +589,37 @@ func (a *App) ListTracks(search string, limit, offset int) ([]model.Track, error
 	return a.store.ListTracks(a.context(), search, limit, offset)
 }
 
+// PlanDJMix builds a conservative BPM/Camelot route. An empty trackIDs slice
+// means the entire library; otherwise only the requested tracks are considered.
+func (a *App) PlanDJMix(trackIDs []int64, options model.DJMixPlanOptions) (model.DJMixPlan, error) {
+	var tracks []model.Track
+	if len(trackIDs) == 0 {
+		all, err := a.store.AllTracks(a.context())
+		if err != nil {
+			return model.DJMixPlan{}, err
+		}
+		tracks = all
+	} else {
+		seen := make(map[int64]struct{}, len(trackIDs))
+		tracks = make([]model.Track, 0, len(trackIDs))
+		for _, id := range trackIDs {
+			if id <= 0 {
+				continue
+			}
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			track, err := a.store.TrackByID(a.context(), id)
+			if err != nil {
+				return model.DJMixPlan{}, err
+			}
+			tracks = append(tracks, track)
+		}
+	}
+	return audio.PlanDJMix(tracks, options), nil
+}
+
 // FindDuplicates finds probable duplicates by normalized metadata and duration.
 func (a *App) FindDuplicates() ([]model.DuplicateGroup, error) {
 	tracks, err := a.store.AllTracks(a.context())

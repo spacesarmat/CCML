@@ -5,6 +5,7 @@ import MetadataMerge from './MetadataMerge'
 import SettingsModal from './SettingsModal'
 import JobsPanel from './JobsPanel'
 import HelpModal from './HelpModal'
+import DJMixPlannerModal from './DJMixPlannerModal'
 import DuplicateGroupsView from './DuplicateGroupsView'
 import EssentiaBatchControls from './EssentiaBatchControls'
 import {
@@ -113,6 +114,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [jobsOpen, setJobsOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [mixPlannerOpen, setMixPlannerOpen] = useState(false)
   const [metadataFilter, setMetadataFilter] = useState<'all' | 'skipped' | 'failed'>('all')
   const [libraryFilters, setLibraryFilters] = useState<LibraryFilters>(() => loadLibraryFilters())
   const [tableSort, setTableSort] = useState<TableSort[]>(() => loadTableSort())
@@ -265,14 +267,14 @@ function App() {
       const target = event.target as HTMLElement | null
 
       if (command && key.toLowerCase() === 'f') {
-        if (settingsOpen || jobsOpen || helpOpen || mainView !== 'library') return
+        if (settingsOpen || jobsOpen || helpOpen || mixPlannerOpen || mainView !== 'library') return
         event.preventDefault()
         searchInputRef.current?.focus()
         searchInputRef.current?.select()
         return
       }
 
-      if (settingsOpen || jobsOpen || helpOpen || mainView !== 'library') return
+      if (settingsOpen || jobsOpen || helpOpen || mixPlannerOpen || mainView !== 'library') return
       if (target?.closest('input, textarea, select, button, a, [contenteditable="true"], [role="slider"]')) return
 
       if (command && key.toLowerCase() === 'a') {
@@ -335,6 +337,7 @@ function App() {
     visibleTracks,
     jobsOpen,
     helpOpen,
+    mixPlannerOpen,
     mainView,
     mediaFallbackLoading,
     mediaLoading,
@@ -1217,6 +1220,9 @@ function App() {
             <button className={`sidebar-nav ${mainView === 'duplicates' ? 'active' : ''}`} onClick={() => void findDuplicates()} disabled={busy}>
               <span>{t('library.duplicates')}</span><b>{stats?.duplicateGroups ?? 0}</b>
             </button>
+            <button className="sidebar-nav" onClick={() => setMixPlannerOpen(true)} disabled={busy || (stats?.tracks ?? 0) < 2}>
+              <span>{t('mixPlanner.open')}</span><b>♫</b>
+            </button>
             <button className="sidebar-nav" onClick={() => void enrichLibrary()} disabled={busy || scanning || (stats?.tracks ?? 0) === 0}>
               <span>{t('metadata.enrichLibrary')}</span><b>↗</b>
             </button>
@@ -1555,6 +1561,19 @@ function App() {
       </div>
 
       <HelpModal language={language} open={helpOpen} version={t('footer.version')} onClose={() => setHelpOpen(false)} />
+      <DJMixPlannerModal
+        language={language}
+        open={mixPlannerOpen}
+        selectedIDs={selectedIDs}
+        libraryCount={stats?.tracks ?? 0}
+        onClose={() => setMixPlannerOpen(false)}
+        onMessage={setMessage}
+        onRevealTrack={async (trackID) => {
+          setMixPlannerOpen(false)
+          await revealJobTrack(trackID)
+          setInspectorTab('analysis')
+        }}
+      />
       <JobsPanel language={language} open={jobsOpen} onClose={() => setJobsOpen(false)} onMessage={setMessage} onRevealTrack={revealJobTrack} />
       <SettingsModal language={language} theme={theme} uiScale={uiScale} open={settingsOpen} status={status} onClose={() => setSettingsOpen(false)} onSaved={async () => { await refreshStatus() }} onStatusChanged={setStatus} onMessage={setMessage} onThemeChange={changeTheme} onUIScaleChange={changeUIScale} />
 

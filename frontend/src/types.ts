@@ -40,6 +40,39 @@ export type Track = {
   lastMetadataJobUpdatedAt: string
 }
 
+export type DJMixPlanOptions = {
+  startTrackId: number
+  limit: number
+  maxTempoShiftPct: number
+  direction: 'any' | 'up' | 'down' | string
+  preferHarmonic: boolean
+  avoidSameArtist: boolean
+}
+
+export type DJMixPlanStep = {
+  position: number
+  track: Track
+  camelot: string
+  openKey: string
+  adjustedBpm: number
+  tempoFactor: number
+  tempoDeltaPct: number
+  keyRelation: string
+  score: number
+  warnings: string[] | null
+}
+
+export type DJMixPlan = {
+  steps: DJMixPlanStep[] | null
+  sourceCount: number
+  usableCount: number
+  excludedMissingBpm: number
+  tracksMissingKey: number
+  averageScore: number
+  totalDurationMs: number
+  startTrackId: number
+}
+
 export type ScanResult = {
   root: string
   found: number

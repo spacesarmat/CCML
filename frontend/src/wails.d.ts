@@ -5,6 +5,8 @@ import type {
   DuplicateActionResult,
   DuplicateAudioVerification,
   DuplicateGroup,
+  DJMixPlan,
+  DJMixPlanOptions,
   EssentiaPerformance,
   FFmpegUpdateResult,
   LibraryRoot,
@@ -44,6 +46,7 @@ declare global {
           RemoveLibraryRoot(root: string, deleteTracks: boolean): Promise<void>
           LibraryStatistics(): Promise<LibraryStats>
           ListTracks(search: string, limit: number, offset: number): Promise<Track[]>
+          PlanDJMix(trackIDs: number[], options: DJMixPlanOptions): Promise<DJMixPlan>
           FindDuplicates(): Promise<DuplicateGroup[]>
           VerifyDuplicateAudio(trackIDs: number[]): Promise<DuplicateAudioVerification>
           SelectDuplicateQuarantineFolder(): Promise<string>
