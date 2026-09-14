@@ -41,6 +41,28 @@ func TestDuplicateFeatureSimilarityFindsSmallOffset(t *testing.T) {
 	}
 }
 
+func TestDuplicateFeatureSimilarityFindsExtendedIntroOffset(t *testing.T) {
+	t.Parallel()
+
+	const introFrames = 300 // 30 seconds at 100 ms/frame.
+	left := syntheticPCM(120, 1.0, 0)
+	right := syntheticPCM(120, 1.0, introFrames)
+
+	leftFeatures := extractDuplicateFeatures(left)
+	rightFeatures := extractDuplicateFeatures(right)
+	similarity, shift := bestDuplicateFeatureSimilarity(leftFeatures, rightFeatures)
+
+	if similarity < 0.96 {
+		t.Fatalf("similarity = %.4f, want >= 0.96 for aligned extended intro", similarity)
+	}
+	if shift != introFrames {
+		t.Fatalf("shift = %d, want %d", shift, introFrames)
+	}
+	if got := classifyDuplicateSimilarity(similarity, int64(introFrames*duplicateVerifyFrameMS)); got != "similar" {
+		t.Fatalf("verdict = %q, want similar", got)
+	}
+}
+
 func TestDuplicateFeatureSimilarityRejectsDifferentShape(t *testing.T) {
 	t.Parallel()
 

@@ -18,7 +18,9 @@ const (
 	duplicateVerifyFrameMS                = 100
 	duplicateVerifyFrameSize              = duplicateVerifySampleRate * duplicateVerifyFrameMS / 1000
 	duplicateVerifyMaxSeconds             = 900
-	duplicateVerifyMaxShift               = 60 // 6 seconds at 100 ms/frame.
+	duplicateVerifyBaseShift              = 60  // Always search at least +/-6 seconds.
+	duplicateVerifyMaxShift               = 600 // Up to +/-60 seconds at 100 ms/frame.
+	duplicateVerifyCoarseShiftStep        = 5   // 500 ms coarse scan before frame-level refinement.
 	duplicateVerifySameMaxDurationDeltaMS = 1_500
 	duplicateVerifySimilarMaxDurationMS   = 60_000
 )
@@ -262,49 +264,43 @@ func bestDuplicateFeatureSimilarity(left, right duplicateFeatures) (float64, int
 	}
 
 	minOverlap := maxInt(10, int(float64(minFrames)*0.70))
+	lengthDelta := absInt(len(left.energy) - len(right.energy))
+	shiftLimit := duplicateVerifyBaseShift + lengthDelta
+	if shiftLimit > duplicateVerifyMaxShift {
+		shiftLimit = duplicateVerifyMaxShift
+	}
+	if shiftLimit < duplicateVerifyBaseShift {
+		shiftLimit = duplicateVerifyBaseShift
+	}
+
+	spectrumScore := duplicateSpectrumSimilarity(left.spectrum, right.spectrum)
 	bestScore := -1.0
 	bestShift := 0
-
-	for shift := -duplicateVerifyMaxShift; shift <= duplicateVerifyMaxShift; shift++ {
-		leftStart := 0
-		rightStart := 0
-		if shift > 0 {
-			rightStart = shift
-		} else if shift < 0 {
-			leftStart = -shift
-		}
-
-		overlap := minInt(len(left.energy)-leftStart, len(right.energy)-rightStart)
-		if overlap < minOverlap {
-			continue
-		}
-
-		energyCorr := positiveCorrelation(
-			left.energy[leftStart:leftStart+overlap],
-			right.energy[rightStart:rightStart+overlap],
-		)
-		roughCorr := positiveCorrelation(
-			left.roughness[leftStart:leftStart+overlap],
-			right.roughness[rightStart:rightStart+overlap],
-		)
-		zcrCorr := positiveCorrelation(
-			left.zcr[leftStart:leftStart+overlap],
-			right.zcr[rightStart:rightStart+overlap],
-		)
-		spectrumScore := duplicateSpectrumSimilarity(left.spectrum, right.spectrum)
-
-		// Envelope/rhythm alone can make unrelated tracks at the same tempo look
-		// deceptively similar. The coarse gain-independent spectral profile adds
-		// timbral/pitch evidence while keeping waveform alignment as the primary
-		// signal.
-		contentScore := 0.46*energyCorr + 0.20*roughCorr + 0.10*zcrCorr + 0.24*spectrumScore
-		durationRatio := float64(minFrames) / float64(maxFrames)
-		// Duration matters, but only modestly: an edit can still be reported
-		// "similar" without being misclassified as the same full recording.
-		score := contentScore * (0.88 + 0.12*durationRatio)
-		if score > bestScore {
+	evaluate := func(shift int) {
+		score, ok := duplicateAlignmentScore(left, right, shift, minOverlap, maxFrames, spectrumScore)
+		if ok && score > bestScore {
 			bestScore = score
 			bestShift = shift
+		}
+	}
+
+	// Preserve the old frame-by-frame +/-6 second behavior for near-equal
+	// lengths. Wider Radio Edit / Extended Mix differences use a 500 ms coarse
+	// scan and then refine the winning neighborhood at the native 100 ms frame.
+	step := 1
+	if shiftLimit > duplicateVerifyBaseShift {
+		step = duplicateVerifyCoarseShiftStep
+	}
+	for shift := -shiftLimit; shift <= shiftLimit; shift += step {
+		evaluate(shift)
+	}
+	if step > 1 {
+		evaluate(-shiftLimit)
+		evaluate(shiftLimit)
+		from := maxInt(-shiftLimit, bestShift-step+1)
+		to := minInt(shiftLimit, bestShift+step-1)
+		for shift := from; shift <= to; shift++ {
+			evaluate(shift)
 		}
 	}
 
@@ -315,6 +311,48 @@ func bestDuplicateFeatureSimilarity(left, right duplicateFeatures) (float64, int
 		bestScore = 1
 	}
 	return bestScore, bestShift
+}
+
+func duplicateAlignmentScore(
+	left, right duplicateFeatures,
+	shift, minOverlap, maxFrames int,
+	spectrumScore float64,
+) (float64, bool) {
+	leftStart := 0
+	rightStart := 0
+	if shift > 0 {
+		rightStart = shift
+	} else if shift < 0 {
+		leftStart = -shift
+	}
+
+	overlap := minInt(len(left.energy)-leftStart, len(right.energy)-rightStart)
+	if overlap < minOverlap {
+		return 0, false
+	}
+
+	energyCorr := positiveCorrelation(
+		left.energy[leftStart:leftStart+overlap],
+		right.energy[rightStart:rightStart+overlap],
+	)
+	roughCorr := positiveCorrelation(
+		left.roughness[leftStart:leftStart+overlap],
+		right.roughness[rightStart:rightStart+overlap],
+	)
+	zcrCorr := positiveCorrelation(
+		left.zcr[leftStart:leftStart+overlap],
+		right.zcr[rightStart:rightStart+overlap],
+	)
+
+	// Envelope/rhythm alone can make unrelated tracks at the same tempo look
+	// deceptively similar. The coarse gain-independent spectral profile adds
+	// timbral/pitch evidence while keeping waveform alignment as the primary
+	// signal.
+	contentScore := 0.46*energyCorr + 0.20*roughCorr + 0.10*zcrCorr + 0.24*spectrumScore
+	durationRatio := float64(minInt(len(left.energy), len(right.energy))) / float64(maxFrames)
+	// Duration matters, but only modestly: an edit can still be reported
+	// "similar" without being misclassified as the same full recording.
+	return contentScore * (0.88 + 0.12*durationRatio), true
 }
 
 func classifyDuplicateSimilarity(similarity float64, durationDeltaMS int64) string {
@@ -360,13 +398,24 @@ func positiveCorrelation(left, right []float64) float64 {
 		return 0
 	}
 
+	var leftMean float64
+	var rightMean float64
+	for i := range left {
+		leftMean += left[i]
+		rightMean += right[i]
+	}
+	leftMean /= float64(len(left))
+	rightMean /= float64(len(right))
+
 	var dot float64
 	var leftSquares float64
 	var rightSquares float64
 	for i := range left {
-		dot += left[i] * right[i]
-		leftSquares += left[i] * left[i]
-		rightSquares += right[i] * right[i]
+		leftValue := left[i] - leftMean
+		rightValue := right[i] - rightMean
+		dot += leftValue * rightValue
+		leftSquares += leftValue * leftValue
+		rightSquares += rightValue * rightValue
 	}
 	if leftSquares <= 1e-12 || rightSquares <= 1e-12 {
 		return 0
@@ -411,6 +460,13 @@ func zNormalize(values []float64) []float64 {
 }
 
 func absInt64(value int64) int64 {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
+func absInt(value int) int {
 	if value < 0 {
 		return -value
 	}
