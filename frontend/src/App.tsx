@@ -78,7 +78,7 @@ function App() {
   const [metadata, setMetadata] = useState<MetadataCandidate[]>([])
   const [metadataWarnings, setMetadataWarnings] = useState<string[]>([])
   const [metadataLookup, setMetadataLookup] = useState<MetadataLookupResult | null>(null)
-  const [enrichment, setEnrichment] = useState<MetadataEnrichmentOptions>({minimumConfidence: 0.86, includeArtwork: true, onlyMissing: true})
+  const [enrichment, setEnrichment] = useState<MetadataEnrichmentOptions>({minimumConfidence: 0.86, includeArtwork: true, onlyMissing: true, searchMode: 'auto'})
   const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([])
   const [roots, setRoots] = useState<LibraryRoot[]>([])
   const [stats, setStats] = useState<LibraryStats | null>(null)
@@ -1114,6 +1114,8 @@ function App() {
                     </div>
                     <div className="compact-enrichment">
                       <label>{t('metadata.minimumConfidence')}<input type="number" min="0.5" max="1" step="0.01" value={enrichment.minimumConfidence} onChange={(e) => setEnrichment({...enrichment, minimumConfidence: Number(e.target.value)})} /></label>
+                      <label className="enrichment-mode-label">{t('metadata.searchMode')}<select value={enrichment.searchMode} onChange={(e) => setEnrichment({...enrichment, searchMode: e.target.value as MetadataEnrichmentOptions['searchMode']})}><option value="auto">{t('metadata.searchMode.auto')}</option><option value="fast">{t('metadata.searchMode.fast')}</option><option value="full">{t('metadata.searchMode.full')}</option></select></label>
+                      <small className="enrichment-mode-hint">{t((`metadata.searchMode.${enrichment.searchMode}.hint`) as TranslationKey)}</small>
                       <label className="inline-check"><input type="checkbox" checked={enrichment.onlyMissing} onChange={(e) => setEnrichment({...enrichment, onlyMissing: e.target.checked})} /> {t('metadata.onlyMissing')}</label>
                       <label className="inline-check"><input type="checkbox" checked={enrichment.includeArtwork} onChange={(e) => setEnrichment({...enrichment, includeArtwork: e.target.checked})} /> {t('metadata.includeArtwork')}</label>
                       <button onClick={() => void enrichSelected()} disabled={busy || scanning}>{t('metadata.enrichSelected')}</button>

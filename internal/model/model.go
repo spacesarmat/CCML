@@ -315,17 +315,23 @@ type MetadataEnrichmentOptions struct {
 	MinimumConfidence float64 `json:"minimumConfidence"`
 	IncludeArtwork    bool    `json:"includeArtwork"`
 	OnlyMissing       bool    `json:"onlyMissing"`
+	SearchMode        string  `json:"searchMode"`
 }
 
 // MetadataEnrichmentItem reports the enrichment outcome for one track.
 type MetadataEnrichmentItem struct {
-	TrackID    int64   `json:"trackId"`
-	Path       string  `json:"path"`
-	Source     string  `json:"source"`
-	Confidence float64 `json:"confidence"`
-	Applied    bool    `json:"applied"`
-	Skipped    bool    `json:"skipped"`
-	Error      string  `json:"error"`
+	TrackID            int64   `json:"trackId"`
+	Path               string  `json:"path"`
+	Source             string  `json:"source"`
+	Confidence         float64 `json:"confidence"`
+	Applied            bool    `json:"applied"`
+	Skipped            bool    `json:"skipped"`
+	SearchMode         string  `json:"searchMode"`
+	SearchDurationMS   int64   `json:"searchDurationMs"`
+	ProvidersResponded int     `json:"providersResponded"`
+	ProvidersSkipped   int     `json:"providersSkipped"`
+	EarlyStopped       bool    `json:"earlyStopped"`
+	Error              string  `json:"error"`
 }
 
 // MetadataEnrichmentResult summarizes a batch metadata enrichment operation.

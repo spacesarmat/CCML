@@ -407,6 +407,11 @@ export namespace model {
 	    confidence: number;
 	    applied: boolean;
 	    skipped: boolean;
+	    searchMode: string;
+	    searchDurationMs: number;
+	    providersResponded: number;
+	    providersSkipped: number;
+	    earlyStopped: boolean;
 	    error: string;
 	
 	    static createFrom(source: any = {}) {
@@ -421,6 +426,11 @@ export namespace model {
 	        this.confidence = source["confidence"];
 	        this.applied = source["applied"];
 	        this.skipped = source["skipped"];
+	        this.searchMode = source["searchMode"];
+	        this.searchDurationMs = source["searchDurationMs"];
+	        this.providersResponded = source["providersResponded"];
+	        this.providersSkipped = source["providersSkipped"];
+	        this.earlyStopped = source["earlyStopped"];
 	        this.error = source["error"];
 	    }
 	}
@@ -428,6 +438,7 @@ export namespace model {
 	    minimumConfidence: number;
 	    includeArtwork: boolean;
 	    onlyMissing: boolean;
+	    searchMode: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new MetadataEnrichmentOptions(source);
@@ -438,6 +449,7 @@ export namespace model {
 	        this.minimumConfidence = source["minimumConfidence"];
 	        this.includeArtwork = source["includeArtwork"];
 	        this.onlyMissing = source["onlyMissing"];
+	        this.searchMode = source["searchMode"];
 	    }
 	}
 	export class MetadataEnrichmentResult {

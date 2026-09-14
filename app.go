@@ -873,6 +873,7 @@ func normalizeEnrichmentOptions(opts *model.MetadataEnrichmentOptions) error {
 	if opts.MinimumConfidence < 0.5 || opts.MinimumConfidence > 1 {
 		return fmt.Errorf("minimum confidence must be between 0.5 and 1.0")
 	}
+	opts.SearchMode = metadata.NormalizeEnrichmentSearchMode(opts.SearchMode)
 	return nil
 }
 
@@ -888,7 +889,17 @@ func (a *App) enrichMetadataTrack(ctx context.Context, trackID int64, opts model
 	if tagErr == nil && strings.TrimSpace(tags.ISRC) != "" {
 		isrc = tags.ISRC
 	}
-	lookup, err := a.lookupMetadataQuery(ctx, metadata.QueryFromTrack(track, isrc), false)
+	lookup, searchDiagnostics, err := a.metadataService().SearchEnrichment(
+		ctx,
+		metadata.QueryFromTrack(track, isrc),
+		opts.SearchMode,
+		opts.MinimumConfidence,
+	)
+	item.SearchMode = searchDiagnostics.Mode
+	item.SearchDurationMS = searchDiagnostics.DurationMS
+	item.ProvidersResponded = searchDiagnostics.ProvidersResponded
+	item.ProvidersSkipped = searchDiagnostics.ProvidersSkipped
+	item.EarlyStopped = searchDiagnostics.EarlyStopped
 	if err != nil {
 		return item, err
 	}

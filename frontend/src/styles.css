@@ -996,3 +996,31 @@ body { min-width: 1080px; overflow: hidden; }
   padding: 5px 8px;
   line-height: 1.35;
 }
+/* Stage 8.1B — adaptive metadata provider pipeline. */
+.compact-enrichment .enrichment-mode-label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  align-items: center;
+  gap: 6px;
+  color: #93a3b8;
+  font-size: 8px;
+}
+.compact-enrichment .enrichment-mode-label select {
+  min-width: 0;
+  padding: 5px 6px;
+  font-size: 8px;
+}
+.enrichment-mode-hint {
+  margin-top: -2px;
+  color: #687a91;
+  font-size: 7px;
+  line-height: 1.4;
+}
+.job-item-pipeline {
+  grid-column: 2 / -1;
+  color: #7891ad !important;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .job-item-pipeline { grid-column: auto; }
+}

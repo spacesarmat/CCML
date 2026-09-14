@@ -303,6 +303,7 @@ export type MetadataEnrichmentOptions = {
   minimumConfidence: number
   includeArtwork: boolean
   onlyMissing: boolean
+  searchMode: 'auto' | 'fast' | 'full'
 }
 
 export type MetadataEnrichmentItem = {
@@ -312,6 +313,11 @@ export type MetadataEnrichmentItem = {
   confidence: number
   applied: boolean
   skipped: boolean
+  searchMode: string
+  searchDurationMs: number
+  providersResponded: number
+  providersSkipped: number
+  earlyStopped: boolean
   error: string
 }
 

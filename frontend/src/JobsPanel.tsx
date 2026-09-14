@@ -178,12 +178,14 @@ function JobsPanel({language, open, onClose, onMessage}: Props) {
                       {(items[job.id] ?? []).filter((item) => !failedOnly || item.status === 'failed').map((item) => {
                         const result = parseEnrichmentResult(item.resultJson)
                         const resultText = result ? formatEnrichmentResult(result, t) : ''
+                        const pipelineText = result ? formatEnrichmentPipeline(result, t) : ''
                         return (
                           <div className={`job-item ${item.status}`} key={item.id}>
                             <span>{t((`jobs.item.${item.status}`) as TranslationKey)}</span>
                             <code title={item.path}>{item.path}</code>
                             <small>{t('jobs.attempts')}: {item.attempts}</small>
                             {resultText && <small className="job-item-result">{resultText}</small>}
+                            {pipelineText && <small className="job-item-pipeline">{pipelineText}</small>}
                             {item.error && <small className="job-item-error">{item.error}</small>}
                           </div>
                         )
@@ -208,6 +210,11 @@ type EnrichmentItemResult = {
   confidence?: number
   applied?: boolean
   skipped?: boolean
+  searchMode?: string
+  searchDurationMs?: number
+  providersResponded?: number
+  providersSkipped?: number
+  earlyStopped?: boolean
 }
 
 function parseEnrichmentResult(raw: string): EnrichmentItemResult | null {
@@ -228,6 +235,18 @@ function formatEnrichmentResult(result: EnrichmentItemResult, t: (key: Translati
     return t('jobs.resultSkipped', {source: result.source || '—', confidence: Math.round((result.confidence ?? 0) * 100)})
   }
   return ''
+}
+
+function formatEnrichmentPipeline(result: EnrichmentItemResult, t: (key: TranslationKey, params?: Record<string, string | number>) => string): string {
+  if (!result.searchMode) return ''
+  const modeKey = (`metadata.searchMode.${result.searchMode}`) as TranslationKey
+  const base = t('jobs.pipeline', {
+    mode: t(modeKey),
+    seconds: ((result.searchDurationMs ?? 0) / 1000).toFixed(1),
+    responded: result.providersResponded ?? 0,
+    skipped: result.providersSkipped ?? 0,
+  })
+  return result.earlyStopped ? `${base} · ${t('jobs.earlyStop')}` : base
 }
 
 export default JobsPanel
