@@ -60,12 +60,39 @@ func (p *MuzvizorProvider) Search(ctx context.Context, query model.MetadataQuery
 		return nil, fmt.Errorf("artist or title is required")
 	}
 
-	// First try the confirmed public search route. MUZVIZOR can return only a
-	// JavaScript shell to a backend HTTP client even though the browser later
-	// renders track rows. If no rows are available, use public genre pages.
+	// The browser obtains dynamic track rows from the public JSON endpoint.
+	// Use that endpoint first. No browser cookies or authenticated state are
+	// copied into CCML. HTML remains only a compatibility fallback.
 	searchURL := muzvizorSearchURL(p.baseURL, term)
-	muzvizorDebugf("search start artist=%q title=%q term=%q url=%s", query.Artist, query.Title, term, searchURL)
+	apiURL := muzvizorAPIURL(p.baseURL, term)
+	muzvizorDebugf("search start artist=%q title=%q term=%q api=%s page=%s", query.Artist, query.Title, term, apiURL, searchURL)
 
+	if body, apiErr := p.fetchAPI(ctx, apiURL); apiErr != nil {
+		muzvizorDebugf("API lookup unavailable; continuing with HTML fallback: %v", apiErr)
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+	} else {
+		items, parseErr := muzvizorCandidatesFromAPIJSON(body, searchURL, query)
+		if parseErr != nil {
+			muzvizorDebugf("API parse failed; continuing with HTML fallback: %v", parseErr)
+		} else {
+			muzvizorDebugCandidates("API matched", query, items)
+			if len(items) > 0 {
+				return items, nil
+			}
+			if muzvizorDebugEnabled() {
+				raw, rawErr := muzvizorCandidatesFromAPIJSON(body, searchURL, model.MetadataQuery{})
+				if rawErr != nil {
+					muzvizorDebugf("API raw parse failed: %v", rawErr)
+				} else {
+					muzvizorDebugCandidates("API raw", query, raw)
+				}
+			}
+		}
+	}
+
+	muzvizorDebugf("API produced no match; trying HTML compatibility fallback")
 	var directErr error
 	doc, err := p.fetchHTML(ctx, searchURL)
 	if err != nil {
