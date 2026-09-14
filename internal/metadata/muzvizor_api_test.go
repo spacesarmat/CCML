@@ -32,6 +32,19 @@ const muzvizorAPIFixture = `{
   ]
 }`
 
+func TestMuzvizorAPIURLEscapesQuerySeparators(t *testing.T) {
+	t.Parallel()
+
+	got := muzvizorAPIURL(
+		"https://muzvizor.com",
+		"Simon & Garfunkel - Bridge Over Troubled Water",
+	)
+	want := "https://muzvizor.com/api/v1/tracks/?query=Simon%20%26%20Garfunkel%20-%20Bridge%20Over%20Troubled%20Water"
+	if got != want {
+		t.Fatalf("API URL = %q, want %q", got, want)
+	}
+}
+
 func TestMuzvizorAPIURLUsesConfirmedPublicEndpoint(t *testing.T) {
 	t.Parallel()
 

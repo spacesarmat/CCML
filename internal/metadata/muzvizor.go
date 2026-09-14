@@ -141,11 +141,16 @@ func muzvizorSearchTerm(query model.MetadataQuery) string {
 	}
 }
 
+func muzvizorQueryValue(term string) string {
+	encoded := url.QueryEscape(strings.TrimSpace(term))
+	return strings.ReplaceAll(encoded, "+", "%20")
+}
+
 func muzvizorSearchURL(baseURL, term string) string {
-	// MUZVIZOR's browser search uses encodeURIComponent-style escaping.
-	// url.Values.Encode would turn spaces into '+', while the site-generated
-	// public URL uses %20. Keep the backend request byte-compatible with it.
-	return strings.TrimRight(baseURL, "/") + "/tracks?query=" + url.PathEscape(strings.TrimSpace(term))
+	// Escape the value as query data, then preserve the site's browser-style
+	// %20 representation for spaces. PathEscape is not safe for query values
+	// because characters such as '&' can remain query separators.
+	return strings.TrimRight(baseURL, "/") + "/tracks?query=" + muzvizorQueryValue(term)
 }
 
 func (p *MuzvizorProvider) fetchHTML(ctx context.Context, target string) (string, error) {

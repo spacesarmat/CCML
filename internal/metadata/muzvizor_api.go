@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,7 +13,7 @@ import (
 )
 
 func muzvizorAPIURL(baseURL, term string) string {
-	return strings.TrimRight(baseURL, "/") + "/api/v1/tracks/?query=" + url.PathEscape(strings.TrimSpace(term))
+	return strings.TrimRight(baseURL, "/") + "/api/v1/tracks/?query=" + muzvizorQueryValue(term)
 }
 
 func (p *MuzvizorProvider) fetchAPI(ctx context.Context, target string) ([]byte, error) {
