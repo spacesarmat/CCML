@@ -5,6 +5,8 @@ export namespace model {
 	    key: string;
 	    scale: string;
 	    strength: number;
+	    camelot: string;
+	    openKey: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new BPMKey(source);
@@ -16,6 +18,8 @@ export namespace model {
 	        this.key = source["key"];
 	        this.scale = source["scale"];
 	        this.strength = source["strength"];
+	        this.camelot = source["camelot"];
+	        this.openKey = source["openKey"];
 	    }
 	}
 	export class BackgroundJob {
@@ -347,6 +351,32 @@ export namespace model {
 		}
 	}
 	
+	export class EssentiaAnalysis {
+	    trackId: number;
+	    bpm: number;
+	    key: string;
+	    scale: string;
+	    strength: number;
+	    camelot: string;
+	    openKey: string;
+	    analyzedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EssentiaAnalysis(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.trackId = source["trackId"];
+	        this.bpm = source["bpm"];
+	        this.key = source["key"];
+	        this.scale = source["scale"];
+	        this.strength = source["strength"];
+	        this.camelot = source["camelot"];
+	        this.openKey = source["openKey"];
+	        this.analyzedAt = source["analyzedAt"];
+	    }
+	}
 	export class FFmpegUpdateResult {
 	    version: string;
 	    changed: boolean;
@@ -424,6 +454,68 @@ export namespace model {
 	        this.inputThreshold = source["inputThreshold"];
 	        this.targetOffset = source["targetOffset"];
 	    }
+	}
+	export class MetadataAudioComparison {
+	    essentiaAvailable: boolean;
+	    essentia: EssentiaAnalysis;
+	    poolBpm: number;
+	    poolBpmSupport: number;
+	    poolBpmSources: string[];
+	    poolBpmQuality: number;
+	    poolKey: string;
+	    poolKeyScale: string;
+	    poolCamelot: string;
+	    poolOpenKey: string;
+	    poolKeySupport: number;
+	    poolKeySources: string[];
+	    poolKeyQuality: number;
+	    bpmRelation: string;
+	    keyRelation: string;
+	    bpmRecommendation: string;
+	    keyRecommendation: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetadataAudioComparison(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.essentiaAvailable = source["essentiaAvailable"];
+	        this.essentia = this.convertValues(source["essentia"], EssentiaAnalysis);
+	        this.poolBpm = source["poolBpm"];
+	        this.poolBpmSupport = source["poolBpmSupport"];
+	        this.poolBpmSources = source["poolBpmSources"];
+	        this.poolBpmQuality = source["poolBpmQuality"];
+	        this.poolKey = source["poolKey"];
+	        this.poolKeyScale = source["poolKeyScale"];
+	        this.poolCamelot = source["poolCamelot"];
+	        this.poolOpenKey = source["poolOpenKey"];
+	        this.poolKeySupport = source["poolKeySupport"];
+	        this.poolKeySources = source["poolKeySources"];
+	        this.poolKeyQuality = source["poolKeyQuality"];
+	        this.bpmRelation = source["bpmRelation"];
+	        this.keyRelation = source["keyRelation"];
+	        this.bpmRecommendation = source["bpmRecommendation"];
+	        this.keyRecommendation = source["keyRecommendation"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class MetadataScore {
 	    title: number;
@@ -693,6 +785,7 @@ export namespace model {
 	    fieldOptions: MetadataFieldOption[];
 	    providerReports: MetadataProviderReport[];
 	    warnings: string[];
+	    audioComparison: MetadataAudioComparison;
 	    cached: boolean;
 	    cacheAgeSeconds: number;
 	
@@ -707,6 +800,7 @@ export namespace model {
 	        this.fieldOptions = this.convertValues(source["fieldOptions"], MetadataFieldOption);
 	        this.providerReports = this.convertValues(source["providerReports"], MetadataProviderReport);
 	        this.warnings = source["warnings"];
+	        this.audioComparison = this.convertValues(source["audioComparison"], MetadataAudioComparison);
 	        this.cached = source["cached"];
 	        this.cacheAgeSeconds = source["cacheAgeSeconds"];
 	    }

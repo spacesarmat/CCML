@@ -112,6 +112,7 @@ func NewApp() (*App, error) {
 		tagEditor:           tagEditor,
 		media:               media,
 	}
+	app.bpmKey.SetToolchain(tools)
 	app.toolUpdater = audio.NewToolUpdater(appDir, tools)
 	app.jobs = jobqueue.New(db)
 	app.jobs.RegisterConcurrent("metadata_enrichment", metadataConfig.MetadataEnrichmentConcurrency, app.runMetadataJobItem)

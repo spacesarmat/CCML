@@ -30,6 +30,7 @@ type EssentiaAnalyzer struct {
 	path       string
 	source     string
 	configPath string
+	tools      *Toolchain
 }
 
 // NewEssentiaAnalyzer discovers Essentia from a saved CCML path, CCML_ESSENTIA,
@@ -53,6 +54,29 @@ func (a *EssentiaAnalyzer) Refresh() {
 	a.path = path
 	a.source = source
 	a.mu.Unlock()
+}
+
+// SetToolchain supplies CCML's managed FFmpeg for compatibility fallback.
+func (a *EssentiaAnalyzer) SetToolchain(tools *Toolchain) {
+	if a == nil {
+		return
+	}
+	a.mu.Lock()
+	a.tools = tools
+	a.mu.Unlock()
+}
+
+func (a *EssentiaAnalyzer) ffmpegPath() string {
+	if a == nil {
+		return ""
+	}
+	a.mu.RLock()
+	tools := a.tools
+	a.mu.RUnlock()
+	if tools == nil {
+		return ""
+	}
+	return strings.TrimSpace(tools.FFmpegPath())
 }
 
 // Available reports whether Essentia can be invoked.
@@ -168,19 +192,61 @@ func validateEssentiaPath(path string) error {
 }
 
 // Analyze extracts BPM and key using Essentia's music extractor JSON output.
-func (a *EssentiaAnalyzer) Analyze(ctx context.Context, input string) (result model.BPMKey, resultErr error) {
+// If Essentia's bundled AudioLoader cannot decode the source but CCML's FFmpeg
+// is available, CCML retries through a canonical temporary PCM WAV.
+func (a *EssentiaAnalyzer) Analyze(ctx context.Context, input string) (model.BPMKey, error) {
 	path := a.Path()
 	if path == "" {
 		return model.BPMKey{}, errors.New("Essentia is not configured; choose essentia_streaming_extractor_music in Settings, set CCML_ESSENTIA, or install it on PATH")
 	}
 
+	result, output, err := runEssentiaExtractor(ctx, path, input)
+	if err == nil {
+		return result, nil
+	}
+	if ctx.Err() != nil {
+		return model.BPMKey{}, ctx.Err()
+	}
+	directErr := fmt.Errorf("run Essentia for %q: %w: %s", filepath.Base(input), err, tail(output, 3000))
+	if !essentiaNeedsFFmpegFallback(output) {
+		return model.BPMKey{}, directErr
+	}
+
+	ffmpeg := a.ffmpegPath()
+	if ffmpeg == "" {
+		return model.BPMKey{}, fmt.Errorf("%w; CCML FFmpeg compatibility fallback is unavailable", directErr)
+	}
+
+	wavPath, cleanup, prepErr := prepareEssentiaFallbackWAV(ctx, ffmpeg, input)
+	if prepErr != nil {
+		return model.BPMKey{}, fmt.Errorf("%w; prepare FFmpeg compatibility WAV: %v", directErr, prepErr)
+	}
+	defer cleanup()
+
+	fallback, fallbackOutput, fallbackErr := runEssentiaExtractor(ctx, path, wavPath)
+	if fallbackErr != nil {
+		if ctx.Err() != nil {
+			return model.BPMKey{}, ctx.Err()
+		}
+		return model.BPMKey{}, fmt.Errorf(
+			"%w; Essentia retry through CCML FFmpeg WAV failed: %v: %s",
+			directErr,
+			fallbackErr,
+			tail(fallbackOutput, 3000),
+		)
+	}
+	return fallback, nil
+}
+
+func runEssentiaExtractor(ctx context.Context, executable, input string) (result model.BPMKey, output string, resultErr error) {
 	temp, err := os.CreateTemp("", "ccml-essentia-*.json")
 	if err != nil {
-		return model.BPMKey{}, fmt.Errorf("create Essentia result file: %w", err)
+		return model.BPMKey{}, "", fmt.Errorf("create Essentia result file: %w", err)
 	}
 	resultPath := temp.Name()
 	if err := temp.Close(); err != nil {
-		return model.BPMKey{}, fmt.Errorf("close Essentia result file: %w", err)
+		_ = os.Remove(resultPath)
+		return model.BPMKey{}, "", fmt.Errorf("close Essentia result file: %w", err)
 	}
 	defer func() {
 		if err := os.Remove(resultPath); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -188,15 +254,16 @@ func (a *EssentiaAnalyzer) Analyze(ctx context.Context, input string) (result mo
 		}
 	}()
 
-	cmd := exec.CommandContext(ctx, path, input, resultPath)
-	output, err := cmd.CombinedOutput()
+	cmd := exec.CommandContext(ctx, executable, input, resultPath)
+	raw, err := cmd.CombinedOutput()
+	output = string(raw)
 	if err != nil {
-		return model.BPMKey{}, fmt.Errorf("run Essentia for %q: %w: %s", filepath.Base(input), err, tail(string(output), 3000))
+		return model.BPMKey{}, output, err
 	}
 
 	data, err := os.ReadFile(resultPath)
 	if err != nil {
-		return model.BPMKey{}, fmt.Errorf("read Essentia JSON: %w", err)
+		return model.BPMKey{}, output, fmt.Errorf("read Essentia JSON: %w", err)
 	}
 	var parsed struct {
 		Rhythm struct {
@@ -209,7 +276,7 @@ func (a *EssentiaAnalyzer) Analyze(ctx context.Context, input string) (result mo
 		} `json:"tonal"`
 	}
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return model.BPMKey{}, fmt.Errorf("decode Essentia JSON: %w", err)
+		return model.BPMKey{}, output, fmt.Errorf("decode Essentia JSON: %w", err)
 	}
 	result = model.BPMKey{
 		BPM:      parsed.Rhythm.BPM,
@@ -218,5 +285,69 @@ func (a *EssentiaAnalyzer) Analyze(ctx context.Context, input string) (result mo
 		Strength: parsed.Tonal.KeyStrength,
 	}
 	result.Camelot, result.OpenKey, _ = DJKeyFormats(result.Key, result.Scale)
-	return result, nil
+	return result, output, nil
+}
+
+func essentiaNeedsFFmpegFallback(output string) bool {
+	value := strings.ToLower(output)
+	for _, marker := range []string{
+		"audioloader:",
+		"error reading frame",
+		"completely silent file",
+		"error number -5 occurred",
+	} {
+		if strings.Contains(value, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func prepareEssentiaFallbackWAV(ctx context.Context, ffmpeg, input string) (string, func(), error) {
+	tempDir, err := os.MkdirTemp("", "ccml-essentia-wav-*")
+	if err != nil {
+		return "", func() {}, fmt.Errorf("create compatibility directory: %w", err)
+	}
+	cleanup := func() {
+		_ = os.RemoveAll(tempDir)
+	}
+	outputPath := filepath.Join(tempDir, "audio.wav")
+	cmd := exec.CommandContext(
+		ctx,
+		ffmpeg,
+		"-v", "warning",
+		"-nostdin",
+		"-y",
+		"-err_detect", "ignore_err",
+		"-fflags", "+discardcorrupt",
+		"-i", input,
+		"-map", "0:a:0",
+		"-map_metadata", "-1",
+		"-map_chapters", "-1",
+		"-vn",
+		"-sn",
+		"-dn",
+		"-ac", "1",
+		"-ar", "44100",
+		"-c:a", "pcm_s16le",
+		outputPath,
+	)
+	raw, err := cmd.CombinedOutput()
+	if err != nil {
+		cleanup()
+		if ctx.Err() != nil {
+			return "", func() {}, ctx.Err()
+		}
+		return "", func() {}, fmt.Errorf("FFmpeg decode failed: %w: %s", err, tail(string(raw), 3000))
+	}
+	info, err := os.Stat(outputPath)
+	if err != nil {
+		cleanup()
+		return "", func() {}, fmt.Errorf("inspect compatibility WAV: %w", err)
+	}
+	if info.Size() <= 44 {
+		cleanup()
+		return "", func() {}, errors.New("FFmpeg compatibility WAV contains no decoded audio")
+	}
+	return outputPath, cleanup, nil
 }
