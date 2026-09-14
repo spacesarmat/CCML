@@ -119,14 +119,37 @@ func bananaStreetSearchURL(baseURL, term string) string {
 
 func bananaStreetCandidatesFromHTML(doc, sourceURL string, query model.MetadataQuery) []model.MetadataCandidate {
 	lines := bananaStreetVisibleLines(doc)
-	if len(lines) < 6 {
+	if len(lines) == 0 {
 		return nil
 	}
 
 	out := make([]model.MetadataCandidate, 0, 8)
 	seen := map[string]bool{}
+	add := func(item model.MetadataCandidate) {
+		if bananaStreetQueryFit(query, item) < 0 {
+			return
+		}
+		key := normalizeText(item.Artist) + "\x00" + normalizeText(item.Title) + "\x00" + normalizeText(item.Genre)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		out = append(out, item)
+	}
 
-	// Public release cards are rendered in the observed order:
+	// The public search page can render compact track results as one identity
+	// line: "Artist - Title". The following line may be an uploader/author and
+	// must not be treated as the full track artist. Try every separator and keep
+	// only the split that conservatively matches the lookup query.
+	if strings.TrimSpace(query.Artist) != "" && strings.TrimSpace(query.Title) != "" {
+		for _, line := range lines {
+			if item, ok := bananaStreetCombinedLineCandidate(line, sourceURL, query); ok {
+				add(item)
+			}
+		}
+	}
+
+	// Older/public release cards are rendered in the observed order:
 	// Title, Artist, like count, comment count, Genre, stream count.
 	// Numeric counters are deliberately ignored; they are only structural
 	// anchors so navigation text is not mistaken for metadata.
@@ -147,7 +170,7 @@ func bananaStreetCandidatesFromHTML(doc, sourceURL string, query model.MetadataQ
 			continue
 		}
 
-		item := model.MetadataCandidate{
+		add(model.MetadataCandidate{
 			Source:     "Bananastreet",
 			SourceKind: ProviderKindDJPool,
 			ExternalID: bananaStreetExternalID(artist, title, genre),
@@ -155,19 +178,72 @@ func bananaStreetCandidatesFromHTML(doc, sourceURL string, query model.MetadataQ
 			Title:      title,
 			Artist:     artist,
 			Genre:      genre,
+		})
+	}
+	return out
+}
+
+func bananaStreetCombinedLineCandidate(line, sourceURL string, query model.MetadataQuery) (model.MetadataCandidate, bool) {
+	line = strings.TrimSpace(line)
+	if line == "" || !strings.Contains(line, " - ") {
+		return model.MetadataCandidate{}, false
+	}
+
+	bestScore := -1.0
+	best := model.MetadataCandidate{}
+	searchFrom := 0
+	for {
+		relative := strings.Index(line[searchFrom:], " - ")
+		if relative < 0 {
+			break
 		}
-		if bananaStreetQueryFit(query, item) < 0 {
+		index := searchFrom + relative
+		artist := strings.TrimSpace(line[:index])
+		title := strings.TrimSpace(line[index+3:])
+		searchFrom = index + 3
+		if artist == "" || title == "" || bananaStreetNoiseLine(artist) || bananaStreetNoiseLine(title) {
 			continue
 		}
 
-		key := normalizeText(item.Artist) + "\x00" + normalizeText(item.Title) + "\x00" + normalizeText(item.Genre)
-		if seen[key] {
+		item := model.MetadataCandidate{
+			Source:     "Bananastreet",
+			SourceKind: ProviderKindDJPool,
+			ExternalID: bananaStreetExternalID(artist, title, ""),
+			SourceURL:  sourceURL,
+			Title:      title,
+			Artist:     artist,
+		}
+		score := bananaStreetQueryFit(query, item)
+		if score < 0 {
 			continue
 		}
-		seen[key] = true
-		out = append(out, item)
+
+		// Compact search rows have fewer structural anchors than release cards,
+		// so require a stronger identity fit before accepting them.
+		titleFit := textSimilarity(query.Title, title)
+		if queryBase := strings.TrimSpace(stripVersionText(query.Title)); queryBase != "" {
+			candidateBase := strings.TrimSpace(stripVersionText(title))
+			if candidateBase == "" {
+				candidateBase = title
+			}
+			if baseFit := textSimilarity(queryBase, candidateBase); baseFit > titleFit {
+				titleFit = baseFit
+			}
+		}
+		artistFit := textSimilarity(query.Artist, artist)
+		if titleFit < 0.62 || artistFit < 0.48 {
+			continue
+		}
+
+		if score > bestScore {
+			bestScore = score
+			best = item
+		}
 	}
-	return out
+	if bestScore < 0 {
+		return model.MetadataCandidate{}, false
+	}
+	return best, true
 }
 
 func bananaStreetVisibleLines(doc string) []string {

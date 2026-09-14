@@ -97,6 +97,58 @@ func TestBananaStreetCandidatesParsePublicFields(t *testing.T) {
 	}
 }
 
+func TestBananaStreetParsesObservedCompactSearchResult(t *testing.T) {
+	t.Parallel()
+
+	const fixture = `
+	<html><body>
+	  <div>Happy Deny</div>
+	  <div>•</div>
+	  <div>Rodionov1977</div>
+	  <button>Слушать</button>
+	  <a href="/track/example">Vadim Adamov, Hardphol, MVRGØ - У тебя одной</a>
+	  <a href="/user/vadim-adamov">Vadim Adamov</a>
+	  <button>Слушать</button>
+	  <div>Hosted by SKWIIK - Sibanium Radio EP074</div>
+	  <div>PROGRAMIQA Radio</div>
+	</body></html>`
+
+	items := bananaStreetCandidatesFromHTML(
+		fixture,
+		"https://bananastreet.ru/search?q=test",
+		model.MetadataQuery{
+			Artist: "Vadim Adamov, Hardphol, Mvrgø",
+			Title:  "У Тебя Одной",
+		},
+	)
+	if len(items) != 1 {
+		t.Fatalf("compact search candidate = %+v", items)
+	}
+	got := items[0]
+	if got.Artist != "Vadim Adamov, Hardphol, MVRGØ" || got.Title != "У тебя одной" {
+		t.Fatalf("unexpected identity: %+v", got)
+	}
+	if got.Genre != "" || got.BPM != 0 || got.Key != "" {
+		t.Fatalf("unconfirmed compact-row fields must stay empty: %+v", got)
+	}
+}
+
+func TestBananaStreetCombinedLineChoosesBestSeparator(t *testing.T) {
+	t.Parallel()
+
+	item, ok := bananaStreetCombinedLineCandidate(
+		"Artist One - Track Name - Club Edit",
+		"https://bananastreet.ru/search?q=test",
+		model.MetadataQuery{Artist: "Artist One", Title: "Track Name - Club Edit"},
+	)
+	if !ok {
+		t.Fatal("expected combined-line candidate")
+	}
+	if item.Artist != "Artist One" || item.Title != "Track Name - Club Edit" {
+		t.Fatalf("unexpected split: %+v", item)
+	}
+}
+
 func TestBananaStreetParserRejectsUnrelatedTracks(t *testing.T) {
 	t.Parallel()
 
