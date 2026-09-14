@@ -3860,3 +3860,111 @@ button:disabled:hover {
 :root[data-ccml-theme='light'] .library-cover-filter {
   background: #ffffff;
 }
+/* Stage 11.3.3 — Jobs active items theme coverage */
+
+/* Parallel metadata status container */
+.job-parallel-status {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text);
+}
+
+.job-parallel-metrics {
+  color: var(--ccml-text-muted);
+}
+
+.job-parallel-metrics strong {
+  color: var(--ccml-success);
+}
+
+/* Active worker list */
+.job-active-items {
+  background: transparent;
+}
+
+.job-active-track-link {
+  border: 1px solid var(--ccml-border-subtle);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text);
+}
+
+.job-active-track-link code,
+.job-active-items code {
+  background: transparent;
+  color: var(--ccml-text-muted);
+}
+
+.job-active-track-link:hover,
+.job-active-track-link:focus-visible {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+}
+
+.job-active-track-link:hover code,
+.job-active-track-link:focus-visible code {
+  color: var(--ccml-text-strong);
+}
+
+/* Current item and expanded job rows should use the same semantic palette. */
+.job-current code {
+  color: var(--ccml-text);
+}
+
+.job-items {
+  border-top-color: var(--ccml-border-subtle);
+}
+
+.job-item {
+  border-color: var(--ccml-border-subtle);
+  background: var(--ccml-surface-1);
+}
+
+.job-item:hover {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+}
+
+.job-item > span,
+.job-item small {
+  color: var(--ccml-text-muted);
+}
+
+.job-item code {
+  color: var(--ccml-text);
+}
+
+/* Light fallback keeps active paths visibly separated without dark islands. */
+:root[data-ccml-theme='light'] .job-parallel-status {
+  background: #ffffff;
+}
+
+:root[data-ccml-theme='light'] .job-active-track-link {
+  border-color: #d5dee7;
+  background: #f4f7fa;
+}
+
+:root[data-ccml-theme='light'] .job-active-track-link code,
+:root[data-ccml-theme='light'] .job-active-items code {
+  color: #607285;
+}
+
+:root[data-ccml-theme='light'] .job-active-track-link:hover,
+:root[data-ccml-theme='light'] .job-active-track-link:focus-visible {
+  border-color: #aebdcc;
+  background: #e9eff5;
+}
+
+:root[data-ccml-theme='light'] .job-active-track-link:hover code,
+:root[data-ccml-theme='light'] .job-active-track-link:focus-visible code {
+  color: #26384a;
+}
+
+:root[data-ccml-theme='light'] .job-item {
+  border-color: #d8e0e8;
+  background: #ffffff;
+}
+
+:root[data-ccml-theme='light'] .job-item:hover {
+  border-color: #b9c7d4;
+  background: #f4f7fa;
+}
