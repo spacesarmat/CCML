@@ -614,23 +614,17 @@ body { min-width: 1080px; overflow: hidden; }
 }
 
 /* Built-in CCML Help. */
-.help-modal {
-  width: min(1040px, calc(100vw - 48px));
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  position: relative;
-  isolation: isolate;
-  background: #0f1621;
-}
+.help-modal { width: min(1040px, calc(100vw - 48px)); }
 .help-header span { display: block; margin-top: 3px; }
-.help-search-row { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 11px 14px; border-bottom: 1px solid #263142; background: #0d141e; }
+.help-search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 11px 14px; border-bottom: 1px solid #263142; background: #0d141e; }
 .help-search-row input { width: 100%; min-width: 0; }
 .help-search-row button { width: 34px; padding: 0; }
-.help-layout { min-height: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr); overflow: hidden; position: relative; z-index: 1; }
-.help-nav { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px 9px; border-right: 1px solid #263142; background: #0d131c; }
+.help-layout { min-height: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr); overflow: hidden; }
+.help-nav { min-height: 0; overflow: auto; padding: 12px 9px; border-right: 1px solid #263142; background: #0d131c; }
 .help-nav > strong { display: block; padding: 3px 7px 8px; color: #68788f; font-size: 8px; text-transform: uppercase; letter-spacing: .09em; }
 .help-nav button { width: 100%; padding: 7px 8px; border-color: transparent; background: transparent; color: #9dacbe; font-size: 9px; text-align: left; }
 .help-nav button:hover { border-color: #2c3a4e; background: #151f2c; color: #d7e1ed; }
-.help-content { min-height: 0; overflow: auto; overscroll-behavior: contain; scroll-behavior: smooth; padding: 14px; background: #0f1621; }
+.help-content { min-height: 0; overflow: auto; scroll-behavior: smooth; padding: 14px; }
 .help-empty { padding: 30px 14px; color: #7e8da2; text-align: center; }
 .help-section { scroll-margin-top: 12px; padding: 14px; border: 1px solid #273548; border-radius: 10px; background: #0f1722; }
 .help-section + .help-section { margin-top: 10px; }

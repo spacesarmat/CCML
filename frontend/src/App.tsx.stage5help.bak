@@ -4,7 +4,6 @@ import TagEditor from './TagEditor'
 import MetadataMerge from './MetadataMerge'
 import SettingsModal from './SettingsModal'
 import JobsPanel from './JobsPanel'
-import HelpModal from './HelpModal'
 import {
   detectInitialLanguage,
   localeFor,
@@ -83,7 +82,6 @@ function App() {
   const [scanning, setScanning] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [jobsOpen, setJobsOpen] = useState(false)
-  const [helpOpen, setHelpOpen] = useState(false)
   const [metadataFilter, setMetadataFilter] = useState<'all' | 'skipped' | 'failed'>('all')
   const [mainView, setMainView] = useState<'library' | 'duplicates'>('library')
   const [inspectorTab, setInspectorTab] = useState<'tags' | 'metadata' | 'analysis' | 'organize'>('tags')
@@ -153,16 +151,6 @@ function App() {
   }, [language])
 
   useEffect(() => {
-    const onHelpKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'F1') return
-      event.preventDefault()
-      setHelpOpen(true)
-    }
-    window.addEventListener('keydown', onHelpKeyDown)
-    return () => window.removeEventListener('keydown', onHelpKeyDown)
-  }, [])
-
-  useEffect(() => {
     if (activeTrackID === null || mainView !== 'library') return
     const frame = window.requestAnimationFrame(() => {
       const row = document.querySelector<HTMLTableRowElement>(`tr[data-track-id="${activeTrackID}"]`)
@@ -178,14 +166,14 @@ function App() {
       const target = event.target as HTMLElement | null
 
       if (command && key.toLowerCase() === 'f') {
-        if (settingsOpen || jobsOpen || helpOpen || mainView !== 'library') return
+        if (settingsOpen || jobsOpen || mainView !== 'library') return
         event.preventDefault()
         searchInputRef.current?.focus()
         searchInputRef.current?.select()
         return
       }
 
-      if (settingsOpen || jobsOpen || helpOpen || mainView !== 'library') return
+      if (settingsOpen || jobsOpen || mainView !== 'library') return
       if (target?.closest('input, textarea, select, button, a, [contenteditable="true"], [role="slider"]')) return
 
       if (command && key.toLowerCase() === 'a') {
@@ -247,7 +235,6 @@ function App() {
     activeTrackID,
     filteredTracks,
     jobsOpen,
-    helpOpen,
     mainView,
     mediaFallbackLoading,
     mediaLoading,
@@ -835,7 +822,6 @@ function App() {
           </div>
           <button className="top-action" onClick={() => setJobsOpen(true)}>{t('jobs.button')}</button>
           <button className="top-action" onClick={() => setSettingsOpen(true)} disabled={busy || scanning}>{t('settings.button')}</button>
-          <button className="top-action" onClick={() => setHelpOpen(true)} title={language === 'ru' ? 'Справка (F1)' : 'Help (F1)'}>{language === 'ru' ? 'Справка' : 'Help'}</button>
           <div className="language-switcher compact" aria-label={t('language.label')}>
             <button type="button" className={language === 'ru' ? 'active' : ''} onClick={() => changeLanguage('ru')} aria-pressed={language === 'ru'}>RU</button>
             <button type="button" className={language === 'en' ? 'active' : ''} onClick={() => changeLanguage('en')} aria-pressed={language === 'en'}>EN</button>
@@ -1182,7 +1168,6 @@ function App() {
         </aside>
       </div>
 
-      <HelpModal language={language} open={helpOpen} version={t('footer.version')} onClose={() => setHelpOpen(false)} />
       <JobsPanel language={language} open={jobsOpen} onClose={() => setJobsOpen(false)} onMessage={setMessage} />
       <SettingsModal language={language} open={settingsOpen} status={status} onClose={() => setSettingsOpen(false)} onSaved={async () => { await refreshStatus() }} onMessage={setMessage} />
 

@@ -1,0 +1,78 @@
+﻿CCML — Stage 6: Parallel Metadata Enrichment
+
+Goal:
+Make "Дополнить выбранные" / "Enrich selected" substantially faster for a large
+multi-track selection.
+
+Current bottleneck:
+CCML already queries different metadata providers concurrently for one track,
+but the background queue processes selected tracks strictly one-by-one.
+
+New execution model:
+
+Before:
+  Track 1 -> providers in parallel -> finish
+  Track 2 -> providers in parallel -> finish
+  Track 3 -> ...
+
+After:
+  Track 1 ┐
+  Track 2 ├─ up to 4 tracks concurrently
+  Track 3 ┤   and providers inside each track remain concurrent
+  Track 4 ┘
+
+Safety:
+- bounded at 4 tracks, not unlimited goroutines
+- MusicBrainz/iTunes/TheAudioDB provider rate limiters remain active
+- persistent SQLite Jobs progress remains intact
+- Pause cancels all currently running workers and requeues unfinished items
+- Cancel cancels queued work and interrupts current workers
+- successful items that finish at the same moment as Pause/Cancel remain successful
+- app shutdown requeues in-flight work for the next launch
+- Retry failed remains supported
+- old Manager.Register callers remain serial and unchanged
+
+Only metadata_enrichment opts into 4 workers.
+
+Install:
+1. Stop Wails:
+   Ctrl+C
+
+2. Extract ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage6-parallel-metadata.ps1"
+
+Expected:
+   Stage 6 parallel metadata enrichment installed successfully.
+   Metadata enrichment worker count: 4 tracks.
+
+4. Tests:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   go test ./internal/jobs
+   go test ./internal/metadata
+   go test .
+
+5. If built-in Help was installed, frontend/src/HelpModal.tsx is updated too.
+   Build frontend:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+6. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+Test with:
+- select 12-30 tracks
+- click "Дополнить выбранные"
+- open Tasks
+- progress should advance noticeably faster than the previous serial job
+
+A regression test checks that a 3-worker test job actually reaches parallelism >1
+without exceeding the configured worker count.
+
+Backups:
+internal\jobs\manager.go.stage6.bak
+app.go.stage6.bak
+frontend\src\HelpModal.tsx.stage6.bak (when Help exists)

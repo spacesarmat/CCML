@@ -578,6 +578,7 @@ export namespace model {
 	    soundCloudEnabled: boolean;
 	    yandexMusicEnabled: boolean;
 	    traxsourceEnabled: boolean;
+	    traxsourceApiKey: string;
 	    theAudioDBApiKey: string;
 	    iTunesCountry: string;
 	    discogsToken: string;
@@ -609,6 +610,7 @@ export namespace model {
 	        this.soundCloudEnabled = source["soundCloudEnabled"];
 	        this.yandexMusicEnabled = source["yandexMusicEnabled"];
 	        this.traxsourceEnabled = source["traxsourceEnabled"];
+	        this.traxsourceApiKey = source["traxsourceApiKey"];
 	        this.theAudioDBApiKey = source["theAudioDBApiKey"];
 	        this.iTunesCountry = source["iTunesCountry"];
 	        this.discogsToken = source["discogsToken"];

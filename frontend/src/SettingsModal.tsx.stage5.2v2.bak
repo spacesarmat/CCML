@@ -131,9 +131,7 @@ function SettingsModal({language, open, status, onClose, onSaved, onMessage}: Pr
                 <SettingInput label={t('settings.yandexMusicLanguage')} value={settings.yandexMusicLanguage} onChange={(v) => change('yandexMusicLanguage', v)} placeholder="ru" />
               </ProviderCard>
 
-              <ProviderCard language={language} title="Traxsource" health={providerHealth['Traxsource']} description={t('settings.traxsourceDescription')} enabled={settings.traxsourceEnabled} onEnabled={(v) => change('traxsourceEnabled', v)} badge={t('settings.experimentalSource')} helpLabel={t('settings.traxsourceBridge')} onHelp={() => void openProviderPage('traxsourcebridge')}>
-                <SettingInput label={t('settings.traxsourceApiKey')} value={settings.traxsourceApiKey} onChange={(v) => change('traxsourceApiKey', v)} password placeholder={t('settings.optional')} />
-              </ProviderCard>
+              <ProviderCard language={language} title="Traxsource" health={providerHealth['Traxsource']} description={t('settings.traxsourceDescription')} enabled={settings.traxsourceEnabled} onEnabled={(v) => change('traxsourceEnabled', v)} badge={t('settings.experimentalSource')} helpLabel={t('settings.termsAndWebsite')} onHelp={() => void openProviderPage('traxsource')} />
 
               <ProviderCard language={language} title="Discogs" health={providerHealth['Discogs']} description={t('settings.discogsDescription')} enabled={settings.discogsEnabled} onEnabled={(v) => change('discogsEnabled', v)} badge={t('settings.credentialsRequired')} helpLabel={t('settings.getCredentials')} onHelp={() => void openProviderPage('discogs')}>
                 <SettingInput label={t('settings.discogsToken')} value={settings.discogsToken} onChange={(v) => change('discogsToken', v)} password />

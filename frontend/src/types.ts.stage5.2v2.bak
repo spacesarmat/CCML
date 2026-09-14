@@ -282,7 +282,6 @@ export type MetadataSettings = {
   soundCloudEnabled: boolean
   yandexMusicEnabled: boolean
   traxsourceEnabled: boolean
-  traxsourceApiKey: string
   theAudioDBApiKey: string
   iTunesCountry: string
   discogsToken: string

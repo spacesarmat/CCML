@@ -398,8 +398,6 @@ type MetadataSettings struct {
 	YandexMusicEnabled bool `json:"yandexMusicEnabled"`
 	TraxsourceEnabled  bool `json:"traxsourceEnabled"`
 
-	TraxsourceAPIKey string `json:"traxsourceApiKey"`
-
 	TheAudioDBAPIKey         string `json:"theAudioDBApiKey"`
 	ITunesCountry            string `json:"iTunesCountry"`
 	DiscogsToken             string `json:"discogsToken"`
@@ -430,7 +428,6 @@ func (s *MetadataSettings) Normalize() {
 	s.SoundCloudAccessToken = strings.TrimSpace(s.SoundCloudAccessToken)
 	s.YandexMusicToken = strings.TrimSpace(s.YandexMusicToken)
 	s.YandexMusicLanguage = strings.ToLower(strings.TrimSpace(s.YandexMusicLanguage))
-	s.TraxsourceAPIKey = strings.TrimSpace(s.TraxsourceAPIKey)
 
 	if s.TheAudioDBAPIKey == "" {
 		s.TheAudioDBAPIKey = "123"

@@ -1,0 +1,37 @@
+﻿CCML — Stage 4.1: Table selection polish
+
+Fixes the visual problem where Shift+click selected browser text in blue
+on top of the CCML multi-row selection.
+
+Changes:
+- disables native browser text selection only inside the table body
+- keeps CCML Shift+click range selection unchanged
+- adds a subtle left accent to selected rows
+- keeps the active row visually distinct
+
+No backend, metadata, player, artwork or audio-processing changes.
+
+Install:
+
+1. Stop Wails:
+   Ctrl+C
+
+2. Extract ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage4.1-selection-polish.ps1"
+
+4. Build frontend:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+5. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+Test:
+- click one row
+- Shift+click another row
+- only CCML row highlighting should remain
+- artist/title/album text must no longer turn into browser-blue text selection

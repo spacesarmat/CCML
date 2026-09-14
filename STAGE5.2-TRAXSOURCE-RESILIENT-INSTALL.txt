@@ -1,0 +1,67 @@
+﻿CCML — Stage 5.2: Traxsource resilient search
+
+Why:
+Traxsource currently presents Cloudflare / human-verification challenges to some
+unattended HTTP clients. A raw HTML scraper can therefore return HTTP 403 even
+though the catalog is public in a normal browser.
+
+This stage DOES NOT emulate or defeat the Cloudflare challenge.
+
+New behavior:
+1. CCML tries the public Traxsource site directly, as before.
+2. If direct lookup returns useful results, nothing else is called.
+3. If direct lookup is blocked by Cloudflare/human verification, or returns no
+   usable search results, CCML can call an optional structured JSON fallback.
+4. The fallback API key is configured under Settings -> Traxsource.
+5. If no fallback key is configured, CCML reports a compact actionable error
+   instead of dumping a Cloudflare HTML page.
+
+Current fallback:
+Parse Traxsource API (independent third-party wrapper over public data)
+https://parse.bot/marketplace/0123da1a-5d2d-4970-bf6f-398f792855a1/traxsource-com-api
+
+The API service currently documents a free tier. Usage/pricing are controlled by
+that third party and can change; CCML does not bundle or resell the service.
+
+Environment variable alternative:
+TRAXSOURCE_API_KEY
+
+Install:
+1. Stop Wails:
+   Ctrl+C
+
+2. Extract ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage5.2-traxsource-resilient.ps1"
+
+4. Backend tests:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   go test ./internal/metadata
+   go test ./internal/settings
+   go test .
+
+5. Frontend build:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+6. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+Configure:
+- Settings
+- Traxsource
+- enable Traxsource
+- enter "Traxsource fallback API key (optional)"
+- Save
+- use "Test connections"
+
+Important:
+Direct Traxsource remains the preferred zero-key path. The API key is only a
+fallback for the Cloudflare/empty-result case.
+
+Regression tests included:
+- bridge JSON -> MetadataCandidate parsing
+- direct HTTP 403 Cloudflare -> automatic bridge fallback

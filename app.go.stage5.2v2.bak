@@ -112,7 +112,7 @@ func NewApp() (*App, error) {
 	}
 	app.toolUpdater = audio.NewToolUpdater(appDir, tools)
 	app.jobs = jobqueue.New(db)
-	app.jobs.RegisterConcurrent("metadata_enrichment", 4, app.runMetadataJobItem)
+	app.jobs.Register("metadata_enrichment", app.runMetadataJobItem)
 	app.jobs.SetEmitter(func(name string, payload any) {
 		if app.ctx != nil {
 			runtime.EventsEmit(app.ctx, name, payload)
@@ -254,18 +254,17 @@ func (a *App) OpenMetadataLink(key string) error {
 		return errors.New("application is not ready")
 	}
 	links := map[string]string{
-		"musicbrainz":      "https://musicbrainz.org/doc/MusicBrainz_API",
-		"deezer":           "https://developers.deezer.com/api",
-		"itunes":           "https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/index.html",
-		"theaudiodb":       "https://www.theaudiodb.com/free_music_api",
-		"discogs":          "https://www.discogs.com/settings/developers",
-		"spotify":          "https://developer.spotify.com/dashboard",
-		"applemusic":       "https://developer.apple.com/account/resources/authkeys/list",
-		"youtube":          "https://console.cloud.google.com/apis/credentials",
-		"soundcloud":       "https://developers.soundcloud.com/docs/api/register-app",
-		"yandexmusic":      "https://yandex.ru/dev/id/doc/ru/register-api",
-		"traxsource":       "https://www.traxsource.com/terms-of-service",
-		"traxsourcebridge": "https://parse.bot/marketplace/0123da1a-5d2d-4970-bf6f-398f792855a1/traxsource-com-api",
+		"musicbrainz": "https://musicbrainz.org/doc/MusicBrainz_API",
+		"deezer":      "https://developers.deezer.com/api",
+		"itunes":      "https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/index.html",
+		"theaudiodb":  "https://www.theaudiodb.com/free_music_api",
+		"discogs":     "https://www.discogs.com/settings/developers",
+		"spotify":     "https://developer.spotify.com/dashboard",
+		"applemusic":  "https://developer.apple.com/account/resources/authkeys/list",
+		"youtube":     "https://console.cloud.google.com/apis/credentials",
+		"soundcloud":  "https://developers.soundcloud.com/docs/api/register-app",
+		"yandexmusic": "https://yandex.ru/dev/id/doc/ru/register-api",
+		"traxsource":  "https://www.traxsource.com/terms-of-service",
 	}
 	url, ok := links[strings.ToLower(strings.TrimSpace(key))]
 	if !ok {
@@ -349,7 +348,7 @@ func buildMetadataService(config model.MetadataSettings) *metadata.Service {
 		providers = append(providers, metadata.NewYandexMusicProvider(config.YandexMusicToken, config.YandexMusicLanguage, metadataUserAgent))
 	}
 	if config.TraxsourceEnabled {
-		providers = append(providers, metadata.NewTraxsourceProviderWithFallback(metadataUserAgent, config.TraxsourceAPIKey))
+		providers = append(providers, metadata.NewTraxsourceProvider(metadataUserAgent))
 	}
 	return metadata.NewService(providers...)
 }

@@ -1,0 +1,66 @@
+﻿CCML — Stage 6 v2: Parallel Metadata Enrichment + packaging cleanup
+
+This version fixes two installer/package problems:
+
+1. Old CCML hotfix ZIPs could leave helper .go files in the project root.
+   Go then reported:
+     found packages metadata (...) and main (app.go)
+
+   Stage 6 v2 automatically removes ONLY root-level files matching:
+     C:\Users\ANDYBUM\GolandProjects\CCML\CCML-stage*.go
+
+2. Stage 6 v1 used a strict runJob text anchor.
+   v2 locates runJob/Register/runner by Go function structure and regex instead.
+
+IMPORTANT:
+Payload source code inside this ZIP uses .txt extensions, not .go, so merely
+extracting this archive cannot create mixed Go packages.
+
+Install:
+
+1. Stop Wails:
+   Ctrl+C
+
+2. Extract:
+   Expand-Archive `
+     -Path "$env:USERPROFILE\Downloads\CCML-stage6-parallel-metadata-v2.zip" `
+     -DestinationPath "C:\Users\ANDYBUM\GolandProjects\CCML" `
+     -Force
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File `
+     "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage6-parallel-metadata-v2.ps1"
+
+Expected:
+   Stage 6 v2 parallel metadata enrichment installed successfully.
+   Metadata enrichment concurrency: 4 tracks.
+   Old root-level CCML-stage*.go payloads were cleaned.
+
+4. Verify no stray root Go payloads remain:
+   Get-ChildItem "C:\Users\ANDYBUM\GolandProjects\CCML" -File -Filter "CCML-stage*.go"
+
+Expected: no output.
+
+5. Tests:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   go test ./internal/jobs
+   go test ./internal/metadata
+   go test ./internal/settings
+   go test .
+
+6. Frontend:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+7. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+Standalone cleanup:
+If you only want to fix the current mixed-package Wails error before installing
+Stage 6, run:
+   powershell -ExecutionPolicy Bypass -File `
+     "C:\Users\ANDYBUM\GolandProjects\CCML\cleanup-ccml-stage-payloads.ps1"
+
+The cleanup touches no real CCML source file; it only deletes root-level
+CCML-stage*.go helper payloads created by older hotfix archives.

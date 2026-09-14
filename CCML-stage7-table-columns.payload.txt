@@ -1,0 +1,350 @@
+import { useState, type ReactNode } from 'react'
+import type { AppLanguage } from './i18n'
+import type { Track } from './types'
+
+export type TableColumnID =
+  | 'trackNumber'
+  | 'artist'
+  | 'title'
+  | 'album'
+  | 'albumArtist'
+  | 'year'
+  | 'genre'
+  | 'label'
+  | 'catalogNumber'
+  | 'releaseDate'
+  | 'duration'
+  | 'codec'
+  | 'sampleRate'
+  | 'bitRate'
+  | 'channels'
+  | 'lufs'
+  | 'truePeak'
+  | 'bpmKey'
+  | 'isrc'
+  | 'fileName'
+  | 'path'
+
+export type TableLayout = {
+  order: TableColumnID[]
+  visible: TableColumnID[]
+}
+
+const ALL_COLUMNS: TableColumnID[] = [
+  'trackNumber',
+  'artist',
+  'title',
+  'album',
+  'albumArtist',
+  'year',
+  'genre',
+  'label',
+  'catalogNumber',
+  'releaseDate',
+  'duration',
+  'codec',
+  'sampleRate',
+  'bitRate',
+  'channels',
+  'lufs',
+  'truePeak',
+  'bpmKey',
+  'isrc',
+  'fileName',
+  'path',
+]
+
+export const DEFAULT_TABLE_LAYOUT: TableLayout = {
+  order: [...ALL_COLUMNS],
+  visible: ['trackNumber', 'artist', 'title', 'album', 'duration', 'codec', 'lufs', 'bpmKey'],
+}
+
+const STORAGE_KEY = 'ccml.table-layout.v1'
+
+const LABELS: Record<AppLanguage, Record<TableColumnID, string>> = {
+  ru: {
+    trackNumber: '#',
+    artist: 'Исполнитель',
+    title: 'Название',
+    album: 'Альбом',
+    albumArtist: 'Исполнитель альбома',
+    year: 'Год',
+    genre: 'Жанр',
+    label: 'Лейбл',
+    catalogNumber: 'Каталожный №',
+    releaseDate: 'Дата релиза',
+    duration: 'Время',
+    codec: 'Кодек',
+    sampleRate: 'Sample Rate',
+    bitRate: 'Битрейт',
+    channels: 'Каналы',
+    lufs: 'LUFS',
+    truePeak: 'True Peak',
+    bpmKey: 'BPM / Key',
+    isrc: 'ISRC',
+    fileName: 'Имя файла',
+    path: 'Путь',
+  },
+  en: {
+    trackNumber: '#',
+    artist: 'Artist',
+    title: 'Title',
+    album: 'Album',
+    albumArtist: 'Album Artist',
+    year: 'Year',
+    genre: 'Genre',
+    label: 'Label',
+    catalogNumber: 'Catalog #',
+    releaseDate: 'Release Date',
+    duration: 'Time',
+    codec: 'Codec',
+    sampleRate: 'Sample Rate',
+    bitRate: 'Bitrate',
+    channels: 'Channels',
+    lufs: 'LUFS',
+    truePeak: 'True Peak',
+    bpmKey: 'BPM / Key',
+    isrc: 'ISRC',
+    fileName: 'File Name',
+    path: 'Path',
+  },
+}
+
+export function isTableColumnID(value: string): value is TableColumnID {
+  return (ALL_COLUMNS as string[]).includes(value)
+}
+
+export function tableColumnLabel(id: TableColumnID, language: AppLanguage): string {
+  return LABELS[language][id]
+}
+
+export function loadTableLayout(): TableLayout {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) return cloneDefaultLayout()
+    const parsed = JSON.parse(raw) as Partial<TableLayout>
+    return normalizeTableLayout(parsed)
+  } catch {
+    return cloneDefaultLayout()
+  }
+}
+
+export function saveTableLayout(layout: TableLayout): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeTableLayout(layout)))
+  } catch {
+    // A locked-down WebView may disable localStorage. The table still works for
+    // the current session, so persistence failure is intentionally non-fatal.
+  }
+}
+
+export function resetTableLayout(): TableLayout {
+  const next = cloneDefaultLayout()
+  saveTableLayout(next)
+  return next
+}
+
+export function reorderTableColumns(order: TableColumnID[], source: TableColumnID, target: TableColumnID): TableColumnID[] {
+  if (source === target) return order
+  const next = [...order]
+  const sourceIndex = next.indexOf(source)
+  const targetIndex = next.indexOf(target)
+  if (sourceIndex < 0 || targetIndex < 0) return order
+  next.splice(sourceIndex, 1)
+  next.splice(targetIndex, 0, source)
+  return next
+}
+
+export function renderTableColumn(
+  id: TableColumnID,
+  track: Track,
+  language: AppLanguage,
+  unknownArtist: string,
+): ReactNode {
+  switch (id) {
+    case 'trackNumber':
+      return track.trackNumber || '–'
+    case 'artist':
+      return track.artist || unknownArtist
+    case 'title':
+      return track.title || track.fileName
+    case 'album':
+      return track.album || '–'
+    case 'albumArtist':
+      return track.albumArtist || '–'
+    case 'year':
+      return track.year || '–'
+    case 'genre':
+      return track.genre || '–'
+    case 'label':
+      return track.label || '–'
+    case 'catalogNumber':
+      return track.catalogNumber || '–'
+    case 'releaseDate':
+      return track.releaseDate || '–'
+    case 'duration':
+      return formatDuration(track.durationMs)
+    case 'codec':
+      return track.codec || track.extension.replace('.', '').toUpperCase() || '–'
+    case 'sampleRate':
+      return track.sampleRate > 0 ? formatSampleRate(track.sampleRate) : '–'
+    case 'bitRate':
+      return track.bitRate > 0 ? `${Math.round(track.bitRate / 1000)} kbps` : '–'
+    case 'channels':
+      return track.channels || '–'
+    case 'lufs':
+      return track.loudnessI ? track.loudnessI.toFixed(1) : '–'
+    case 'truePeak':
+      return track.truePeak ? `${track.truePeak.toFixed(1)} dBTP` : '–'
+    case 'bpmKey':
+      return track.bpm
+        ? `${track.bpm.toFixed(1)} · ${track.key || '–'}${track.keyScale ? ` ${track.keyScale}` : ''}`
+        : '–'
+    case 'isrc':
+      return track.isrc || '–'
+    case 'fileName':
+      return track.fileName || '–'
+    case 'path':
+      return track.path || '–'
+  }
+}
+
+export function tableColumnCellClass(id: TableColumnID): string {
+  if (id === 'title') return 'title-cell'
+  if (id === 'path' || id === 'fileName') return 'file-cell'
+  if (id === 'trackNumber' || id === 'year' || id === 'duration' || id === 'sampleRate' || id === 'bitRate' || id === 'channels' || id === 'lufs' || id === 'truePeak') {
+    return 'numeric-cell'
+  }
+  return ''
+}
+
+type ControlsProps = {
+  language: AppLanguage
+  layout: TableLayout
+  onToggle: (id: TableColumnID) => void
+  onMove: (source: TableColumnID, target: TableColumnID) => void
+  onReset: () => void
+}
+
+export function TableColumnControls({language, layout, onToggle, onMove, onReset}: ControlsProps) {
+  const [dragging, setDragging] = useState<TableColumnID | null>(null)
+  const copy = language === 'ru'
+    ? {
+        button: 'Колонки',
+        title: 'Столбцы таблицы',
+        hint: 'Отметьте видимые столбцы. Перетаскивайте строки или заголовки таблицы, чтобы изменить порядок.',
+        reset: 'Сбросить',
+        shown: 'Показано',
+      }
+    : {
+        button: 'Columns',
+        title: 'Table columns',
+        hint: 'Choose visible columns. Drag rows here or table headers to change their order.',
+        reset: 'Reset',
+        shown: 'Shown',
+      }
+
+  return (
+    <details className="table-column-picker">
+      <summary title={copy.title}>
+        <span>☷</span>
+        {copy.button}
+        <b>{layout.visible.length}</b>
+      </summary>
+      <div className="table-column-popover">
+        <div className="table-column-popover-head">
+          <div>
+            <strong>{copy.title}</strong>
+            <span>{copy.hint}</span>
+          </div>
+          <button type="button" onClick={onReset}>{copy.reset}</button>
+        </div>
+        <div className="table-column-list">
+          {layout.order.map((id) => {
+            const checked = layout.visible.includes(id)
+            const lastVisible = checked && layout.visible.length === 1
+            return (
+              <div
+                className={`table-column-option${dragging === id ? ' dragging' : ''}`}
+                key={id}
+                draggable
+                onDragStart={(event) => {
+                  setDragging(id)
+                  event.dataTransfer.effectAllowed = 'move'
+                  event.dataTransfer.setData('text/plain', id)
+                }}
+                onDragEnd={() => setDragging(null)}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = 'move'
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  const source = event.dataTransfer.getData('text/plain')
+                  if (isTableColumnID(source)) onMove(source, id)
+                  setDragging(null)
+                }}
+              >
+                <span className="column-grip" aria-hidden="true">⋮⋮</span>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={lastVisible}
+                    onChange={() => onToggle(id)}
+                  />
+                  <span>{tableColumnLabel(id, language)}</span>
+                </label>
+                <small>{checked ? copy.shown : ''}</small>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </details>
+  )
+}
+
+function normalizeTableLayout(input: Partial<TableLayout>): TableLayout {
+  const seen = new Set<TableColumnID>()
+  const order: TableColumnID[] = []
+
+  for (const value of input.order ?? []) {
+    if (typeof value === 'string' && isTableColumnID(value) && !seen.has(value)) {
+      seen.add(value)
+      order.push(value)
+    }
+  }
+  for (const id of ALL_COLUMNS) {
+    if (!seen.has(id)) order.push(id)
+  }
+
+  const visible = (input.visible ?? [])
+    .filter((value): value is TableColumnID => typeof value === 'string' && isTableColumnID(value))
+    .filter((value, index, values) => values.indexOf(value) === index)
+
+  return {
+    order,
+    visible: visible.length > 0 ? visible : [...DEFAULT_TABLE_LAYOUT.visible],
+  }
+}
+
+function cloneDefaultLayout(): TableLayout {
+  return {
+    order: [...DEFAULT_TABLE_LAYOUT.order],
+    visible: [...DEFAULT_TABLE_LAYOUT.visible],
+  }
+}
+
+function formatDuration(ms: number): string {
+  if (!ms) return '–'
+  const total = Math.round(ms / 1000)
+  const minutes = Math.floor(total / 60)
+  const seconds = total % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+function formatSampleRate(value: number): string {
+  if (value % 1000 === 0) return `${value / 1000} kHz`
+  return `${(value / 1000).toFixed(1)} kHz`
+}

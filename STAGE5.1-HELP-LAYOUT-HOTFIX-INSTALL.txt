@@ -1,0 +1,47 @@
+﻿CCML — Stage 5.1: Help layout hotfix
+
+Problem:
+Help inherited the Settings modal grid with 3 explicit rows, while Help actually has:
+1. header
+2. search
+3. content
+4. footer
+
+This could make help content visually bleed behind the search/header area.
+
+Fix:
+- explicit 4-row Help grid
+- isolated Help stacking context
+- search/content layer ordering
+- constrained internal scrolling
+- solid Help content background
+
+Only frontend CSS is changed.
+
+Install:
+
+1. Stop Wails:
+   Ctrl+C
+
+2. Extract ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage5.1-help-layout-hotfix.ps1"
+
+Expected:
+   Stage 5.1 Help layout hotfix applied successfully.
+
+4. Build:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+5. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+Test:
+- open Help with F1
+- scroll Help content
+- the header and search field must remain visually clean
+- no text from help sections should appear behind/above the search row

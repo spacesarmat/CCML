@@ -30,45 +30,30 @@ type EventEmitter func(name string, payload any)
 type Manager struct {
 	store *store.Store
 
-	mu          sync.Mutex
-	runners     map[string]Runner
-	concurrency map[string]int
-	emitter     EventEmitter
-	current     map[int64]context.CancelFunc
-	ctx         context.Context
-	cancel      context.CancelFunc
-	wake        chan struct{}
-	wg          sync.WaitGroup
-	started     bool
+	mu      sync.Mutex
+	runners map[string]Runner
+	emitter EventEmitter
+	current map[int64]context.CancelFunc
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wake    chan struct{}
+	wg      sync.WaitGroup
+	started bool
 }
 
 func New(db *store.Store) *Manager {
 	return &Manager{
-		store:       db,
-		runners:     make(map[string]Runner),
-		concurrency: make(map[string]int),
-		current:     make(map[int64]context.CancelFunc),
-		wake:        make(chan struct{}, 1),
+		store:   db,
+		runners: make(map[string]Runner),
+		current: make(map[int64]context.CancelFunc),
+		wake:    make(chan struct{}, 1),
 	}
 }
 
 func (m *Manager) Register(jobType string, runner Runner) {
-	m.RegisterConcurrent(jobType, 1, runner)
-}
-
-// RegisterConcurrent registers a runner with bounded per-job item concurrency.
-// Existing callers retain serial behavior through Register.
-func (m *Manager) RegisterConcurrent(jobType string, workers int, runner Runner) {
-	if workers < 1 {
-		workers = 1
-	}
-	if workers > 16 {
-		workers = 16
-	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.runners[jobType] = runner
-	m.concurrency[jobType] = workers
 }
 
 func (m *Manager) SetEmitter(emitter EventEmitter) {
@@ -223,10 +208,6 @@ func (m *Manager) runJob(root context.Context, job model.BackgroundJob) error {
 	}
 	m.emit("jobs:updated", job)
 
-	if workers := m.workerCount(job.Type); workers > 1 {
-		return m.runJobConcurrent(root, job, runner, workers)
-	}
-
 	for root.Err() == nil {
 		fresh, err := m.store.BackgroundJobByID(root, job.ID)
 		if err != nil {
@@ -346,15 +327,6 @@ func (m *Manager) runner(jobType string) Runner {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.runners[jobType]
-}
-func (m *Manager) workerCount(jobType string) int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	workers := m.concurrency[jobType]
-	if workers < 1 {
-		return 1
-	}
-	return workers
 }
 
 func (m *Manager) setCurrent(jobID int64, cancel context.CancelFunc) {

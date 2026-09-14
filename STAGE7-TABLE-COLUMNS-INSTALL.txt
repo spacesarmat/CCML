@@ -1,0 +1,69 @@
+﻿CCML — Stage 7: Configurable + draggable table columns
+
+Adds:
+- "Колонки" / "Columns" control above the library table
+- choose which data columns are visible
+- drag items inside the Columns panel to change order
+- drag table headers themselves to change order
+- layout persists between CCML launches using localStorage
+- Reset restores the default layout
+- selection-checkbox column remains fixed
+- at least one data column must remain visible
+- built-in Help is updated automatically when present
+
+Available columns:
+# / Artist / Title / Album / Album Artist / Year / Genre / Label /
+Catalog # / Release Date / Time / Codec / Sample Rate / Bitrate /
+Channels / LUFS / True Peak / BPM-Key / ISRC / File Name / Path
+
+Not included in this stage:
+- sorting (next stage)
+- resizing column widths (planned after sorting)
+- mini artwork thumbnails (planned separately to keep table performance measurable)
+
+Safety:
+- the ZIP contains TypeScript payload as .txt, so extraction cannot pollute Go packages
+- installer removes only old root-level CCML-stage*.go helper payloads
+- all App.tsx changes are validated in memory before source files are written
+- backups are created
+
+Install:
+
+1. Stop Wails:
+   Ctrl+C
+
+2. Extract:
+   Expand-Archive `
+     -Path "$env:USERPROFILE\Downloads\CCML-stage7-table-columns.zip" `
+     -DestinationPath "C:\Users\ANDYBUM\GolandProjects\CCML" `
+     -Force
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File `
+     "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage7-table-columns.ps1"
+
+Expected:
+   Stage 7 configurable table columns installed successfully.
+   Column visibility and order are persisted in localStorage.
+
+4. Build frontend:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+5. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+Test:
+- open Columns
+- hide Codec and LUFS
+- enable Genre, Label and Year
+- drag Genre above Album
+- close/reopen the application: layout should persist
+- drag a visible table header directly to another position
+- press Reset: default eight data columns should return
+
+Backups:
+frontend\src\App.tsx.stage7.bak
+frontend\src\styles.css.stage7.bak
+frontend\src\HelpModal.tsx.stage7.bak (if Help exists)

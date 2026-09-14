@@ -1,0 +1,50 @@
+﻿CCML — Stage 5: Built-in Help
+
+Adds:
+- Help button in the top bar
+- F1 opens Help from anywhere in the app
+- Esc closes Help
+- searchable RU/EN help
+- current keyboard shortcut reference
+- Library / Inspector / Tags / Metadata / Artwork / Analysis / Processing / Jobs / Organize sections
+- troubleshooting section
+- help content is centralized in frontend/src/HelpModal.tsx for future updates
+- when Stage 4 keyboard navigation is installed, table shortcuts are disabled while Help is open
+
+Install:
+
+1. Stop Wails:
+   Ctrl+C
+
+2. Extract this ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage5-help.ps1"
+
+Expected:
+   Stage 5 built-in Help installed successfully.
+
+4. Build frontend:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+5. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+Test:
+- click Help / Справка in the top bar
+- press F1
+- search for: обложка
+- search for: Ctrl+F
+- search for: LUFS
+- switch RU/EN and reopen Help
+- press Esc to close
+
+Backups:
+frontend\src\App.tsx.stage5help.bak
+frontend\src\styles.css.stage5help.bak
+
+Maintenance rule for later CCML stages:
+when a user-facing function or shortcut changes, update HelpModal.tsx in the same stage.

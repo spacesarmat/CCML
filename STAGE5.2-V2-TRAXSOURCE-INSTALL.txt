@@ -1,0 +1,64 @@
+﻿CCML — Stage 5.2 v2: Traxsource resilient search
+
+Why v2:
+The first installer expected one exact multiline formatting of TraxsourceProvider.
+Your local traxsource.go differs from that formatting, so preflight stopped before
+any file was changed.
+
+v2 uses syntax-oriented regex anchors instead of exact multiline source text.
+It also preserves the old one-argument NewTraxsourceProvider(userAgent) constructor
+and adds NewTraxsourceProviderWithFallback(...), reducing compatibility risk.
+
+Behavior:
+- Direct Traxsource lookup remains first.
+- No Cloudflare challenge emulation/cookie bypass is performed.
+- If direct search is blocked or returns no useful results and a fallback key is
+  configured, CCML queries the structured Traxsource JSON fallback.
+- Without a key, a Cloudflare 403 becomes a compact actionable error.
+- Optional API key is available in Settings -> Traxsource.
+- Environment variable: TRAXSOURCE_API_KEY.
+- If built-in Help exists, it is updated on a best-effort basis.
+
+The current fallback search endpoint accepts:
+  term=<artist title>
+  type=tracks
+  page=1
+and authenticates with X-API-Key.
+
+Install:
+1. Do NOT run the old Stage 5.2 installer again.
+
+2. Extract this ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage5.2-traxsource-resilient-v2.ps1"
+
+Expected:
+   Stage 5.2 v2 Traxsource resilient search installed successfully.
+
+4. Backend tests:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   go test ./internal/metadata
+   go test ./internal/settings
+   go test .
+
+5. Frontend:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+6. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+7. Configure:
+   Settings -> Traxsource
+   Enable Traxsource
+   Add fallback API key if you want automatic fallback
+   Save
+   Test connections
+
+New regression test:
+direct Traxsource HTTP 403 -> structured JSON fallback -> MetadataCandidate
+
+The installer validates every required edit in memory before writing any project file.

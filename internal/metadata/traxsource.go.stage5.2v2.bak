@@ -35,27 +35,18 @@ type TraxsourceProvider struct {
 	client    *http.Client
 	baseURL   string
 	userAgent string
-	bridgeAPIKey string
-	bridgeURL    string
 }
 
 func NewTraxsourceProvider(userAgent string) *TraxsourceProvider {
-	return NewTraxsourceProviderWithFallback(userAgent, "")
-}
-
-func NewTraxsourceProviderWithFallback(userAgent, bridgeAPIKey string) *TraxsourceProvider {
 	return &TraxsourceProvider{
-		client:       &http.Client{Timeout: 15 * time.Second},
-		baseURL:      traxsourceBaseURL,
-		userAgent:    strings.TrimSpace(userAgent),
-		bridgeAPIKey: strings.TrimSpace(bridgeAPIKey),
-		bridgeURL:    traxsourceBridgeSearchURL,
+		client: &http.Client{Timeout: 15 * time.Second}, baseURL: traxsourceBaseURL,
+		userAgent: strings.TrimSpace(userAgent),
 	}
 }
 
 func (p *TraxsourceProvider) Name() string { return "Traxsource" }
 
-func (p *TraxsourceProvider) searchDirect(ctx context.Context, query model.MetadataQuery) ([]model.MetadataCandidate, error) {
+func (p *TraxsourceProvider) Search(ctx context.Context, query model.MetadataQuery) ([]model.MetadataCandidate, error) {
 	term := strings.TrimSpace(strings.TrimSpace(query.Artist) + " " + strings.TrimSpace(query.Title))
 	if term == "" {
 		return nil, fmt.Errorf("artist or title is required")
