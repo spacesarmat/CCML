@@ -5987,3 +5987,79 @@ button:disabled:hover {
     flex-wrap: wrap;
   }
 }
+/* Stage 16.2 — duplicate quality scoring */
+
+.duplicate-compare-table.quality-enabled {
+  min-width: 1010px;
+}
+
+.duplicate-compare-table.quality-enabled .duplicate-compare-row {
+  grid-template-columns:
+    minmax(250px, 1.55fr)
+    minmax(88px, .55fr)
+    minmax(68px, .42fr)
+    minmax(80px, .48fr)
+    minmax(88px, .52fr)
+    minmax(72px, .43fr)
+    minmax(62px, .38fr)
+    minmax(112px, .68fr)
+    62px;
+}
+
+.duplicate-compare-row.recommended {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ccml-success) 9%, transparent),
+      transparent 34%
+    ),
+    var(--ccml-surface-1);
+}
+
+.duplicate-file-cell em {
+  width: max-content;
+  margin-top: 3px;
+  padding: 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--ccml-success) 55%, var(--ccml-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ccml-success) 10%, transparent);
+  color: var(--ccml-success);
+  font-size: 6px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.duplicate-quality-cell {
+  display: grid;
+  gap: 1px;
+  cursor: help;
+}
+
+.duplicate-quality-cell strong {
+  color: var(--ccml-text-strong);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.duplicate-quality-cell small {
+  overflow: hidden;
+  color: var(--ccml-text-dim);
+  font-size: 6px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duplicate-compare-row.recommended .duplicate-quality-cell strong {
+  color: var(--ccml-success);
+}
+
+:root[data-ccml-theme='light'] .duplicate-compare-row.recommended {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ccml-success) 9%, transparent),
+      transparent 34%
+    ),
+    #ffffff;
+}

@@ -194,17 +194,21 @@ func buildDuplicateGroup(cluster []model.Track, toleranceMS int64) model.Duplica
 		reasons = append(reasons, "linked_candidates")
 	}
 
+	quality, recommendedTrackID := scoreDuplicateTracks(tracks)
+
 	return model.DuplicateGroup{
-		Key:              duplicateGroupKey(tracks),
-		Artist:           artist,
-		Title:            title,
-		DurationMS:       medianDuration(tracks),
-		DurationSpreadMS: spread,
-		MatchClass:       matchClass,
-		Confidence:       confidence,
-		Reasons:          reasons,
-		SharedISRC:       sharedISRC,
-		Tracks:           tracks,
+		Key:                duplicateGroupKey(tracks),
+		Artist:             artist,
+		Title:              title,
+		DurationMS:         medianDuration(tracks),
+		DurationSpreadMS:   spread,
+		MatchClass:         matchClass,
+		Confidence:         confidence,
+		Reasons:            reasons,
+		SharedISRC:         sharedISRC,
+		RecommendedTrackID: recommendedTrackID,
+		Quality:            quality,
+		Tracks:             tracks,
 	}
 }
 

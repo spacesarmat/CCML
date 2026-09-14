@@ -184,6 +184,29 @@ export namespace model {
 	        this.lastMetadataJobUpdatedAt = source["lastMetadataJobUpdatedAt"];
 	    }
 	}
+	export class DuplicateTrackQuality {
+	    trackId: number;
+	    score: number;
+	    audioScore: number;
+	    metadataScore: number;
+	    formatClass: string;
+	    reasons: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new DuplicateTrackQuality(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.trackId = source["trackId"];
+	        this.score = source["score"];
+	        this.audioScore = source["audioScore"];
+	        this.metadataScore = source["metadataScore"];
+	        this.formatClass = source["formatClass"];
+	        this.reasons = source["reasons"];
+	    }
+	}
+
 	export class DuplicateGroup {
 	    key: string;
 	    artist: string;
@@ -194,6 +217,8 @@ export namespace model {
 	    confidence: number;
 	    reasons: string[];
 	    sharedIsrc: string;
+	    recommendedTrackId: number;
+	    quality: DuplicateTrackQuality[];
 	    tracks: Track[];
 	
 	    static createFrom(source: any = {}) {
@@ -211,6 +236,8 @@ export namespace model {
 	        this.confidence = source["confidence"];
 	        this.reasons = source["reasons"];
 	        this.sharedIsrc = source["sharedIsrc"];
+	        this.recommendedTrackId = source["recommendedTrackId"];
+	        this.quality = this.convertValues(source["quality"], DuplicateTrackQuality);
 	        this.tracks = this.convertValues(source["tracks"], Track);
 	    }
 	

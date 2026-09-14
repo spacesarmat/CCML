@@ -103,6 +103,8 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Таблица загружает все совпавшие треки постранично по 1000 записей, поэтому библиотека больше не ограничена первыми 500 файлами.',
           'Раздел «Дубликаты» группирует библиотеку по трём уровням уверенности: одинаковый ISRC, точные Artist/Title с близкой длительностью и возможные версии, где из Title временно исключаются пометки Remix/Edit/Intro/Clean и другие version qualifiers. Возможные версии не считаются подтверждёнными дублями.',
           'Внутри группы можно сравнить файл, кодек, битрейт, sample rate, размер, длительность и ISRC. Stage 16.1 ничего не удаляет и не перемещает — экран только диагностический.',
+          'Stage 16.2 добавляет эвристическую оценку качества 0–100: до 80 баллов за аудио-параметры (lossless/lossy, bitrate, sample rate, channels) и до 20 за полноту тегов/ISRC/embedded cover. Файл с уникально лучшим score помечается «Лучшее качество» и поднимается вверх группы.',
+          'При полном равенстве score CCML не выбирает искусственного победителя. В группе «Возможный дубль» лидер качества означает только технически предпочтительный файл и не доказывает, что Remix/Edit/Intro являются взаимозаменяемыми версиями.',
         ],
       },
       {
@@ -284,6 +286,8 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'The table loads every matching track in 1000-row pages, so the library is no longer limited to the first 500 files.',
           'Duplicates groups the library at three confidence levels: identical ISRC, exact Artist/Title with close duration, and possible version matches where Remix/Edit/Intro/Clean and similar version qualifiers are temporarily removed from Title. Possible versions are not treated as confirmed duplicates.',
           'Inside a group you can compare file, codec, bitrate, sample rate, size, duration and ISRC. Stage 16.1 does not delete or move anything; this screen is diagnostic only.',
+          'Stage 16.2 adds a 0–100 heuristic quality score: up to 80 points for audio properties (lossless/lossy, bitrate, sample rate, channels) and up to 20 for metadata completeness, valid ISRC and embedded artwork. A uniquely highest score is marked Best quality and sorted to the top of its group.',
+          'When scores are exactly tied, CCML does not invent a winner. In a Possible duplicate group, the quality leader only identifies the technically preferred file; it does not prove Remix/Edit/Intro versions are interchangeable.',
         ],
       },
       {

@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react'
 import type {AppLanguage} from './i18n'
-import type {DuplicateGroup, Track} from './types'
+import type {DuplicateGroup, DuplicateTrackQuality, Track} from './types'
 
 type Props = {
   language: AppLanguage
@@ -79,6 +79,7 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
         spread: 'Разброс длительности',
         sharedIsrc: 'Общий ISRC',
         file: 'Файл',
+        quality: 'Качество',
         codec: 'Кодек',
         bitrate: 'Битрейт',
         sampleRate: 'Sample rate',
@@ -86,6 +87,38 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
         duration: 'Время',
         trackIsrc: 'ISRC',
         open: 'Открыть',
+        best: 'Лучшее качество',
+        tie: 'Нет явного лидера',
+        audio: 'аудио',
+        metadataScore: 'теги',
+        scoreTitle: 'Эвристическая оценка качества. Не является доказательством, что версии идентичны.',
+        qualityReasons: {
+          lossless: 'lossless',
+          efficient_lossy: 'эффективный lossy-кодек',
+          lossy: 'lossy',
+          unknown_codec: 'неизвестный кодек',
+          lossless_bitrate: 'lossless без штрафа за bitrate',
+          bitrate_320: '≥320 kbps',
+          bitrate_256: '≥256 kbps',
+          bitrate_192: '≥192 kbps',
+          bitrate_160: '≥160 kbps',
+          bitrate_128: '≥128 kbps',
+          bitrate_96: '≥96 kbps',
+          bitrate_low: 'низкий bitrate',
+          bitrate_unknown: 'bitrate неизвестен',
+          sample_rate_high: 'высокий sample rate',
+          sample_rate_standard: 'стандартный sample rate',
+          sample_rate_low: 'низкий sample rate',
+          sample_rate_unknown: 'sample rate неизвестен',
+          stereo: 'stereo',
+          mono: 'mono',
+          channels_unknown: 'каналы неизвестны',
+          embedded_cover: 'есть обложка',
+          metadata_complete: 'теги заполнены хорошо',
+          metadata_partial: 'теги заполнены частично',
+          metadata_sparse: 'мало тегов',
+          scan_error: 'ошибка сканирования',
+        } as Record<string, string>,
         reasons: {
           same_isrc: 'совпадает ISRC',
           same_artist_title: 'совпадают Artist и Title',
@@ -117,6 +150,7 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
         spread: 'Duration spread',
         sharedIsrc: 'Shared ISRC',
         file: 'File',
+        quality: 'Quality',
         codec: 'Codec',
         bitrate: 'Bitrate',
         sampleRate: 'Sample rate',
@@ -124,6 +158,38 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
         duration: 'Time',
         trackIsrc: 'ISRC',
         open: 'Open',
+        best: 'Best quality',
+        tie: 'No clear leader',
+        audio: 'audio',
+        metadataScore: 'tags',
+        scoreTitle: 'Heuristic quality score. It does not prove that the versions are identical.',
+        qualityReasons: {
+          lossless: 'lossless',
+          efficient_lossy: 'efficient lossy codec',
+          lossy: 'lossy',
+          unknown_codec: 'unknown codec',
+          lossless_bitrate: 'lossless bitrate neutral',
+          bitrate_320: '≥320 kbps',
+          bitrate_256: '≥256 kbps',
+          bitrate_192: '≥192 kbps',
+          bitrate_160: '≥160 kbps',
+          bitrate_128: '≥128 kbps',
+          bitrate_96: '≥96 kbps',
+          bitrate_low: 'low bitrate',
+          bitrate_unknown: 'bitrate unknown',
+          sample_rate_high: 'high sample rate',
+          sample_rate_standard: 'standard sample rate',
+          sample_rate_low: 'low sample rate',
+          sample_rate_unknown: 'sample rate unknown',
+          stereo: 'stereo',
+          mono: 'mono',
+          channels_unknown: 'channels unknown',
+          embedded_cover: 'embedded cover',
+          metadata_complete: 'metadata well populated',
+          metadata_partial: 'metadata partially populated',
+          metadata_sparse: 'sparse metadata',
+          scan_error: 'scan error',
+        } as Record<string, string>,
         reasons: {
           same_isrc: 'same ISRC',
           same_artist_title: 'same Artist and Title',
@@ -182,6 +248,16 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
     return copy.badgePossible
   }
 
+  function qualityMap(group: DuplicateGroup): Map<number, DuplicateTrackQuality> {
+    return new Map(group.quality.map((item) => [item.trackId, item]))
+  }
+
+  function qualityTitle(quality: DuplicateTrackQuality | undefined): string {
+    if (!quality) return copy.scoreTitle
+    const reasons = quality.reasons.map((reason) => copy.qualityReasons[reason] || reason)
+    return `${copy.scoreTitle}\n${quality.score}/100 · ${copy.audio}: ${quality.audioScore}/80 · ${copy.metadataScore}: ${quality.metadataScore}/20\n${reasons.join(' · ')}`
+  }
+
   return (
     <section className="duplicate-workspace">
       <header className="duplicate-commandbar">
@@ -230,6 +306,14 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
 
         {filtered.map((group) => {
           const open = openGroups.has(group.key)
+          const scores = qualityMap(group)
+          const sortedTracks = [...group.tracks].sort((left, right) => {
+            const leftScore = scores.get(left.id)
+            const rightScore = scores.get(right.id)
+            return (rightScore?.score ?? 0) - (leftScore?.score ?? 0)
+              || (rightScore?.audioScore ?? 0) - (leftScore?.audioScore ?? 0)
+              || left.fileName.localeCompare(right.fileName)
+          })
 
           return (
             <article className={`duplicate-group-card ${group.matchClass}`} key={group.key}>
@@ -247,6 +331,7 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
                     {group.tracks.length} · {Math.round(group.confidence * 100)}% {copy.confidence}
                     {' · '}{copy.spread}: {formatSpread(group.durationSpreadMs)}
                     {group.sharedIsrc ? ` · ${copy.sharedIsrc}: ${group.sharedIsrc}` : ''}
+                    {' · '}{group.recommendedTrackId ? copy.best : copy.tie}
                   </small>
                 </span>
               </button>
@@ -259,9 +344,10 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
                     ))}
                   </div>
 
-                  <div className="duplicate-compare-table">
+                  <div className="duplicate-compare-table quality-enabled">
                     <div className="duplicate-compare-row head">
                       <span>{copy.file}</span>
+                      <span>{copy.quality}</span>
                       <span>{copy.codec}</span>
                       <span>{copy.bitrate}</span>
                       <span>{copy.sampleRate}</span>
@@ -271,21 +357,31 @@ function DuplicateGroupsView({language, groups, busy, onBack, onRefresh, onOpenT
                       <span />
                     </div>
 
-                    {group.tracks.map((track) => (
-                      <div className="duplicate-compare-row" key={track.id}>
-                        <span className="duplicate-file-cell" title={track.path}>
-                          <strong>{track.fileName}</strong>
-                          <small>{track.path}</small>
-                        </span>
-                        <span>{track.codec || track.extension.replace('.', '').toUpperCase() || '—'}</span>
-                        <span>{formatBitRate(track.bitRate)}</span>
-                        <span>{formatSampleRate(track.sampleRate)}</span>
-                        <span>{formatSize(track.size)}</span>
-                        <span>{formatDuration(track.durationMs)}</span>
-                        <span title={track.isrc || undefined}>{track.isrc || '—'}</span>
-                        <button type="button" onClick={() => onOpenTrack(track)}>{copy.open}</button>
-                      </div>
-                    ))}
+                    {sortedTracks.map((track) => {
+                      const quality = scores.get(track.id)
+                      const recommended = group.recommendedTrackId === track.id
+
+                      return (
+                        <div className={`duplicate-compare-row${recommended ? ' recommended' : ''}`} key={track.id}>
+                          <span className="duplicate-file-cell" title={track.path}>
+                            <strong>{track.fileName}</strong>
+                            <small>{track.path}</small>
+                            {recommended && <em>{copy.best}</em>}
+                          </span>
+                          <span className="duplicate-quality-cell" title={qualityTitle(quality)}>
+                            <strong>{quality?.score ?? 0}</strong>
+                            <small>{copy.audio} {quality?.audioScore ?? 0} · {copy.metadataScore} {quality?.metadataScore ?? 0}</small>
+                          </span>
+                          <span>{track.codec || track.extension.replace('.', '').toUpperCase() || '—'}</span>
+                          <span>{formatBitRate(track.bitRate)}</span>
+                          <span>{formatSampleRate(track.sampleRate)}</span>
+                          <span>{formatSize(track.size)}</span>
+                          <span>{formatDuration(track.durationMs)}</span>
+                          <span title={track.isrc || undefined}>{track.isrc || '—'}</span>
+                          <button type="button" onClick={() => onOpenTrack(track)}>{copy.open}</button>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}

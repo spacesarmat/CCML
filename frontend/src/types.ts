@@ -159,6 +159,15 @@ export type TagHistory = {
   affectedCount: number
 }
 
+export type DuplicateTrackQuality = {
+  trackId: number
+  score: number
+  audioScore: number
+  metadataScore: number
+  formatClass: 'lossless' | 'lossy' | 'unknown' | string
+  reasons: string[]
+}
+
 export type DuplicateGroup = {
   key: string
   artist: string
@@ -169,6 +178,8 @@ export type DuplicateGroup = {
   confidence: number
   reasons: string[]
   sharedIsrc: string
+  recommendedTrackId: number
+  quality: DuplicateTrackQuality[]
   tracks: Track[]
 }
 

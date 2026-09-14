@@ -181,18 +181,31 @@ type TagHistory struct {
 	AffectedCount int    `json:"affectedCount"`
 }
 
+// DuplicateTrackQuality is a heuristic comparison score inside one duplicate group.
+// AudioScore is capped at 80 and MetadataScore at 20.
+type DuplicateTrackQuality struct {
+	TrackID       int64    `json:"trackId"`
+	Score         int      `json:"score"`
+	AudioScore    int      `json:"audioScore"`
+	MetadataScore int      `json:"metadataScore"`
+	FormatClass   string   `json:"formatClass"`
+	Reasons       []string `json:"reasons"`
+}
+
 // DuplicateGroup is a probable set of duplicate tracks with matching evidence.
 type DuplicateGroup struct {
-	Key              string   `json:"key"`
-	Artist           string   `json:"artist"`
-	Title            string   `json:"title"`
-	DurationMS       int64    `json:"durationMs"`
-	DurationSpreadMS int64    `json:"durationSpreadMs"`
-	MatchClass       string   `json:"matchClass"`
-	Confidence       float64  `json:"confidence"`
-	Reasons          []string `json:"reasons"`
-	SharedISRC       string   `json:"sharedIsrc"`
-	Tracks           []Track  `json:"tracks"`
+	Key                string                  `json:"key"`
+	Artist             string                  `json:"artist"`
+	Title              string                  `json:"title"`
+	DurationMS         int64                   `json:"durationMs"`
+	DurationSpreadMS   int64                   `json:"durationSpreadMs"`
+	MatchClass         string                  `json:"matchClass"`
+	Confidence         float64                 `json:"confidence"`
+	Reasons            []string                `json:"reasons"`
+	SharedISRC         string                  `json:"sharedIsrc"`
+	RecommendedTrackID int64                   `json:"recommendedTrackId"`
+	Quality            []DuplicateTrackQuality `json:"quality"`
+	Tracks             []Track                 `json:"tracks"`
 }
 
 // Loudness contains EBU R128 measurements.
