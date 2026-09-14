@@ -31,6 +31,18 @@ function duplicateGroupSignature(group: DuplicateGroup): string {
   return group.tracks.map((track) => track.id).sort((left, right) => left - right).join(',')
 }
 
+function duplicateVerificationMatchesGroup(
+  group: DuplicateGroup,
+  verification: DuplicateAudioVerification | undefined,
+): boolean {
+  if (!verification || verification.groupKey !== group.key) return false
+
+  const expected = group.tracks.map((track) => track.id).sort((left, right) => left - right)
+  const actual = verification.comparisons.map((item) => item.trackId).sort((left, right) => left - right)
+  if (expected.length !== actual.length) return false
+  return expected.every((id, index) => id === actual[index])
+}
+
 function expectedKeepBestIDs(group: DuplicateGroup): number[] {
   if (!group.recommendedTrackId) return []
   return group.tracks
@@ -636,8 +648,8 @@ function DuplicateGroupsView({
 
   async function verifyGroupAudio(group: DuplicateGroup) {
     const result = await onVerifyAudio(group.tracks.map((track) => track.id))
-    if (!result) return
-    setAudioChecks((current) => ({...current, [group.key]: result}))
+    if (!result || !duplicateVerificationMatchesGroup(group, result)) return
+    setAudioChecks((current) => ({...current, [result.groupKey]: result}))
   }
 
   function selectedTracks(group: DuplicateGroup): Track[] {
@@ -708,7 +720,10 @@ function DuplicateGroupsView({
   }
 
   const activeScores = activeGroup ? qualityMap(activeGroup) : new Map<number, DuplicateTrackQuality>()
-  const activeVerification = activeGroup ? audioChecks[activeGroup.key] : undefined
+  const activeVerificationCandidate = activeGroup ? audioChecks[activeGroup.key] : undefined
+  const activeVerification = activeGroup && duplicateVerificationMatchesGroup(activeGroup, activeVerificationCandidate)
+    ? activeVerificationCandidate
+    : undefined
   const activeAudioByTrack = new Map(activeVerification?.comparisons.map((item) => [item.trackId, item]) ?? [])
   const activeSelected = activeGroup ? selectedTracks(activeGroup) : []
   const activeSortedTracks = activeGroup

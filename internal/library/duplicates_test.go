@@ -94,3 +94,29 @@ func TestNormalizeISRCRejectsMalformedValues(t *testing.T) {
 		t.Fatalf("malformed ISRC normalized to %q, want empty", got)
 	}
 }
+
+func TestDuplicateGroupKeyIncludesExactMembership(t *testing.T) {
+	t.Parallel()
+
+	left := duplicateGroupKey([]model.Track{{ID: 1}, {ID: 2}})
+	right := duplicateGroupKey([]model.Track{{ID: 1}, {ID: 3}})
+	if left == right {
+		t.Fatalf("different groups collided: %q", left)
+	}
+	if left != "dup-1-2" || right != "dup-1-3" {
+		t.Fatalf("unexpected keys: left=%q right=%q", left, right)
+	}
+}
+
+func TestDuplicateGroupKeyIsOrderIndependent(t *testing.T) {
+	t.Parallel()
+
+	left := duplicateGroupKey([]model.Track{{ID: 9}, {ID: 2}, {ID: 5}})
+	right := duplicateGroupKey([]model.Track{{ID: 5}, {ID: 9}, {ID: 2}})
+	if left != right {
+		t.Fatalf("same membership produced different keys: %q vs %q", left, right)
+	}
+	if left != "dup-2-5-9" {
+		t.Fatalf("unexpected exact key: %q", left)
+	}
+}

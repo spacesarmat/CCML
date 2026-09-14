@@ -230,7 +230,12 @@ func duplicateGroupKey(tracks []model.Track) string {
 		ids = append(ids, track.ID)
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
-	return fmt.Sprintf("dup-%d-%d", ids[0], len(ids))
+
+	parts := make([]string, len(ids))
+	for i, id := range ids {
+		parts[i] = fmt.Sprintf("%d", id)
+	}
+	return "dup-" + strings.Join(parts, "-")
 }
 
 func durationSpread(tracks []model.Track) int64 {
