@@ -96,6 +96,7 @@ func DefaultsFromEnvironment() model.MetadataSettings {
 		YandexMusicEnabled: strings.TrimSpace(os.Getenv("YANDEX_MUSIC_TOKEN")) != "",
 		TraxsourceEnabled:  false,
 		MuzvizorEnabled:    false,
+		RemixPoolEnabled:   false,
 
 		TraxsourceAPIKey: strings.TrimSpace(os.Getenv("TRAXSOURCE_API_KEY")),
 

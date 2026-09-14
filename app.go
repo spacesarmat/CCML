@@ -275,6 +275,7 @@ func (a *App) OpenMetadataLink(key string) error {
 		"traxsource":       "https://www.traxsource.com/terms-of-service",
 		"traxsourcebridge": "https://parse.bot/marketplace/0123da1a-5d2d-4970-bf6f-398f792855a1/traxsource-com-api",
 		"muzvizor":         "https://muzvizor.com/tracks",
+		"remixpool":        "https://remixpool.ru/new-releases/",
 	}
 	url, ok := links[strings.ToLower(strings.TrimSpace(key))]
 	if !ok {
@@ -326,7 +327,7 @@ func validateMetadataSettings(config model.MetadataSettings) error {
 
 func buildMetadataService(config model.MetadataSettings) *metadata.Service {
 	const metadataUserAgent = "CCML/0.6 (https://github.com/spacesarmat/CCML)"
-	providers := make([]metadata.Provider, 0, 12)
+	providers := make([]metadata.Provider, 0, 13)
 	if config.MusicBrainzEnabled {
 		providers = append(providers, metadata.NewMusicBrainzProvider(metadataUserAgent))
 	}
@@ -362,6 +363,9 @@ func buildMetadataService(config model.MetadataSettings) *metadata.Service {
 	}
 	if config.MuzvizorEnabled {
 		providers = append(providers, metadata.NewMuzvizorProvider(metadataUserAgent))
+	}
+	if config.RemixPoolEnabled {
+		providers = append(providers, metadata.NewRemixPoolProvider(metadataUserAgent))
 	}
 	return metadata.NewService(providers...)
 }

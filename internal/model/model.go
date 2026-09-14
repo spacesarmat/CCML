@@ -485,6 +485,7 @@ type MetadataSettings struct {
 	YandexMusicEnabled bool `json:"yandexMusicEnabled"`
 	TraxsourceEnabled  bool `json:"traxsourceEnabled"`
 	MuzvizorEnabled    bool `json:"muzvizorEnabled"`
+	RemixPoolEnabled   bool `json:"remixPoolEnabled"`
 
 	TraxsourceAPIKey string `json:"traxsourceApiKey"`
 

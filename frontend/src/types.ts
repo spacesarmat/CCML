@@ -355,6 +355,7 @@ export type MetadataSettings = {
   yandexMusicEnabled: boolean
   traxsourceEnabled: boolean
   muzvizorEnabled?: boolean
+  remixPoolEnabled?: boolean
   traxsourceApiKey: string
   metadataEnrichmentConcurrency: number
   theAudioDBApiKey: string

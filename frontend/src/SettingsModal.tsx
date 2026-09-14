@@ -222,6 +222,8 @@ function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved
 
               <ProviderCard language={language} title="MUZVIZOR" health={providerHealth['MUZVIZOR']} description={t('settings.muzvizorDescription')} enabled={settings.muzvizorEnabled ?? false} onEnabled={(v) => change('muzvizorEnabled', v)} badge={t('settings.djPoolSource')} helpLabel={t('settings.termsAndWebsite')} onHelp={() => void openProviderPage('muzvizor')} />
 
+              <ProviderCard language={language} title="RemixPool" health={providerHealth['RemixPool']} description={t('settings.remixPoolDescription')} enabled={settings.remixPoolEnabled ?? false} onEnabled={(v) => change('remixPoolEnabled', v)} badge={t('settings.djPoolSource')} helpLabel={t('settings.termsAndWebsite')} onHelp={() => void openProviderPage('remixpool')} />
+
               <ProviderCard language={language} title="Discogs" health={providerHealth['Discogs']} description={t('settings.discogsDescription')} enabled={settings.discogsEnabled} onEnabled={(v) => change('discogsEnabled', v)} badge={t('settings.credentialsRequired')} helpLabel={t('settings.getCredentials')} onHelp={() => void openProviderPage('discogs')}>
                 <SettingInput label={t('settings.discogsToken')} value={settings.discogsToken} onChange={(v) => change('discogsToken', v)} password />
               </ProviderCard>

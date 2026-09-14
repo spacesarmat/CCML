@@ -736,6 +736,7 @@ export namespace model {
 	    yandexMusicEnabled: boolean;
 	    traxsourceEnabled: boolean;
 	    muzvizorEnabled: boolean;
+	    remixPoolEnabled: boolean;
 	    traxsourceApiKey: string;
 	    metadataEnrichmentConcurrency: number;
 	    theAudioDBApiKey: string;
@@ -770,6 +771,7 @@ export namespace model {
 	        this.yandexMusicEnabled = source["yandexMusicEnabled"];
 	        this.traxsourceEnabled = source["traxsourceEnabled"];
 	        this.muzvizorEnabled = source["muzvizorEnabled"];
+	        this.remixPoolEnabled = source["remixPoolEnabled"];
 	        this.traxsourceApiKey = source["traxsourceApiKey"];
 	        this.metadataEnrichmentConcurrency = source["metadataEnrichmentConcurrency"];
 	        this.theAudioDBApiKey = source["theAudioDBApiKey"];
