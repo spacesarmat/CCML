@@ -23,6 +23,8 @@ const (
 	duplicateVerifyCoarseShiftStep        = 5   // 500 ms coarse scan before frame-level refinement.
 	duplicateVerifySameMaxDurationDeltaMS = 1_500
 	duplicateVerifySimilarMaxDurationMS   = 60_000
+	duplicateVerifySilenceRMS             = 0.0002
+	duplicateVerifySilencePeak            = 0.001
 )
 
 var duplicateVerifySpectrumFrequencies = [...]float64{80, 140, 220, 350, 550, 850, 1300, 1750}
@@ -42,10 +44,12 @@ func NewDuplicateComparator(tools *Toolchain) *DuplicateComparator {
 }
 
 type duplicateFeatures struct {
-	energy    []float64
-	roughness []float64
-	zcr       []float64
-	spectrum  []float64
+	energy     []float64
+	roughness  []float64
+	zcr        []float64
+	spectrum   []float64
+	signalRMS  float64
+	signalPeak float64
 }
 
 // Compare compares every track against one reference track.
@@ -189,6 +193,8 @@ func extractDuplicateFeatures(samples []int16) duplicateFeatures {
 		spectrum:  make([]float64, len(duplicateVerifySpectrumFrequencies)),
 	}
 	spectrumFrames := 0
+	var totalSquares float64
+	totalSamples := 0
 
 	for frame := 0; frame < frameCount; frame++ {
 		start := frame * duplicateVerifyFrameSize
@@ -202,7 +208,13 @@ func extractDuplicateFeatures(samples []int16) duplicateFeatures {
 
 		for i, sample := range block {
 			value := float64(sample) / 32768.0
+			absolute := math.Abs(value)
+			if absolute > features.signalPeak {
+				features.signalPeak = absolute
+			}
 			sumSquares += value * value
+			totalSquares += value * value
+			totalSamples++
 			if i > 0 {
 				diffSum += math.Abs(value - previous)
 				if (value >= 0) != (previous >= 0) {
@@ -248,6 +260,9 @@ func extractDuplicateFeatures(samples []int16) duplicateFeatures {
 	features.energy = zNormalize(features.energy)
 	features.roughness = zNormalize(features.roughness)
 	features.zcr = zNormalize(features.zcr)
+	if totalSamples > 0 {
+		features.signalRMS = math.Sqrt(totalSquares / float64(totalSamples))
+	}
 	if spectrumFrames > 0 {
 		for bin := range features.spectrum {
 			features.spectrum[bin] /= float64(spectrumFrames)
@@ -260,6 +275,15 @@ func bestDuplicateFeatureSimilarity(left, right duplicateFeatures) (float64, int
 	maxFrames := maxInt(len(left.energy), len(right.energy))
 	minFrames := minInt(len(left.energy), len(right.energy))
 	if minFrames < 10 {
+		return 0, 0
+	}
+
+	leftSilent := duplicateFeaturesAreSilent(left)
+	rightSilent := duplicateFeaturesAreSilent(right)
+	if leftSilent || rightSilent {
+		if leftSilent && rightSilent {
+			return 1, 0
+		}
 		return 0, 0
 	}
 
@@ -353,6 +377,11 @@ func duplicateAlignmentScore(
 	// Duration matters, but only modestly: an edit can still be reported
 	// "similar" without being misclassified as the same full recording.
 	return contentScore * (0.88 + 0.12*durationRatio), true
+}
+
+func duplicateFeaturesAreSilent(features duplicateFeatures) bool {
+	return features.signalRMS <= duplicateVerifySilenceRMS &&
+		features.signalPeak <= duplicateVerifySilencePeak
 }
 
 func classifyDuplicateSimilarity(similarity float64, durationDeltaMS int64) string {

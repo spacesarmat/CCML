@@ -63,6 +63,74 @@ func TestDuplicateFeatureSimilarityFindsExtendedIntroOffset(t *testing.T) {
 	}
 }
 
+func TestDuplicateFeatureSimilarityRecognizesSilentDuplicates(t *testing.T) {
+	t.Parallel()
+
+	left := make([]int16, duplicateVerifySampleRate*30)
+	right := make([]int16, duplicateVerifySampleRate*30)
+
+	leftFeatures := extractDuplicateFeatures(left)
+	rightFeatures := extractDuplicateFeatures(right)
+	if !duplicateFeaturesAreSilent(leftFeatures) || !duplicateFeaturesAreSilent(rightFeatures) {
+		t.Fatalf("zero PCM must be detected as silence")
+	}
+
+	similarity, shift := bestDuplicateFeatureSimilarity(leftFeatures, rightFeatures)
+	if similarity != 1 {
+		t.Fatalf("silent similarity = %.4f, want 1", similarity)
+	}
+	if shift != 0 {
+		t.Fatalf("silent shift = %d, want 0", shift)
+	}
+	if got := classifyDuplicateSimilarity(similarity, 0); got != "same" {
+		t.Fatalf("silent verdict = %q, want same", got)
+	}
+}
+
+func TestDuplicateFeatureSimilarityRecognizesNearSilentDuplicates(t *testing.T) {
+	t.Parallel()
+
+	left := make([]int16, duplicateVerifySampleRate*30)
+	right := make([]int16, duplicateVerifySampleRate*30)
+	for i := range right {
+		if i%2 == 0 {
+			right[i] = 2
+		} else {
+			right[i] = -2
+		}
+	}
+
+	leftFeatures := extractDuplicateFeatures(left)
+	rightFeatures := extractDuplicateFeatures(right)
+	if !duplicateFeaturesAreSilent(rightFeatures) {
+		t.Fatalf("near-silent PCM RMS=%g peak=%g must be detected as silence", rightFeatures.signalRMS, rightFeatures.signalPeak)
+	}
+	if similarity, _ := bestDuplicateFeatureSimilarity(leftFeatures, rightFeatures); similarity != 1 {
+		t.Fatalf("near-silent similarity = %.4f, want 1", similarity)
+	}
+}
+
+func TestDuplicateFeatureSimilarityDoesNotMatchSilenceToAudibleAudio(t *testing.T) {
+	t.Parallel()
+
+	silence := make([]int16, duplicateVerifySampleRate*30)
+	audible := syntheticPCM(30, 1.0, 0)
+
+	silenceFeatures := extractDuplicateFeatures(silence)
+	audibleFeatures := extractDuplicateFeatures(audible)
+	if duplicateFeaturesAreSilent(audibleFeatures) {
+		t.Fatal("audible fixture must not be detected as silence")
+	}
+
+	similarity, _ := bestDuplicateFeatureSimilarity(silenceFeatures, audibleFeatures)
+	if similarity != 0 {
+		t.Fatalf("silence-to-audible similarity = %.4f, want 0", similarity)
+	}
+	if got := classifyDuplicateSimilarity(similarity, 0); got != "different" {
+		t.Fatalf("silence-to-audible verdict = %q, want different", got)
+	}
+}
+
 func TestDuplicateFeatureSimilarityRejectsDifferentShape(t *testing.T) {
 	t.Parallel()
 
