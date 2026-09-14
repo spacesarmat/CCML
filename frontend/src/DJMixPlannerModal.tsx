@@ -747,6 +747,9 @@ function DJMixPlannerModal({
               steps={plan.steps ?? []}
               selectedTrackID={previewTrackID}
               startTrackID={plan.startTrackId}
+              playing={previewPlaying}
+              currentTime={previewCurrentTime}
+              duration={previewDuration}
               t={t}
               onSelectTrack={(trackID) => selectPreviewTrack(trackID)}
               onPlayTrack={(trackID) => selectPreviewTrack(trackID, true)}
@@ -897,6 +900,20 @@ function PlannerRow({
   onDragEnd: () => void
   onReveal: () => void
 }) {
+  const rowRef = useRef<HTMLTableRowElement | null>(null)
+
+  useEffect(() => {
+    if (!isPreviewSelected) return
+    const timer = window.setTimeout(() => {
+      rowRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+      })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [isPreviewSelected])
+
   const factor = Math.abs(step.tempoFactor - 1) > 0.001
     ? step.tempoFactor > 1 ? `×${formatFactor(step.tempoFactor)}` : `÷${formatFactor(1 / step.tempoFactor)}`
     : ''
@@ -921,6 +938,7 @@ function PlannerRow({
 
   return (
     <tr
+      ref={rowRef}
       className={classes}
       draggable={!step.locked && !busy}
       onDragStart={onDragStart}
@@ -1085,6 +1103,9 @@ function DJMixTimeline({
   steps,
   selectedTrackID,
   startTrackID,
+  playing,
+  currentTime,
+  duration,
   t,
   onSelectTrack,
   onPlayTrack,
@@ -1092,10 +1113,27 @@ function DJMixTimeline({
   steps: DJMixPlanStep[]
   selectedTrackID: number
   startTrackID: number
+  playing: boolean
+  currentTime: number
+  duration: number
   t: (key: TranslationKey, params?: Record<string, string | number>) => string
   onSelectTrack: (trackID: number) => void
   onPlayTrack: (trackID: number) => void
 }) {
+  const selectedCardRef = useRef<HTMLButtonElement | null>(null)
+
+  useEffect(() => {
+    if (selectedTrackID <= 0) return
+    const timer = window.setTimeout(() => {
+      selectedCardRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [selectedTrackID])
+
   if (steps.length === 0) return null
 
   const lastIndex = steps.length - 1
@@ -1120,6 +1158,11 @@ function DJMixTimeline({
             const startMS = effectiveTimelineStartMS(steps, index)
             const energyPct = Math.max(0, Math.min(100, Math.round((step.energy || 0) * 100)))
             const relation = step.keyRelation === 'start' ? '' : relationLabel(step.keyRelation, t)
+            const isSelected = step.track.id === selectedTrackID
+            const playbackDuration = duration > 0 ? duration : Math.max(0, (step.track.durationMs || 0) / 1000)
+            const playbackProgress = isSelected && playbackDuration > 0
+              ? Math.max(0, Math.min(1, currentTime / playbackDuration))
+              : 0
 
             return (
               <div className={classes} key={`flow-${step.position}-${step.track.id}`}>
@@ -1133,10 +1176,12 @@ function DJMixTimeline({
                   </div>
                 )}
                 <button
+                  ref={isSelected ? selectedCardRef : undefined}
                   type="button"
                   className={[
                     'mix-planner-flow-card',
-                    step.track.id === selectedTrackID ? 'is-selected' : '',
+                    isSelected ? 'is-selected' : '',
+                    isSelected && playing ? 'is-playing' : '',
                     step.track.id === startTrackID ? 'is-start' : '',
                   ].filter(Boolean).join(' ')}
                   style={{width: `${mixTimelineTrackWidth(step.track.durationMs)}px`}}
@@ -1160,6 +1205,11 @@ function DJMixTimeline({
                   <span className="mix-planner-flow-energy" title={`Energy ${energyPct}%`}>
                     <span style={{width: `${energyPct}%`}} />
                   </span>
+                  {isSelected && (
+                    <span className="mix-planner-flow-playback" aria-hidden="true">
+                      <span style={{width: `${playbackProgress * 100}%`}} />
+                    </span>
+                  )}
                 </button>
               </div>
             )
