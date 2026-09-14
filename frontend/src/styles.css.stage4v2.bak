@@ -470,8 +470,6 @@ body { min-width: 1080px; overflow: hidden; }
 .workspace-table .title-cell { color: #d4deea; font-weight: 570; }
 .workspace-table tbody tr:hover { background: #121c28; }
 .workspace-table tbody tr.selected { background: #1b2940; }
-.workspace-table tbody tr.active-row { outline: 1px solid #6b86ff; outline-offset: -1px; }
-.workspace-table tbody tr.active-row.selected { background: #213453; }
 .workspace-table tbody tr.metadata-unchanged { box-shadow: inset 3px 0 0 #b78a32; background: rgba(167,126,47,.08); }
 .workspace-table tbody tr.metadata-failed { box-shadow: inset 3px 0 0 #ad5158; background: rgba(169,79,85,.08); }
 

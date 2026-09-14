@@ -1,0 +1,50 @@
+﻿CCML — Stage 4 v2: Keyboard navigation + shortcuts
+
+Why v2:
+The first Stage 4 installer used git apply against an older App.tsx baseline.
+Your local frontend already contains Stage 3 Inspector Player changes, so the patch
+validation failed. git apply --check did not modify the project.
+
+Stage 4 v2 intentionally DOES NOT use git apply.
+It validates exact code anchors in App.tsx and styles.css in memory first.
+Only after every anchor succeeds does it create backups and write both files.
+
+Install:
+
+1. Do NOT run the old apply-stage4-keyboard-navigation.ps1 again.
+
+2. Extract this ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage4-keyboard-navigation-v2.ps1"
+
+Expected:
+   Stage 4 v2 keyboard navigation applied successfully.
+
+4. Build frontend:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+5. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+Keyboard test:
+- click a row
+- Up / Down
+- PageUp / PageDown
+- Home / End
+- Shift + Up/Down for range selection
+- Ctrl + Up/Down moves active row while keeping batch selection
+- Ctrl + click toggles rows
+- Shift + click selects a range
+- Ctrl+A selects visible rows
+- Esc clears selection
+- Ctrl+F focuses search
+- Space toggles Play/Pause for one selected track
+- Enter selects the active row and switches Inspector to Tags
+
+Backups created automatically:
+frontend\src\App.tsx.stage4v2.bak
+frontend\src\styles.css.stage4v2.bak

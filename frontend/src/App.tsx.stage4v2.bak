@@ -64,7 +64,6 @@ function App() {
   const [search, setSearch] = useState('')
   const [tracks, setTracks] = useState<Track[]>([])
   const [selectedIDs, setSelectedIDs] = useState<number[]>([])
-  const [activeTrackID, setActiveTrackID] = useState<number | null>(null)
   const [tagRevision, setTagRevision] = useState(0)
   const [message, setMessage] = useState(() => translate(detectInitialLanguage(), 'message.ready'))
   const [busy, setBusy] = useState(false)
@@ -100,8 +99,6 @@ function App() {
   const mediaRequest = useRef(0)
   const mediaFallbackTried = useRef(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const searchInputRef = useRef<HTMLInputElement | null>(null)
-  const selectionAnchor = useRef<number | null>(null)
   const spectrogramRequest = useRef(0)
 
   const locale = localeFor(language)
@@ -128,7 +125,6 @@ function App() {
     if (track.lastMetadataJobStatus === 'skipped') classes.push('metadata-unchanged')
     if (track.lastMetadataJobStatus === 'failed') classes.push('metadata-failed')
     if (selectedIDs.includes(track.id)) classes.push('selected')
-    if (activeTrackID === track.id) classes.push('active-row')
     return classes.join(' ')
   }
 
@@ -149,99 +145,6 @@ function App() {
     document.documentElement.lang = language
     saveLanguage(language)
   }, [language])
-
-  useEffect(() => {
-    if (activeTrackID === null || mainView !== 'library') return
-    const frame = window.requestAnimationFrame(() => {
-      const row = document.querySelector<HTMLTableRowElement>(`tr[data-track-id="${activeTrackID}"]`)
-      row?.scrollIntoView({block: 'nearest'})
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [activeTrackID, mainView])
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const command = event.ctrlKey || event.metaKey
-      const key = event.key
-      const target = event.target as HTMLElement | null
-
-      if (command && key.toLowerCase() === 'f') {
-        if (settingsOpen || jobsOpen || mainView !== 'library') return
-        event.preventDefault()
-        searchInputRef.current?.focus()
-        searchInputRef.current?.select()
-        return
-      }
-
-      if (settingsOpen || jobsOpen || mainView !== 'library') return
-      if (target?.closest('input, textarea, select, button, a, [contenteditable="true"], [role="slider"]')) return
-
-      if (command && key.toLowerCase() === 'a') {
-        event.preventDefault()
-        selectAllVisibleTracks()
-        return
-      }
-
-      switch (key) {
-        case 'ArrowDown':
-          event.preventDefault()
-          moveActiveTrack(1, event.shiftKey, command)
-          break
-        case 'ArrowUp':
-          event.preventDefault()
-          moveActiveTrack(-1, event.shiftKey, command)
-          break
-        case 'PageDown':
-          event.preventDefault()
-          moveActiveTrack(10, event.shiftKey, command)
-          break
-        case 'PageUp':
-          event.preventDefault()
-          moveActiveTrack(-10, event.shiftKey, command)
-          break
-        case 'Home':
-          event.preventDefault()
-          moveActiveTrackTo(0, event.shiftKey, command)
-          break
-        case 'End':
-          event.preventDefault()
-          moveActiveTrackTo(filteredTracks.length - 1, event.shiftKey, command)
-          break
-        case 'Enter':
-          if (activeTrackID !== null && filteredTracks.some((track) => track.id === activeTrackID)) {
-            event.preventDefault()
-            selectOnlyTrack(activeTrackID)
-            setInspectorTab('tags')
-          }
-          break
-        case ' ':
-          if (selectedIDs.length === 1 && trackMedia?.audioUrl && !mediaLoading && !mediaFallbackLoading) {
-            event.preventDefault()
-            void toggleAudioPlayback()
-          }
-          break
-        case 'Escape':
-          if (selectedIDs.length > 0 || activeTrackID !== null) {
-            event.preventDefault()
-            clearTrackSelection()
-          }
-          break
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [
-    activeTrackID,
-    filteredTracks,
-    jobsOpen,
-    mainView,
-    mediaFallbackLoading,
-    mediaLoading,
-    selectedIDs,
-    settingsOpen,
-    trackMedia?.audioUrl,
-  ])
 
   useEffect(() => {
     setMetadata([])
@@ -400,7 +303,6 @@ function App() {
         .filter((track) => metadataFilter === 'all' || track.lastMetadataJobStatus === metadataFilter)
         .map((track) => track.id))
       setSelectedIDs((current) => current.filter((id) => visibleIDs.has(id)))
-      setActiveTrackID((current) => current !== null && visibleIDs.has(current) ? current : null)
       setMessage(t('message.tracksLoaded', {count: result.length}))
     }
   }
@@ -493,99 +395,28 @@ function App() {
     }
   }
 
-  function clearTrackSelection() {
-    setSelectedIDs([])
-    setActiveTrackID(null)
-    selectionAnchor.current = null
-  }
-
   function toggleTrackSelection(trackID: number) {
-    setActiveTrackID(trackID)
-    selectionAnchor.current = trackID
     setSelectedIDs((current) => current.includes(trackID)
       ? current.filter((id) => id !== trackID)
       : [...current, trackID])
   }
 
   function selectOnlyTrack(trackID: number) {
-    setActiveTrackID(trackID)
-    selectionAnchor.current = trackID
     setSelectedIDs([trackID])
-  }
-
-  function selectRangeTo(trackID: number) {
-    const targetIndex = filteredTracks.findIndex((track) => track.id === trackID)
-    if (targetIndex < 0) return
-
-    const anchorID = selectionAnchor.current ?? activeTrackID ?? selectedIDs[0] ?? trackID
-    let anchorIndex = filteredTracks.findIndex((track) => track.id === anchorID)
-    if (anchorIndex < 0) anchorIndex = targetIndex
-
-    const start = Math.min(anchorIndex, targetIndex)
-    const end = Math.max(anchorIndex, targetIndex)
-    setSelectedIDs(filteredTracks.slice(start, end + 1).map((track) => track.id))
-    setActiveTrackID(trackID)
-    if (selectionAnchor.current === null) selectionAnchor.current = anchorID
-  }
-
-  function handleTrackRowClick(trackID: number, extendSelection: boolean, toggleSelection: boolean) {
-    if (extendSelection) {
-      selectRangeTo(trackID)
-      return
-    }
-    if (toggleSelection) {
-      toggleTrackSelection(trackID)
-      return
-    }
-    selectOnlyTrack(trackID)
-  }
-
-  function moveActiveTrack(delta: number, extendSelection: boolean, preserveSelection: boolean) {
-    if (filteredTracks.length === 0) return
-    let index = filteredTracks.findIndex((track) => track.id === activeTrackID)
-    if (index < 0) index = filteredTracks.findIndex((track) => selectedIDs.includes(track.id))
-    if (index < 0) index = delta > 0 ? -1 : 0
-    moveActiveTrackTo(index + delta, extendSelection, preserveSelection)
-  }
-
-  function moveActiveTrackTo(index: number, extendSelection: boolean, preserveSelection: boolean) {
-    if (filteredTracks.length === 0) return
-    const clamped = Math.max(0, Math.min(index, filteredTracks.length - 1))
-    const trackID = filteredTracks[clamped].id
-
-    if (extendSelection) {
-      selectRangeTo(trackID)
-      return
-    }
-
-    setActiveTrackID(trackID)
-    if (!preserveSelection) {
-      selectionAnchor.current = trackID
-      setSelectedIDs([trackID])
-    }
-  }
-
-  function selectAllVisibleTracks() {
-    if (filteredTracks.length === 0) return
-    const ids = filteredTracks.map((track) => track.id)
-    setSelectedIDs(ids)
-    const active = activeTrackID !== null && ids.includes(activeTrackID) ? activeTrackID : ids[0]
-    setActiveTrackID(active)
-    selectionAnchor.current = active
   }
 
   function changeMetadataFilter(next: 'all' | 'skipped' | 'failed') {
     setMainView('library')
     setMetadataFilter(next)
-    clearTrackSelection()
+    setSelectedIDs([])
   }
 
   function toggleAllVisible() {
     if (filteredTracks.length > 0 && filteredTracks.every((track) => selectedIDs.includes(track.id))) {
-      clearTrackSelection()
+      setSelectedIDs([])
       return
     }
-    selectAllVisibleTracks()
+    setSelectedIDs(filteredTracks.map((track) => track.id))
   }
 
   async function tagDataChanged() {
@@ -915,7 +746,7 @@ function App() {
                     : t('library.shownFiltered', {count: formatNumber(filteredTracks.length, locale), total: formatNumber(tracks.length, locale)})}</span>
                 </div>
                 <div className="workspace-search">
-                  <input ref={searchInputRef} value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && void refreshTracks()} placeholder={t('library.searchPlaceholder')} />
+                  <input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && void refreshTracks()} placeholder={t('library.searchPlaceholder')} />
                   <button onClick={() => void refreshTracks()} disabled={busy}>{t('library.search')}</button>
                 </div>
               </div>
@@ -938,7 +769,7 @@ function App() {
                   <button onClick={() => setInspectorTab('tags')}>{t('workspace.editTags')}</button>
                   <button onClick={() => void openMetadataInspector()} disabled={selectedIDs.length !== 1 || busy}>{t('actions.findMetadata')}</button>
                   <button className="primary" onClick={() => void enrichSelected()} disabled={busy || scanning}>{t('metadata.enrichSelected')}</button>
-                  <button onClick={clearTrackSelection}>{t('workspace.clearSelection')}</button>
+                  <button onClick={() => setSelectedIDs([])}>{t('workspace.clearSelection')}</button>
                 </div>
               )}
 
@@ -952,14 +783,7 @@ function App() {
                   </thead>
                   <tbody>
                     {filteredTracks.map((track) => (
-                      <tr
-                        key={track.id}
-                        data-track-id={track.id}
-                        className={metadataRowClass(track)}
-                        title={metadataRowTitle(track)}
-                        aria-current={activeTrackID === track.id ? 'true' : undefined}
-                        onClick={(event) => handleTrackRowClick(track.id, event.shiftKey, event.ctrlKey || event.metaKey)}
-                      >
+                      <tr key={track.id} className={metadataRowClass(track)} title={metadataRowTitle(track)} onClick={() => selectOnlyTrack(track.id)}>
                         <td className="selection-col" onClick={(event: { stopPropagation(): void }) => event.stopPropagation()}><input type="checkbox" checked={selectedIDs.includes(track.id)} aria-label={t('library.selectTrack', {title: track.title || track.fileName})} onChange={() => toggleTrackSelection(track.id)} /></td>
                         <td>{track.trackNumber || '–'}</td><td>{track.artist || t('library.unknownArtist')}</td><td className="title-cell">{track.title || track.fileName}</td><td>{track.album || '–'}</td><td>{formatDuration(track.durationMs)}</td><td>{track.codec}</td><td>{track.loudnessI ? track.loudnessI.toFixed(1) : '–'}</td><td>{track.bpm ? `${track.bpm.toFixed(1)} · ${track.key} ${track.keyScale}` : '–'}</td>
                       </tr>
