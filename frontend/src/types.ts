@@ -71,6 +71,11 @@ export type DJMixPlanStep = {
   energy: number
   energyDelta: number
   pinned: boolean
+  locked: boolean
+  timelineStartMs: number
+  timelineEndMs: number
+  transitionNote: string
+  cueNote: string
   score: number
   warnings: string[] | null
 }
@@ -87,6 +92,8 @@ export type DJMixPlan = {
   lookahead: number
   pinnedCount: number
   ignoredPins: number
+  lockedCount: number
+  manualOrder: boolean
 }
 
 export type DJMixSavedPlan = {

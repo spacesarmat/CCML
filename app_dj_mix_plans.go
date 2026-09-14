@@ -146,6 +146,24 @@ func renderDJMixM3U8(plan model.DJMixPlan) string {
 		out.WriteString(",")
 		out.WriteString(label)
 		out.WriteString("\n")
+		out.WriteString("#CCML-TIMELINE-MS:")
+		out.WriteString(strconv.FormatInt(step.TimelineStartMS, 10))
+		out.WriteString(",")
+		out.WriteString(strconv.FormatInt(step.TimelineEndMS, 10))
+		out.WriteString("\n")
+		if step.Locked {
+			out.WriteString("#CCML-LOCKED:1\n")
+		}
+		if note := sanitizeDJMixExportText(step.TransitionNote); note != "" {
+			out.WriteString("#CCML-TRANSITION:")
+			out.WriteString(note)
+			out.WriteString("\n")
+		}
+		if note := sanitizeDJMixExportText(step.CueNote); note != "" {
+			out.WriteString("#CCML-CUE:")
+			out.WriteString(note)
+			out.WriteString("\n")
+		}
 		out.WriteString(sanitizeDJMixExportText(track.Path))
 		out.WriteString("\n")
 	}
@@ -157,9 +175,10 @@ func renderDJMixCSV(plan model.DJMixPlan) ([]byte, error) {
 	writer := csv.NewWriter(&buffer)
 	writer.UseCRLF = true
 	header := []string{
-		"Position", "Artist", "Title", "BPM", "Adjusted BPM", "Tempo Delta %",
-		"Camelot", "Open Key", "Genre", "Energy", "Energy Delta", "Key Relation",
-		"Genre Relation", "Score", "Pinned", "Path",
+		"Position", "Timeline Start MS", "Timeline End MS", "Artist", "Title",
+		"BPM", "Adjusted BPM", "Tempo Delta %", "Camelot", "Open Key", "Genre",
+		"Energy", "Energy Delta", "Key Relation", "Genre Relation", "Score",
+		"Pinned", "Locked", "Transition Note", "Cue Note", "Path",
 	}
 	if err := writer.Write(header); err != nil {
 		return nil, fmt.Errorf("write DJ mix CSV header: %w", err)
@@ -167,6 +186,8 @@ func renderDJMixCSV(plan model.DJMixPlan) ([]byte, error) {
 	for _, step := range plan.Steps {
 		row := []string{
 			strconv.Itoa(step.Position),
+			strconv.FormatInt(step.TimelineStartMS, 10),
+			strconv.FormatInt(step.TimelineEndMS, 10),
 			step.Track.Artist,
 			step.Track.Title,
 			formatDJMixExportFloat(step.Track.BPM, 2),
@@ -181,6 +202,9 @@ func renderDJMixCSV(plan model.DJMixPlan) ([]byte, error) {
 			step.GenreRelation,
 			formatDJMixExportFloat(step.Score, 4),
 			strconv.FormatBool(step.Pinned),
+			strconv.FormatBool(step.Locked),
+			step.TransitionNote,
+			step.CueNote,
 			step.Track.Path,
 		}
 		if err := writer.Write(row); err != nil {

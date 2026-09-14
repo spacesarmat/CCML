@@ -28,7 +28,11 @@ export function CreateMetadataEnrichmentJob(arg1:Array<number>,arg2:model.Metada
 
 export function DeleteDuplicateTracks(arg1:Array<number>,arg2:string):Promise<model.DuplicateActionResult>;
 
+export function DeleteSavedDJMixPlan(arg1:number):Promise<void>;
+
 export function EnrichMetadata(arg1:Array<number>,arg2:model.MetadataEnrichmentOptions):Promise<model.MetadataEnrichmentResult>;
+
+export function ExportDJMixPlan(arg1:string,arg2:string,arg3:model.DJMixPlan):Promise<string>;
 
 export function FindDuplicates():Promise<Array<model.DuplicateGroup>>;
 
@@ -48,9 +52,13 @@ export function ListLibraryRoots():Promise<Array<model.LibraryRoot>>;
 
 export function ListRunningBackgroundJobItems(arg1:number,arg2:number):Promise<Array<model.BackgroundJobItem>>;
 
+export function ListSavedDJMixPlans(arg1:number):Promise<Array<model.DJMixSavedPlan>>;
+
 export function ListTagHistory(arg1:number):Promise<Array<model.TagHistory>>;
 
 export function ListTracks(arg1:string,arg2:number,arg3:number):Promise<Array<model.Track>>;
+
+export function LoadSavedDJMixPlan(arg1:number):Promise<model.DJMixSavedPlan>;
 
 export function LookupMetadata(arg1:number):Promise<model.MetadataLookupResult>;
 
@@ -93,6 +101,8 @@ export function ResetEssentiaExecutable():Promise<model.SystemStatus>;
 export function ResumeBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
 
 export function RetryFailedBackgroundJob(arg1:number):Promise<model.BackgroundJob>;
+
+export function SaveDJMixPlan(arg1:number,arg2:string,arg3:Array<number>,arg4:model.DJMixPlanOptions,arg5:model.DJMixPlan):Promise<model.DJMixSavedPlan>;
 
 export function SaveEssentiaPerformance(arg1:model.EssentiaPerformance):Promise<model.EssentiaPerformance>;
 

@@ -161,7 +161,7 @@ func planDJMixQuality(tracks []model.Track, options model.DJMixPlanOptions) mode
 	if transitionCount > 0 {
 		plan.AverageScore = scoreSum / float64(transitionCount)
 	}
-	return plan
+	return finalizeDJMixTimeline(plan, false)
 }
 
 func normalizeDJMixQualityOptions(options model.DJMixPlanOptions) model.DJMixPlanOptions {

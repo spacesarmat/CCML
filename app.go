@@ -620,6 +620,12 @@ func (a *App) PlanDJMix(trackIDs []int64, options model.DJMixPlanOptions) (model
 	return audio.PlanDJMix(tracks, options), nil
 }
 
+// RecalculateDJMixPlan preserves the supplied manual order/notes/locks and
+// recomputes transition evidence, score and cumulative timeline offsets.
+func (a *App) RecalculateDJMixPlan(plan model.DJMixPlan, options model.DJMixPlanOptions) (model.DJMixPlan, error) {
+	return audio.RecalculateDJMixTimeline(plan, options), nil
+}
+
 // FindDuplicates finds probable duplicates by normalized metadata and duration.
 func (a *App) FindDuplicates() ([]model.DuplicateGroup, error) {
 	tracks, err := a.store.AllTracks(a.context())

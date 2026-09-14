@@ -54,8 +54,16 @@ export function DeleteDuplicateTracks(arg1, arg2) {
   return window['go']['main']['App']['DeleteDuplicateTracks'](arg1, arg2);
 }
 
+export function DeleteSavedDJMixPlan(arg1) {
+  return window['go']['main']['App']['DeleteSavedDJMixPlan'](arg1);
+}
+
 export function EnrichMetadata(arg1, arg2) {
   return window['go']['main']['App']['EnrichMetadata'](arg1, arg2);
+}
+
+export function ExportDJMixPlan(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ExportDJMixPlan'](arg1, arg2, arg3);
 }
 
 export function FindDuplicates() {
@@ -94,12 +102,20 @@ export function ListRunningBackgroundJobItems(arg1, arg2) {
   return window['go']['main']['App']['ListRunningBackgroundJobItems'](arg1, arg2);
 }
 
+export function ListSavedDJMixPlans(arg1) {
+  return window['go']['main']['App']['ListSavedDJMixPlans'](arg1);
+}
+
 export function ListTagHistory(arg1) {
   return window['go']['main']['App']['ListTagHistory'](arg1);
 }
 
 export function ListTracks(arg1, arg2, arg3) {
   return window['go']['main']['App']['ListTracks'](arg1, arg2, arg3);
+}
+
+export function LoadSavedDJMixPlan(arg1) {
+  return window['go']['main']['App']['LoadSavedDJMixPlan'](arg1);
 }
 
 export function LookupMetadata(arg1) {
@@ -184,6 +200,10 @@ export function ResumeBackgroundJob(arg1) {
 
 export function RetryFailedBackgroundJob(arg1) {
   return window['go']['main']['App']['RetryFailedBackgroundJob'](arg1);
+}
+
+export function SaveDJMixPlan(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['SaveDJMixPlan'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function SaveEssentiaPerformance(arg1) {

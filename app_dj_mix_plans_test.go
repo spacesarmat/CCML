@@ -17,10 +17,23 @@ func TestRenderDJMixM3U8(t *testing.T) {
 			Track: model.Track{
 				Path: "C:\\Music\\One.mp3", Artist: "Artist", Title: "One", DurationMS: 185900,
 			},
+			TimelineStartMS: 0,
+			TimelineEndMS:   185900,
+			Locked:          true,
+			TransitionNote:  "blend 16 bars",
+			CueNote:         "vocal starts 0:32",
 		},
 	}}
 	got := renderDJMixM3U8(plan)
-	for _, want := range []string{"#EXTM3U\n", "#EXTINF:185,Artist - One\n", "C:\\Music\\One.mp3\n"} {
+	for _, want := range []string{
+		"#EXTM3U\n",
+		"#EXTINF:185,Artist - One\n",
+		"#CCML-TIMELINE-MS:0,185900\n",
+		"#CCML-LOCKED:1\n",
+		"#CCML-TRANSITION:blend 16 bars\n",
+		"#CCML-CUE:vocal starts 0:32\n",
+		"C:\\Music\\One.mp3\n",
+	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("M3U8 missing %q:\n%s", want, got)
 		}
@@ -36,11 +49,16 @@ func TestRenderDJMixCSV(t *testing.T) {
 			Track: model.Track{
 				Path: "C:\\Music\\One.mp3", Artist: `A, "DJ"`, Title: "One", BPM: 128.5, Genre: "House",
 			},
-			AdjustedBPM: 128.5,
-			Camelot:     "8A",
-			OpenKey:     "1m",
-			Energy:      0.7,
-			Score:       0.9,
+			AdjustedBPM:     128.5,
+			Camelot:         "8A",
+			OpenKey:         "1m",
+			Energy:          0.7,
+			Score:           0.9,
+			TimelineStartMS: 30000,
+			TimelineEndMS:   215900,
+			Locked:          true,
+			TransitionNote:  "long blend",
+			CueNote:         "cue A",
 		},
 	}}
 	raw, err := renderDJMixCSV(plan)
@@ -48,9 +66,10 @@ func TestRenderDJMixCSV(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range [][]byte{
-		[]byte("Position,Artist,Title"),
+		[]byte("Position,Timeline Start MS,Timeline End MS,Artist,Title"),
 		[]byte(`"A, ""DJ"""`),
 		[]byte("8A,1m,House"),
+		[]byte("true,long blend,cue A"),
 		[]byte(`C:\Music\One.mp3`),
 	} {
 		if !bytes.Contains(raw, want) {

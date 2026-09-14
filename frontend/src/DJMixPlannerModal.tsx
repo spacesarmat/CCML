@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react'
+import {useEffect, useMemo, useState, type DragEvent} from 'react'
 import {translate, type AppLanguage, type TranslationKey} from './i18n'
 import type {DJMixPin, DJMixPlan, DJMixPlanOptions, DJMixPlanStep, DJMixSavedPlan} from './types'
 import './djMixPlanner.css'
@@ -40,6 +40,9 @@ function DJMixPlannerModal({
   const [planName, setPlanName] = useState('')
   const [savedScopeIDs, setSavedScopeIDs] = useState<number[] | null>(null)
   const [savedLoading, setSavedLoading] = useState(false)
+  const [manualBusy, setManualBusy] = useState(false)
+  const [dragTrackID, setDragTrackID] = useState(0)
+  const [dragOverTrackID, setDragOverTrackID] = useState(0)
 
   const t = (key: TranslationKey, params?: Record<string, string | number>) => translate(language, key, params)
   const scopeIDs = useMemo(() => selectedIDs.length >= 2 ? selectedIDs : [], [selectedIDs])
@@ -248,6 +251,56 @@ function DJMixPlannerModal({
     void build(startTrackID, nextPins)
   }
 
+  async function applyManualOrder(nextSteps: DJMixPlanStep[]) {
+    if (!window.go?.main?.App || !plan || nextSteps.length === 0) return
+    setManualBusy(true)
+    setError('')
+    try {
+      const result = await window.go.main.App.RecalculateDJMixPlan(
+        {...plan, steps: nextSteps},
+        plannerOptions(),
+      )
+      setPlan(result)
+      setStartTrackID(result.startTrackId)
+      setPins(pinsFromSteps(result.steps ?? []))
+      onMessage(t('mixPlanner.manualRecalculated'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setManualBusy(false)
+    }
+  }
+
+  function moveManualStep(trackID: number, direction: -1 | 1) {
+    if (!plan?.steps) return
+    const next = moveUnlockedStep(plan.steps, trackID, direction)
+    if (next) void applyManualOrder(next)
+  }
+
+  function dropManualStep(sourceTrackID: number, targetTrackID: number) {
+    if (!plan?.steps || sourceTrackID <= 0 || targetTrackID <= 0) return
+    const next = reorderUnlockedSteps(plan.steps, sourceTrackID, targetTrackID)
+    if (next) void applyManualOrder(next)
+  }
+
+  function toggleLock(trackID: number) {
+    setPlan((current) => {
+      if (!current?.steps) return current
+      const steps = current.steps.map((step) => step.track.id === trackID ? {...step, locked: !step.locked} : step)
+      return {...current, steps, lockedCount: steps.filter((step) => step.locked).length}
+    })
+  }
+
+  function updateManualNote(trackID: number, field: 'transitionNote' | 'cueNote', value: string) {
+    setPlan((current) => {
+      if (!current?.steps) return current
+      return {
+        ...current,
+        steps: current.steps.map((step) => step.track.id === trackID ? {...step, [field]: value} : step),
+      }
+    })
+  }
+
   if (!open) return null
 
   return (
@@ -349,10 +402,12 @@ function DJMixPlannerModal({
               <Summary value={`${Math.round((plan.averageScore || 0) * 100)}%`} label={t('mixPlanner.avgScore')} />
               <Summary value={plan.lookahead || lookahead} label={t('mixPlanner.lookahead')} />
               <Summary value={plan.pinnedCount} label={t('mixPlanner.pinned')} />
+              <Summary value={plan.lockedCount ?? 0} label={t('mixPlanner.locked')} />
               <Summary value={plan.excludedMissingBpm} label={t('mixPlanner.missingBpm')} />
               <Summary value={plan.tracksMissingKey} label={t('mixPlanner.missingKey')} />
             </div>
             {plan.ignoredPins > 0 && <div className="mix-planner-pin-note">{t('mixPlanner.ignoredPins', {count: plan.ignoredPins})}</div>}
+            {plan.manualOrder && <div className="mix-planner-manual-note">{t('mixPlanner.manualActive')}</div>}
 
             {(plan.steps?.length ?? 0) === 0 ? (
               <div className="mix-planner-empty">{t('mixPlanner.empty')}</div>
@@ -362,24 +417,62 @@ function DJMixPlannerModal({
                   <thead>
                     <tr>
                       <th>#</th>
+                      <th>{t('mixPlanner.timeline')}</th>
                       <th>{t('mixPlanner.track')}</th>
                       <th>{t('mixPlanner.bpm')}</th>
                       <th>{t('mixPlanner.key')}</th>
                       <th>{t('mixPlanner.flow')}</th>
                       <th>{t('mixPlanner.transition')}</th>
+                      <th>{t('mixPlanner.notes')}</th>
                       <th>{t('mixPlanner.score')}</th>
                       <th />
                     </tr>
                   </thead>
                   <tbody>
-                    {(plan.steps ?? []).map((step) => (
+                    {(plan.steps ?? []).map((step, index, steps) => (
                       <PlannerRow
                         key={`${step.position}-${step.track.id}`}
                         step={step}
+                        timelineStartMS={effectiveTimelineStartMS(steps, index)}
                         isStart={step.track.id === plan.startTrackId}
+                        isDragging={dragTrackID === step.track.id}
+                        isDropTarget={dragOverTrackID === step.track.id}
+                        busy={manualBusy}
                         t={t}
                         onStart={() => useAsStart(step.track.id)}
                         onPin={() => togglePin(step.position, step.track.id)}
+                        onLock={() => toggleLock(step.track.id)}
+                        onMoveUp={() => moveManualStep(step.track.id, -1)}
+                        onMoveDown={() => moveManualStep(step.track.id, 1)}
+                        onTransitionNote={(value) => updateManualNote(step.track.id, 'transitionNote', value)}
+                        onCueNote={(value) => updateManualNote(step.track.id, 'cueNote', value)}
+                        onDragStart={(event) => {
+                          if (step.locked || (event.target as HTMLElement).closest('input, textarea, button')) {
+                            event.preventDefault()
+                            return
+                          }
+                          event.dataTransfer.effectAllowed = 'move'
+                          event.dataTransfer.setData('text/plain', String(step.track.id))
+                          setDragTrackID(step.track.id)
+                          setDragOverTrackID(0)
+                        }}
+                        onDragOver={(event) => {
+                          if (step.locked || dragTrackID <= 0 || dragTrackID === step.track.id) return
+                          event.preventDefault()
+                          event.dataTransfer.dropEffect = 'move'
+                          setDragOverTrackID(step.track.id)
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault()
+                          const source = dragTrackID || Number(event.dataTransfer.getData('text/plain'))
+                          setDragTrackID(0)
+                          setDragOverTrackID(0)
+                          dropManualStep(source, step.track.id)
+                        }}
+                        onDragEnd={() => {
+                          setDragTrackID(0)
+                          setDragOverTrackID(0)
+                        }}
                         onReveal={() => void onRevealTrack(step.track.id)}
                       />
                     ))}
@@ -401,17 +494,43 @@ function DJMixPlannerModal({
 
 function PlannerRow({
   step,
+  timelineStartMS,
   isStart,
+  isDragging,
+  isDropTarget,
+  busy,
   t,
   onStart,
   onPin,
+  onLock,
+  onMoveUp,
+  onMoveDown,
+  onTransitionNote,
+  onCueNote,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
   onReveal,
 }: {
   step: DJMixPlanStep
+  timelineStartMS: number
   isStart: boolean
+  isDragging: boolean
+  isDropTarget: boolean
+  busy: boolean
   t: (key: TranslationKey, params?: Record<string, string | number>) => string
   onStart: () => void
   onPin: () => void
+  onLock: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+  onTransitionNote: (value: string) => void
+  onCueNote: (value: string) => void
+  onDragStart: (event: DragEvent<HTMLTableRowElement>) => void
+  onDragOver: (event: DragEvent<HTMLTableRowElement>) => void
+  onDrop: (event: DragEvent<HTMLTableRowElement>) => void
+  onDragEnd: () => void
   onReveal: () => void
 }) {
   const factor = Math.abs(step.tempoFactor - 1) > 0.001
@@ -426,10 +545,30 @@ function PlannerRow({
   const flow = step.keyRelation === 'start'
     ? `${genreRelationLabel(step.genreRelation, t)} · E ${Math.round(step.energy * 100)}%`
     : `${genreRelationLabel(step.genreRelation, t)} · E ${formatSigned(step.energyDelta * 100)}%`
+  const timelineEndMS = timelineStartMS + Math.max(0, step.track.durationMs || 0)
+  const classes = [
+    isStart ? 'is-start' : '',
+    step.pinned ? 'is-pinned' : '',
+    step.locked ? 'is-locked' : '',
+    isDragging ? 'is-dragging' : '',
+    isDropTarget ? 'is-drop-target' : '',
+  ].filter(Boolean).join(' ')
 
   return (
-    <tr className={`${isStart ? 'is-start ' : ''}${step.pinned ? 'is-pinned' : ''}`.trim()}>
+    <tr
+      className={classes}
+      draggable={!step.locked && !busy}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      title={step.locked ? t('mixPlanner.lockedHint') : t('mixPlanner.dragHint')}
+    >
       <td className="mix-position">{step.position}</td>
+      <td className="mix-timeline" title={`${formatTimeline(timelineStartMS)} → ${formatTimeline(timelineEndMS)}`}>
+        <strong>{formatTimeline(timelineStartMS)}</strong>
+        <small>{formatDuration(step.track.durationMs)}</small>
+      </td>
       <td className="mix-track">
         <strong>{step.track.artist || '—'} — {step.track.title || step.track.fileName}</strong>
         <small>{step.track.genre || step.track.album || step.track.path}</small>
@@ -443,10 +582,31 @@ function PlannerRow({
       <td>{step.camelot || '—'}{step.openKey ? <small className="mix-open-key">{step.openKey}</small> : null}</td>
       <td className="mix-flow">{flow}</td>
       <td>{transition}</td>
+      <td className="mix-notes">
+        <input
+          value={step.transitionNote ?? ''}
+          maxLength={500}
+          onChange={(event) => onTransitionNote(event.target.value)}
+          placeholder={t('mixPlanner.transitionNote')}
+          aria-label={t('mixPlanner.transitionNote')}
+        />
+        <input
+          value={step.cueNote ?? ''}
+          maxLength={500}
+          onChange={(event) => onCueNote(event.target.value)}
+          placeholder={t('mixPlanner.cueNote')}
+          aria-label={t('mixPlanner.cueNote')}
+        />
+      </td>
       <td><b className="mix-score">{Math.round(step.score * 100)}%</b></td>
       <td className="mix-row-actions">
-        {!isStart && <button type="button" onClick={onStart}>{t('mixPlanner.startHere')}</button>}
-        <button type="button" className={step.pinned ? 'is-active' : ''} onClick={onPin}>
+        <button type="button" onClick={onMoveUp} disabled={busy || step.locked} title={t('mixPlanner.moveUp')}>↑</button>
+        <button type="button" onClick={onMoveDown} disabled={busy || step.locked} title={t('mixPlanner.moveDown')}>↓</button>
+        <button type="button" className={step.locked ? 'is-active' : ''} onClick={onLock}>
+          {step.locked ? t('mixPlanner.unlock') : t('mixPlanner.lock')}
+        </button>
+        {!isStart && <button type="button" onClick={onStart} disabled={busy}>{t('mixPlanner.startHere')}</button>}
+        <button type="button" className={step.pinned ? 'is-active' : ''} onClick={onPin} disabled={busy}>
           {step.pinned ? t('mixPlanner.unpin') : t('mixPlanner.pin')}
         </button>
         <button type="button" onClick={onReveal}>{t('mixPlanner.reveal')}</button>
@@ -464,6 +624,78 @@ function genreRelationLabel(value: string, t: (key: TranslationKey) => string): 
     start: 'mixPlanner.genre.start',
   } as Record<string, TranslationKey>)[value] ?? 'mixPlanner.genre.unknown'
   return t(key)
+}
+
+function pinsFromSteps(steps: DJMixPlanStep[]): Record<number, number> {
+  const result: Record<number, number> = {}
+  for (const step of steps) {
+    if (step.pinned) result[step.position] = step.track.id
+  }
+  return result
+}
+
+function reorderUnlockedSteps(
+  steps: DJMixPlanStep[],
+  sourceTrackID: number,
+  targetTrackID: number,
+): DJMixPlanStep[] | null {
+  if (sourceTrackID === targetTrackID) return null
+  const source = steps.find((step) => step.track.id === sourceTrackID)
+  const target = steps.find((step) => step.track.id === targetTrackID)
+  if (!source || !target || source.locked || target.locked) return null
+
+  const unlocked = steps.filter((step) => !step.locked)
+  const sourceIndex = unlocked.findIndex((step) => step.track.id === sourceTrackID)
+  if (sourceIndex < 0) return null
+  const [moved] = unlocked.splice(sourceIndex, 1)
+  const targetIndex = unlocked.findIndex((step) => step.track.id === targetTrackID)
+  if (targetIndex < 0) return null
+  unlocked.splice(targetIndex, 0, moved)
+  return mergeUnlockedIntoLockedSlots(steps, unlocked)
+}
+
+function moveUnlockedStep(
+  steps: DJMixPlanStep[],
+  trackID: number,
+  direction: -1 | 1,
+): DJMixPlanStep[] | null {
+  const unlocked = steps.filter((step) => !step.locked)
+  const sourceIndex = unlocked.findIndex((step) => step.track.id === trackID)
+  const targetIndex = sourceIndex + direction
+  if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= unlocked.length) return null
+  const temp = unlocked[sourceIndex]
+  unlocked[sourceIndex] = unlocked[targetIndex]
+  unlocked[targetIndex] = temp
+  return mergeUnlockedIntoLockedSlots(steps, unlocked)
+}
+
+function mergeUnlockedIntoLockedSlots(original: DJMixPlanStep[], unlocked: DJMixPlanStep[]): DJMixPlanStep[] {
+  let index = 0
+  return original.map((step) => step.locked ? step : unlocked[index++])
+}
+
+function effectiveTimelineStartMS(steps: DJMixPlanStep[], index: number): number {
+  const stored = steps[index]?.timelineStartMs
+  if (Number.isFinite(stored) && (stored > 0 || index === 0)) return stored
+  let total = 0
+  for (let i = 0; i < index; i += 1) {
+    total += Math.max(0, steps[i]?.track.durationMs || 0)
+  }
+  return total
+}
+
+function formatTimeline(valueMS: number): string {
+  const total = Math.max(0, Math.floor((Number.isFinite(valueMS) ? valueMS : 0) / 1000))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatDuration(valueMS: number): string {
+  return formatTimeline(Math.max(0, valueMS || 0))
 }
 
 function Summary({value, label}: {value: string | number; label: string}) {

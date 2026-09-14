@@ -326,20 +326,25 @@ type DJMixPlanOptions struct {
 
 // DJMixPlanStep is one ordered track plus the transition from the previous step.
 type DJMixPlanStep struct {
-	Position      int      `json:"position"`
-	Track         Track    `json:"track"`
-	Camelot       string   `json:"camelot"`
-	OpenKey       string   `json:"openKey"`
-	AdjustedBPM   float64  `json:"adjustedBpm"`
-	TempoFactor   float64  `json:"tempoFactor"`
-	TempoDeltaPct float64  `json:"tempoDeltaPct"`
-	KeyRelation   string   `json:"keyRelation"`
-	GenreRelation string   `json:"genreRelation"`
-	Energy        float64  `json:"energy"`
-	EnergyDelta   float64  `json:"energyDelta"`
-	Pinned        bool     `json:"pinned"`
-	Score         float64  `json:"score"`
-	Warnings      []string `json:"warnings"`
+	Position        int      `json:"position"`
+	Track           Track    `json:"track"`
+	Camelot         string   `json:"camelot"`
+	OpenKey         string   `json:"openKey"`
+	AdjustedBPM     float64  `json:"adjustedBpm"`
+	TempoFactor     float64  `json:"tempoFactor"`
+	TempoDeltaPct   float64  `json:"tempoDeltaPct"`
+	KeyRelation     string   `json:"keyRelation"`
+	GenreRelation   string   `json:"genreRelation"`
+	Energy          float64  `json:"energy"`
+	EnergyDelta     float64  `json:"energyDelta"`
+	Pinned          bool     `json:"pinned"`
+	Locked          bool     `json:"locked"`
+	TimelineStartMS int64    `json:"timelineStartMs"`
+	TimelineEndMS   int64    `json:"timelineEndMs"`
+	TransitionNote  string   `json:"transitionNote"`
+	CueNote         string   `json:"cueNote"`
+	Score           float64  `json:"score"`
+	Warnings        []string `json:"warnings"`
 }
 
 // DJMixPlan summarizes an ordered route through analyzed library tracks.
@@ -355,6 +360,8 @@ type DJMixPlan struct {
 	Lookahead          int             `json:"lookahead"`
 	PinnedCount        int             `json:"pinnedCount"`
 	IgnoredPins        int             `json:"ignoredPins"`
+	LockedCount        int             `json:"lockedCount"`
+	ManualOrder        bool            `json:"manualOrder"`
 }
 
 // DJMixSavedPlan stores a named planner snapshot plus the scope/options needed
