@@ -1136,3 +1136,412 @@ body.table-column-resizing * {
   min-width: 48px;
   font-variant-numeric: tabular-nums;
 }
+/* Stage 11.1 — CCML visual-system foundation */
+:root {
+  --ccml-bg: #090e14;
+  --ccml-bg-elevated: #0d141d;
+  --ccml-surface-1: #101821;
+  --ccml-surface-2: #131d28;
+  --ccml-surface-3: #172231;
+  --ccml-surface-hover: #1a2736;
+  --ccml-surface-active: #203149;
+
+  --ccml-border-subtle: #1c2938;
+  --ccml-border: #29394d;
+  --ccml-border-strong: #3a506b;
+
+  --ccml-text: #dbe5f1;
+  --ccml-text-strong: #f2f6fb;
+  --ccml-text-muted: #8b9aae;
+  --ccml-text-dim: #64758b;
+
+  --ccml-accent: #6484ff;
+  --ccml-accent-hover: #7592ff;
+  --ccml-accent-soft: rgba(100, 132, 255, .14);
+  --ccml-accent-border: rgba(120, 151, 255, .48);
+
+  --ccml-success: #56c58c;
+  --ccml-warning: #d4ad54;
+  --ccml-danger: #db7178;
+
+  --ccml-radius-sm: 6px;
+  --ccml-radius-md: 8px;
+  --ccml-radius-lg: 11px;
+  --ccml-radius-xl: 14px;
+
+  --ccml-shadow-sm: 0 6px 18px rgba(0, 0, 0, .18);
+  --ccml-shadow-lg: 0 22px 64px rgba(0, 0, 0, .34);
+
+  --ccml-scrollbar-size: 8px;
+  --ccml-scrollbar-thumb: rgba(121, 143, 170, .34);
+  --ccml-scrollbar-thumb-hover: rgba(145, 168, 197, .58);
+
+  color-scheme: dark;
+}
+
+/* Base controls */
+html,
+body {
+  background: var(--ccml-bg);
+  color: var(--ccml-text);
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% -10%, rgba(74, 101, 151, .16), transparent 34rem),
+    var(--ccml-bg);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border-color: var(--ccml-border);
+  border-radius: var(--ccml-radius-md);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text-strong);
+  transition:
+    background-color .14s ease,
+    border-color .14s ease,
+    color .14s ease,
+    box-shadow .14s ease,
+    opacity .14s ease;
+}
+button:hover:not(:disabled) {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--ccml-accent);
+  outline-offset: 2px;
+}
+button.primary {
+  border-color: var(--ccml-accent);
+  background: var(--ccml-accent);
+  color: #fff;
+}
+button.primary:hover:not(:disabled) {
+  border-color: var(--ccml-accent-hover);
+  background: var(--ccml-accent-hover);
+}
+
+input,
+select,
+textarea {
+  border-color: var(--ccml-border);
+  border-radius: var(--ccml-radius-md);
+  background: #0c131c;
+  color: var(--ccml-text);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--ccml-accent);
+  box-shadow: 0 0 0 2px var(--ccml-accent-soft);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--ccml-text-dim);
+}
+
+/* Unified scrollbars.
+   overflow:auto on the actual containers means the scrollbar does not exist
+   when content fits. scrollbar-gutter:auto prevents reserving an empty lane. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ccml-scrollbar-thumb) transparent;
+}
+*::-webkit-scrollbar {
+  width: var(--ccml-scrollbar-size);
+  height: var(--ccml-scrollbar-size);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  min-height: 30px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--ccml-scrollbar-thumb);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ccml-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+.workspace-sidebar,
+.workspace-table-wrap,
+.configurable-track-table,
+.inspector-body,
+.settings-body,
+.help-nav,
+.help-content,
+.jobs-body,
+.job-items,
+.job-active-items,
+.table-column-list,
+.duplicates-list,
+.detail-panel {
+  scrollbar-gutter: auto !important;
+  overscroll-behavior: contain;
+}
+
+/* Main app chrome */
+.workspace-app,
+.workspace-grid {
+  background: var(--ccml-bg);
+}
+.workspace-topbar {
+  border-bottom-color: var(--ccml-border-subtle);
+  background: rgba(11, 17, 24, .97);
+  box-shadow: var(--ccml-shadow-sm);
+}
+.workspace-logo {
+  border-radius: var(--ccml-radius-md);
+  background: linear-gradient(145deg, var(--ccml-accent), #7866d7);
+}
+.workspace-health,
+.language-switcher.compact {
+  border-color: var(--ccml-border);
+  border-radius: var(--ccml-radius-md);
+  background: var(--ccml-surface-1);
+}
+.workspace-top-actions .top-action {
+  background: var(--ccml-surface-1);
+}
+.workspace-sidebar {
+  border-color: var(--ccml-border-subtle);
+  background: #0c121a;
+}
+.workspace-main,
+.workspace-inspector {
+  background: var(--ccml-bg-elevated);
+}
+.workspace-inspector {
+  border-left-color: var(--ccml-border-subtle);
+}
+.workspace-statusbar {
+  border-top-color: var(--ccml-border-subtle);
+  background: #0b1119;
+  color: var(--ccml-text-dim);
+}
+
+/* Shared surfaces/cards */
+.panel,
+.provider-setting,
+.job-card,
+.help-section,
+.inspector-candidate,
+.duplicate-card,
+.table-column-panel,
+.compact-enrichment,
+.workspace-empty-state,
+.inspector-player-controls,
+.inspector-player > span,
+.meta-card {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  border-radius: var(--ccml-radius-lg);
+}
+
+.panel {
+  box-shadow: var(--ccml-shadow-sm);
+}
+.provider-setting.enabled,
+.job-card.running {
+  border-color: var(--ccml-border-strong);
+}
+.provider-setting,
+.job-card,
+.help-section,
+.inspector-candidate,
+.duplicate-card {
+  box-shadow: none;
+}
+
+/* Tables */
+.workspace-table th {
+  border-bottom-color: var(--ccml-border);
+  background: #0f1720;
+  color: var(--ccml-text-muted);
+}
+.workspace-table td {
+  border-bottom-color: var(--ccml-border-subtle);
+}
+.workspace-table tbody tr:hover {
+  background: rgba(103, 129, 161, .08);
+}
+.workspace-table tbody tr.selected {
+  background: var(--ccml-accent-soft);
+}
+.workspace-table tbody tr.active-row {
+  outline-color: var(--ccml-accent);
+}
+.configurable-workspace-table th.table-column-header.sorted {
+  background: #19263a;
+  color: var(--ccml-text);
+}
+.column-sort-indicator {
+  color: #9ab3ff;
+}
+
+/* Inspector consistency */
+.inspector-head,
+.inspector-tabs,
+.inspector-section > h3 {
+  border-color: var(--ccml-border-subtle);
+}
+.inspector-tabs {
+  background: #0c121a;
+}
+.inspector-tabs button {
+  color: var(--ccml-text-dim);
+}
+.inspector-tabs button:hover:not(:disabled) {
+  background: var(--ccml-surface-1);
+}
+.inspector-tabs button.active {
+  border-bottom-color: var(--ccml-accent);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text-strong);
+}
+.inspector-section label,
+.inspector-head p,
+.metadata-detail span,
+.facts dt {
+  color: var(--ccml-text-muted);
+}
+
+/* Modals */
+.settings-backdrop {
+  background: rgba(3, 7, 12, .78);
+  backdrop-filter: blur(8px);
+}
+.settings-modal,
+.help-modal,
+.jobs-modal {
+  border: 1px solid var(--ccml-border);
+  border-radius: var(--ccml-radius-xl);
+  background: var(--ccml-bg-elevated);
+  box-shadow: var(--ccml-shadow-lg);
+}
+.settings-header,
+.settings-footer,
+.help-search-row,
+.help-footer {
+  border-color: var(--ccml-border-subtle);
+}
+.settings-body,
+.help-content,
+.jobs-body {
+  background: var(--ccml-bg-elevated);
+}
+.help-nav {
+  border-right-color: var(--ccml-border-subtle);
+  background: #0b121a;
+}
+.help-nav button:hover,
+.help-nav button.active {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text);
+}
+
+/* Jobs */
+.job-card {
+  background: #0e1620;
+}
+.job-card.running { border-color: #406177; }
+.job-card.paused { border-color: #75643c; }
+.job-card.failed { border-color: #704247; }
+.job-card.completed { border-color: #315f4e; }
+.job-progress {
+  border-color: var(--ccml-border);
+  background: #172231;
+}
+.job-item {
+  border: 1px solid transparent;
+  background: #0b121a;
+}
+.job-item:hover {
+  border-color: var(--ccml-border-subtle);
+  background: #0e1823;
+}
+.job-parallel-status {
+  border-color: var(--ccml-border);
+  background: #0b131d;
+}
+.job-active-items {
+  scrollbar-gutter: auto !important;
+}
+
+/* Column picker */
+.table-columns-toolbar {
+  border-bottom-color: var(--ccml-border-subtle);
+  background: #0c131c;
+}
+.table-column-picker > summary {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text-muted);
+}
+.table-column-picker > summary:hover,
+.table-column-picker[open] > summary {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text);
+}
+.table-column-panel {
+  border-color: var(--ccml-border);
+  background: var(--ccml-bg-elevated);
+  box-shadow: var(--ccml-shadow-lg);
+}
+.table-column-panel-head {
+  border-bottom-color: var(--ccml-border-subtle);
+  background: var(--ccml-surface-1);
+}
+.table-column-option:hover {
+  border-color: var(--ccml-border-subtle);
+  background: var(--ccml-surface-1);
+}
+
+/* Subtle status colors */
+.pill.ok,
+.health-dot.ok,
+.status-ready-dot {
+  color: var(--ccml-success);
+}
+.pill.warn,
+.warning {
+  color: var(--ccml-warning);
+}
+.pill.bad,
+.job-error,
+.job-item-error {
+  color: var(--ccml-danger);
+}
+
+/* Avoid motion-heavy cosmetic effects for users that request reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
