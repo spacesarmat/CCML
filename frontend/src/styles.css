@@ -2383,3 +2383,619 @@ body {
     grid-template-columns: 1fr;
   }
 }
+/* Stage 11.3 — final visual polish */
+:root {
+  --ccml-control-h: 32px;
+  --ccml-control-h-sm: 28px;
+  --ccml-space-1: 4px;
+  --ccml-space-2: 7px;
+  --ccml-space-3: 10px;
+  --ccml-space-4: 14px;
+  --ccml-space-5: 18px;
+}
+
+/* Control rhythm */
+button,
+input,
+select {
+  min-height: var(--ccml-control-h);
+}
+
+button {
+  padding: 6px 10px;
+  line-height: 1.2;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: .46;
+  cursor: not-allowed;
+}
+
+button:disabled:hover {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-2);
+}
+
+.icon-button,
+.settings-header > button,
+.help-search-row > button,
+.player-toggle {
+  width: var(--ccml-control-h);
+  min-width: var(--ccml-control-h);
+  height: var(--ccml-control-h);
+  min-height: var(--ccml-control-h);
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+.workspace-top-actions .top-action,
+.language-switcher.compact button,
+.sidebar-nav,
+.sidebar-scan-actions button,
+.metadata-filter button,
+.selection-toolbar button,
+.job-actions button,
+.table-column-picker > summary,
+.table-column-panel-head button {
+  min-height: var(--ccml-control-h-sm);
+}
+
+/* Top bar */
+.workspace-topbar {
+  min-width: 0;
+  gap: 12px;
+  padding-inline: 12px;
+}
+
+.workspace-brand {
+  min-width: 0;
+}
+
+.workspace-brand > div:last-child {
+  min-width: 0;
+}
+
+.workspace-brand h1,
+.workspace-brand p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-top-actions {
+  min-width: 0;
+  gap: 6px;
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+
+.workspace-health {
+  flex: 0 0 auto;
+}
+
+.language-switcher.compact button {
+  min-width: 30px;
+}
+
+/* Main workspace */
+.workspace-grid {
+  min-height: 0;
+}
+
+.workspace-sidebar,
+.workspace-main,
+.workspace-inspector {
+  min-height: 0;
+}
+
+.workspace-sidebar {
+  padding: 10px 8px 12px;
+}
+
+.sidebar-section {
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.sidebar-heading {
+  padding-inline: 7px;
+}
+
+.sidebar-nav {
+  border-radius: var(--ccml-radius-md);
+}
+
+.sidebar-scan {
+  border-radius: var(--ccml-radius-lg);
+  padding: 9px;
+}
+
+.sidebar-folder {
+  border-radius: var(--ccml-radius-md);
+}
+
+.workspace-commandbar {
+  min-height: 58px;
+  padding: 10px 12px;
+}
+
+.workspace-search {
+  flex: 1 1 360px;
+  max-width: 620px;
+}
+
+.workspace-search input {
+  min-width: 0;
+}
+
+.library-filterbar,
+.selection-toolbar {
+  padding-inline: 10px;
+}
+
+/* Table density */
+.workspace-table th,
+.workspace-table td {
+  height: 35px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  vertical-align: middle;
+}
+
+.workspace-table th {
+  font-weight: 650;
+}
+
+.workspace-table tbody tr {
+  transition: background-color .10s ease, outline-color .10s ease;
+}
+
+.table-columns-toolbar {
+  min-height: 38px;
+  padding: 6px 9px;
+  align-items: center;
+}
+
+.table-column-panel {
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(520px, 64vh);
+}
+
+.table-column-list {
+  padding: 6px;
+}
+
+.table-column-option {
+  min-height: 31px;
+  border-radius: var(--ccml-radius-sm);
+}
+
+/* Inspector */
+.inspector-head {
+  padding: 11px 12px 10px;
+}
+
+.inspector-summary {
+  gap: 10px;
+}
+
+.inspector-artwork {
+  border-radius: var(--ccml-radius-lg);
+}
+
+.inspector-tabs button {
+  min-height: 34px;
+}
+
+.inspector-body {
+  padding: 12px;
+}
+
+.inspector-section {
+  margin-bottom: 14px;
+}
+
+.inspector-section > h3 {
+  margin-bottom: 9px;
+  padding-bottom: 7px;
+}
+
+.inspector-player-controls {
+  border-radius: var(--ccml-radius-lg);
+}
+
+.spectrogram-card {
+  border-radius: var(--ccml-radius-lg);
+  overflow: hidden;
+}
+
+/* Modal system */
+.settings-backdrop {
+  padding: 18px;
+}
+
+.settings-modal,
+.help-modal,
+.jobs-modal {
+  width: min(1080px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  overflow: hidden;
+}
+
+.settings-modal {
+  width: min(1120px, calc(100vw - 36px));
+}
+
+.jobs-modal {
+  width: min(1040px, calc(100vw - 36px));
+}
+
+.settings-header,
+.settings-footer {
+  min-height: 54px;
+  padding: 10px 14px;
+}
+
+.settings-header h2 {
+  color: var(--ccml-text-strong);
+  font-size: 17px;
+}
+
+.settings-header span {
+  color: var(--ccml-text-muted);
+}
+
+.settings-footer {
+  gap: 8px;
+}
+
+.settings-body {
+  padding: 14px;
+}
+
+.settings-section-title {
+  gap: 4px;
+  margin-bottom: 11px;
+}
+
+.settings-section-title h3 {
+  color: var(--ccml-text-strong);
+  font-size: 14px;
+}
+
+.provider-settings-grid {
+  gap: 9px;
+}
+
+.provider-setting {
+  padding: 11px;
+  gap: 8px;
+  border-radius: var(--ccml-radius-lg);
+}
+
+.provider-setting-head strong {
+  color: var(--ccml-text-strong);
+}
+
+.provider-setting-head small,
+.provider-setting > p,
+.provider-setting-fields label {
+  color: var(--ccml-text-muted);
+}
+
+.provider-toggle span {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-3);
+}
+
+.provider-toggle span::after {
+  background: var(--ccml-text-muted);
+}
+
+.provider-toggle input:checked + span {
+  border-color: var(--ccml-accent);
+  background: var(--ccml-accent);
+}
+
+.provider-toggle input:focus-visible + span {
+  outline: 2px solid var(--ccml-accent);
+  outline-offset: 2px;
+}
+
+.provider-setting-links button {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text-muted);
+}
+
+.provider-setting-links button:hover:not(:disabled) {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+  color: var(--ccml-text);
+}
+
+/* Help */
+.help-search-row {
+  padding: 9px 12px;
+  background: var(--ccml-surface-1);
+}
+
+.help-layout {
+  min-height: 0;
+}
+
+.help-nav {
+  padding: 10px 8px;
+  background: var(--ccml-sidebar);
+}
+
+.help-content {
+  padding: 12px;
+  background: var(--ccml-bg-elevated);
+}
+
+.help-section {
+  padding: 12px;
+  border-color: var(--ccml-border);
+  border-radius: var(--ccml-radius-lg);
+  background: var(--ccml-surface-1);
+}
+
+.help-row {
+  border-color: var(--ccml-border-subtle);
+  background: var(--ccml-surface-2);
+}
+
+.help-row kbd {
+  border-color: var(--ccml-border-strong);
+  border-bottom-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-3);
+  color: var(--ccml-text-strong);
+  box-shadow: none;
+}
+
+/* Jobs */
+.jobs-body {
+  padding: 14px;
+}
+
+.jobs-list {
+  gap: 9px;
+}
+
+.job-card {
+  padding: 11px;
+  gap: 8px;
+  border-radius: var(--ccml-radius-lg);
+}
+
+.job-head strong,
+.job-head > span {
+  color: var(--ccml-text-strong);
+}
+
+.job-head small,
+.job-summary,
+.job-current span,
+.job-item small,
+.jobs-filter {
+  color: var(--ccml-text-muted);
+}
+
+.job-current code,
+.job-item code {
+  color: var(--ccml-text);
+}
+
+.job-items {
+  border-top-color: var(--ccml-border-subtle);
+}
+
+.job-item {
+  border-radius: var(--ccml-radius-md);
+}
+
+.job-actions button {
+  padding-inline: 9px;
+}
+
+/* Theme and scale settings */
+.theme-choice-grid {
+  gap: 8px;
+}
+
+.theme-choice {
+  min-height: 124px;
+  border-radius: var(--ccml-radius-lg);
+}
+
+.theme-choice-preview {
+  height: 64px;
+}
+
+.ui-scale-setting {
+  gap: 12px;
+}
+
+.ui-scale-options button {
+  min-height: var(--ccml-control-h);
+}
+
+/* Scrollbars: only overflowing containers get them; don't reserve empty gutters. */
+.workspace-sidebar,
+.workspace-table-wrap,
+.configurable-track-table,
+.inspector-body,
+.settings-body,
+.help-nav,
+.help-content,
+.jobs-body,
+.job-items,
+.job-active-items,
+.table-column-list,
+.duplicates-list {
+  overflow-anchor: none;
+  scrollbar-gutter: auto !important;
+}
+
+/* Responsive polish for interface scaling and smaller windows. */
+@media (max-width: 1320px) {
+  .workspace-topbar {
+    padding-inline: 10px;
+  }
+
+  .workspace-top-actions {
+    gap: 4px;
+  }
+
+  .workspace-top-actions .top-action {
+    padding-inline: 8px;
+  }
+
+  .workspace-commandbar {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 1160px) {
+  body {
+    min-width: 940px;
+  }
+
+  .workspace-grid {
+    grid-template-columns: 164px minmax(400px, 1fr) 306px;
+  }
+
+  .workspace-logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .workspace-brand h1 {
+    font-size: 17px;
+  }
+
+  .workspace-health .health-label {
+    display: none;
+  }
+
+  .workspace-commandbar {
+    align-items: stretch;
+  }
+
+  .workspace-search {
+    min-width: 220px;
+  }
+
+  .theme-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1000px) {
+  body {
+    min-width: 900px;
+  }
+
+  .workspace-grid {
+    grid-template-columns: 154px minmax(390px, 1fr) 286px;
+  }
+
+  .workspace-brand p {
+    display: none;
+  }
+
+  .workspace-health {
+    padding-inline: 7px;
+  }
+
+  .workspace-top-actions .top-action {
+    font-size: 9px;
+  }
+
+  .settings-backdrop {
+    padding: 10px;
+  }
+
+  .settings-modal,
+  .help-modal,
+  .jobs-modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+
+  .provider-settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-height: 760px) {
+  .workspace-app {
+    min-height: 0;
+    grid-template-rows: 52px auto minmax(0, 1fr) 26px;
+  }
+
+  .workspace-topbar {
+    min-height: 52px;
+  }
+
+  .settings-backdrop {
+    padding-block: 8px;
+  }
+
+  .settings-modal,
+  .help-modal,
+  .jobs-modal {
+    max-height: calc(100vh - 16px);
+  }
+
+  .settings-header,
+  .settings-footer {
+    min-height: 46px;
+    padding-block: 7px;
+  }
+
+  .settings-body,
+  .help-content,
+  .jobs-body {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
+
+/* Light-theme edge cases from legacy state/status rules. */
+:root[data-ccml-theme='light'] .job-card {
+  box-shadow: 0 1px 0 rgba(40, 60, 82, .04);
+}
+
+:root[data-ccml-theme='light'] .job-item,
+:root[data-ccml-theme='light'] .help-row,
+:root[data-ccml-theme='light'] .provider-setting,
+:root[data-ccml-theme='light'] .spectrogram-card {
+  color: var(--ccml-text);
+}
+
+:root[data-ccml-theme='light'] .job-card.running {
+  border-color: #7fa9bd;
+}
+
+:root[data-ccml-theme='light'] .job-card.completed {
+  border-color: #7db79d;
+}
+
+:root[data-ccml-theme='light'] .job-card.paused {
+  border-color: #c5aa6c;
+}
+
+:root[data-ccml-theme='light'] .job-card.failed {
+  border-color: #c78a90;
+}
+
+/* Keep focus visible but visually quiet on mouse interaction. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
