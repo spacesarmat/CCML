@@ -276,6 +276,7 @@ func (a *App) OpenMetadataLink(key string) error {
 		"traxsourcebridge": "https://parse.bot/marketplace/0123da1a-5d2d-4970-bf6f-398f792855a1/traxsource-com-api",
 		"muzvizor":         "https://muzvizor.com/tracks",
 		"remixpool":        "https://remixpool.ru/new-releases/",
+		"bananastreet":     "https://bananastreet.ru/search?q=",
 	}
 	url, ok := links[strings.ToLower(strings.TrimSpace(key))]
 	if !ok {
@@ -327,7 +328,7 @@ func validateMetadataSettings(config model.MetadataSettings) error {
 
 func buildMetadataService(config model.MetadataSettings) *metadata.Service {
 	const metadataUserAgent = "CCML/0.6 (https://github.com/spacesarmat/CCML)"
-	providers := make([]metadata.Provider, 0, 13)
+	providers := make([]metadata.Provider, 0, 14)
 	if config.MusicBrainzEnabled {
 		providers = append(providers, metadata.NewMusicBrainzProvider(metadataUserAgent))
 	}
@@ -366,6 +367,9 @@ func buildMetadataService(config model.MetadataSettings) *metadata.Service {
 	}
 	if config.RemixPoolEnabled {
 		providers = append(providers, metadata.NewRemixPoolProvider(metadataUserAgent))
+	}
+	if config.BananaStreetEnabled {
+		providers = append(providers, metadata.NewBananaStreetProvider(metadataUserAgent))
 	}
 	return metadata.NewService(providers...)
 }
@@ -802,7 +806,7 @@ func (a *App) metadataCacheKey(query model.MetadataQuery) (string, error) {
 		Version int                    `json:"version"`
 		Query   model.MetadataQuery    `json:"query"`
 		Config  model.MetadataSettings `json:"config"`
-	}{Version: 6, Query: query, Config: config})
+	}{Version: 7, Query: query, Config: config})
 	if err != nil {
 		return "", fmt.Errorf("encode metadata cache key: %w", err)
 	}

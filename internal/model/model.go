@@ -474,19 +474,20 @@ type OrganizeRequest struct {
 // MetadataSettings controls external metadata providers and their credentials.
 // Secrets are stored locally in the CCML user configuration directory.
 type MetadataSettings struct {
-	MusicBrainzEnabled bool `json:"musicBrainzEnabled"`
-	TheAudioDBEnabled  bool `json:"theAudioDBEnabled"`
-	DeezerEnabled      bool `json:"deezerEnabled"`
-	ITunesEnabled      bool `json:"iTunesEnabled"`
-	DiscogsEnabled     bool `json:"discogsEnabled"`
-	SpotifyEnabled     bool `json:"spotifyEnabled"`
-	AppleMusicEnabled  bool `json:"appleMusicEnabled"`
-	YouTubeEnabled     bool `json:"youtubeEnabled"`
-	SoundCloudEnabled  bool `json:"soundCloudEnabled"`
-	YandexMusicEnabled bool `json:"yandexMusicEnabled"`
-	TraxsourceEnabled  bool `json:"traxsourceEnabled"`
-	MuzvizorEnabled    bool `json:"muzvizorEnabled"`
-	RemixPoolEnabled   bool `json:"remixPoolEnabled"`
+	MusicBrainzEnabled  bool `json:"musicBrainzEnabled"`
+	TheAudioDBEnabled   bool `json:"theAudioDBEnabled"`
+	DeezerEnabled       bool `json:"deezerEnabled"`
+	ITunesEnabled       bool `json:"iTunesEnabled"`
+	DiscogsEnabled      bool `json:"discogsEnabled"`
+	SpotifyEnabled      bool `json:"spotifyEnabled"`
+	AppleMusicEnabled   bool `json:"appleMusicEnabled"`
+	YouTubeEnabled      bool `json:"youtubeEnabled"`
+	SoundCloudEnabled   bool `json:"soundCloudEnabled"`
+	YandexMusicEnabled  bool `json:"yandexMusicEnabled"`
+	TraxsourceEnabled   bool `json:"traxsourceEnabled"`
+	MuzvizorEnabled     bool `json:"muzvizorEnabled"`
+	RemixPoolEnabled    bool `json:"remixPoolEnabled"`
+	BananaStreetEnabled bool `json:"bananaStreetEnabled"`
 
 	TraxsourceAPIKey string `json:"traxsourceApiKey"`
 

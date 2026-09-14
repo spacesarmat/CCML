@@ -84,19 +84,20 @@ func (s *Service) Save(settings model.MetadataSettings) error {
 
 func DefaultsFromEnvironment() model.MetadataSettings {
 	cfg := model.MetadataSettings{
-		MusicBrainzEnabled: true,
-		TheAudioDBEnabled:  true,
-		DeezerEnabled:      true,
-		ITunesEnabled:      true,
-		DiscogsEnabled:     strings.TrimSpace(os.Getenv("DISCOGS_TOKEN")) != "",
-		SpotifyEnabled:     strings.TrimSpace(os.Getenv("SPOTIFY_ACCESS_TOKEN")) != "" || (strings.TrimSpace(os.Getenv("SPOTIFY_CLIENT_ID")) != "" && strings.TrimSpace(os.Getenv("SPOTIFY_CLIENT_SECRET")) != ""),
-		AppleMusicEnabled:  strings.TrimSpace(os.Getenv("APPLE_MUSIC_DEVELOPER_TOKEN")) != "",
-		YouTubeEnabled:     strings.TrimSpace(os.Getenv("YOUTUBE_API_KEY")) != "",
-		SoundCloudEnabled:  strings.TrimSpace(os.Getenv("SOUNDCLOUD_ACCESS_TOKEN")) != "",
-		YandexMusicEnabled: strings.TrimSpace(os.Getenv("YANDEX_MUSIC_TOKEN")) != "",
-		TraxsourceEnabled:  false,
-		MuzvizorEnabled:    false,
-		RemixPoolEnabled:   false,
+		MusicBrainzEnabled:  true,
+		TheAudioDBEnabled:   true,
+		DeezerEnabled:       true,
+		ITunesEnabled:       true,
+		DiscogsEnabled:      strings.TrimSpace(os.Getenv("DISCOGS_TOKEN")) != "",
+		SpotifyEnabled:      strings.TrimSpace(os.Getenv("SPOTIFY_ACCESS_TOKEN")) != "" || (strings.TrimSpace(os.Getenv("SPOTIFY_CLIENT_ID")) != "" && strings.TrimSpace(os.Getenv("SPOTIFY_CLIENT_SECRET")) != ""),
+		AppleMusicEnabled:   strings.TrimSpace(os.Getenv("APPLE_MUSIC_DEVELOPER_TOKEN")) != "",
+		YouTubeEnabled:      strings.TrimSpace(os.Getenv("YOUTUBE_API_KEY")) != "",
+		SoundCloudEnabled:   strings.TrimSpace(os.Getenv("SOUNDCLOUD_ACCESS_TOKEN")) != "",
+		YandexMusicEnabled:  strings.TrimSpace(os.Getenv("YANDEX_MUSIC_TOKEN")) != "",
+		TraxsourceEnabled:   false,
+		MuzvizorEnabled:     false,
+		RemixPoolEnabled:    false,
+		BananaStreetEnabled: false,
 
 		TraxsourceAPIKey: strings.TrimSpace(os.Getenv("TRAXSOURCE_API_KEY")),
 
