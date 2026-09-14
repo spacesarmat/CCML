@@ -7260,3 +7260,59 @@ button:disabled:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Stage 17.2 — virtualized large library table */
+
+/*
+  With thousands of tracks, mounting every <tr>, checkbox and TrackCoverCell
+  makes selection/filter updates unnecessarily expensive. The virtualizer keeps
+  only the viewport plus overscan mounted while spacer rows preserve the exact
+  logical scroll height.
+*/
+.configurable-track-table.virtualized .configurable-workspace-table {
+  table-layout: fixed;
+}
+
+.configurable-track-table.virtualized .virtual-track-row {
+  height: 35px;
+  min-height: 35px;
+  max-height: 35px;
+}
+
+.configurable-track-table.virtualized .virtual-track-row > td {
+  height: 35px;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.configurable-track-table.virtualized .virtual-track-row > td.cover-cell {
+  overflow: visible;
+}
+
+.configurable-track-table .virtual-spacer-row {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  pointer-events: none;
+}
+
+.configurable-track-table .virtual-spacer-row:hover {
+  background: transparent !important;
+}
+
+.configurable-track-table .virtual-spacer-row > td {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  line-height: 0;
+}
+
+/* Sticky toolbar/header remain above the small rotating row window. */
+.configurable-track-table.virtualized .table-columns-toolbar {
+  contain: layout style;
+}
+
+.configurable-track-table.virtualized tbody {
+  overflow-anchor: none;
+}

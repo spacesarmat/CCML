@@ -27,6 +27,7 @@ type Props = {
   tracks: Track[]
   coverRevision: number
   selectedIDs: number[]
+  activeTrackID: number | null
   selectedTracks: Track[]
   batchToolsRevision: number
   batchToolsDisabled: boolean
@@ -80,6 +81,14 @@ const DEFAULT_WIDTHS: Record<TableColumnID, number> = {
 const MIN_COLUMN_WIDTH = 54
 const MAX_COLUMN_WIDTH = 640
 const SELECTION_COLUMN_WIDTH = 34
+
+// Large libraries must not create thousands of <tr>, checkbox and cover
+// components at once. Rows have a deliberately fixed logical height so the
+// scroll extent can be represented with lightweight spacer rows.
+const VIRTUALIZE_AFTER_ROWS = 240
+const VIRTUAL_ROW_HEIGHT = 35
+const VIRTUAL_OVERSCAN = 18
+const VIRTUAL_CHROME_HEIGHT = 70
 
 const DEFAULT_LAYOUT: TableLayout = {
   order: [...ALL_COLUMNS],
@@ -145,6 +154,7 @@ function ConfigurableTrackTable({
   tracks,
   coverRevision,
   selectedIDs,
+  activeTrackID,
   selectedTracks,
   batchToolsRevision,
   batchToolsDisabled,
@@ -172,6 +182,21 @@ function ConfigurableTrackTable({
   const overlayCloseTimer = useRef<number | null>(null)
   const [dragging, setDragging] = useState<TableColumnID | null>(null)
   const [resizingColumn, setResizingColumn] = useState<TableColumnID | null>(null)
+
+  const tableScrollRef = useRef<HTMLDivElement | null>(null)
+  const tableScrollFrameRef = useRef<number | null>(null)
+  const [virtualRange, setVirtualRange] = useState({start: 0, end: 80})
+
+  const selectedIDSet = useMemo(() => new Set(selectedIDs), [selectedIDs])
+  const virtualizationEnabled = tracks.length > VIRTUALIZE_AFTER_ROWS
+  const renderedTracks = virtualizationEnabled
+    ? tracks.slice(virtualRange.start, virtualRange.end)
+    : tracks
+  const virtualTopHeight = virtualizationEnabled ? virtualRange.start * VIRTUAL_ROW_HEIGHT : 0
+  const virtualBottomHeight = virtualizationEnabled
+    ? Math.max(0, (tracks.length - virtualRange.end) * VIRTUAL_ROW_HEIGHT)
+    : 0
+
   const visibleColumns = useMemo(
     () => layout.order.filter((id) => layout.visible.includes(id)),
     [layout],
@@ -433,10 +458,101 @@ function ConfigurableTrackTable({
     })
   }
 
-  const allVisibleSelected = tracks.length > 0 && tracks.every((track) => selectedIDs.includes(track.id))
+  function updateVirtualRange() {
+    const node = tableScrollRef.current
+    if (!node) return
+
+    if (!virtualizationEnabled) {
+      setVirtualRange((current) => (
+        current.start === 0 && current.end === tracks.length
+          ? current
+          : {start: 0, end: tracks.length}
+      ))
+      return
+    }
+
+    const bodyScrollTop = Math.max(0, node.scrollTop - VIRTUAL_CHROME_HEIGHT)
+    const firstVisible = Math.floor(bodyScrollTop / VIRTUAL_ROW_HEIGHT)
+    const visibleRows = Math.max(
+      1,
+      Math.ceil(Math.max(node.clientHeight - VIRTUAL_CHROME_HEIGHT, VIRTUAL_ROW_HEIGHT) / VIRTUAL_ROW_HEIGHT),
+    )
+    const start = Math.max(0, firstVisible - VIRTUAL_OVERSCAN)
+    const end = Math.min(tracks.length, firstVisible + visibleRows + VIRTUAL_OVERSCAN)
+
+    setVirtualRange((current) => (
+      current.start === start && current.end === end
+        ? current
+        : {start, end}
+    ))
+  }
+
+  function scheduleVirtualRangeUpdate() {
+    if (tableScrollFrameRef.current !== null) return
+    tableScrollFrameRef.current = window.requestAnimationFrame(() => {
+      tableScrollFrameRef.current = null
+      updateVirtualRange()
+    })
+  }
+
+  useEffect(() => {
+    const node = tableScrollRef.current
+    if (!node) return
+
+    updateVirtualRange()
+
+    const onScroll = () => scheduleVirtualRangeUpdate()
+    node.addEventListener('scroll', onScroll, {passive: true})
+
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => scheduleVirtualRangeUpdate())
+      : null
+    observer?.observe(node)
+    window.addEventListener('resize', onScroll)
+
+    return () => {
+      node.removeEventListener('scroll', onScroll)
+      observer?.disconnect()
+      window.removeEventListener('resize', onScroll)
+      if (tableScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(tableScrollFrameRef.current)
+        tableScrollFrameRef.current = null
+      }
+    }
+  }, [tracks.length, virtualizationEnabled])
+
+  // Keyboard navigation can target a row that is intentionally not mounted.
+  // Move the logical viewport first; the next virtual render mounts that row.
+  useEffect(() => {
+    if (!virtualizationEnabled || activeTrackID === null) return
+
+    const node = tableScrollRef.current
+    if (!node) return
+
+    const index = tracks.findIndex((track) => track.id === activeTrackID)
+    if (index < 0) return
+
+    const rowTop = VIRTUAL_CHROME_HEIGHT + index * VIRTUAL_ROW_HEIGHT
+    const rowBottom = rowTop + VIRTUAL_ROW_HEIGHT
+    const visibleTop = node.scrollTop + VIRTUAL_CHROME_HEIGHT
+    const visibleBottom = node.scrollTop + node.clientHeight
+
+    if (rowTop < visibleTop) {
+      node.scrollTop = Math.max(0, rowTop - VIRTUAL_CHROME_HEIGHT)
+      scheduleVirtualRangeUpdate()
+    } else if (rowBottom > visibleBottom) {
+      node.scrollTop = Math.max(0, rowBottom - node.clientHeight + 2)
+      scheduleVirtualRangeUpdate()
+    }
+  }, [activeTrackID, tracks, virtualizationEnabled])
+
+  const allVisibleSelected = tracks.length > 0 && tracks.every((track) => selectedIDSet.has(track.id))
 
   return (
-    <div className="workspace-table-wrap configurable-track-table">
+    <div
+      ref={tableScrollRef}
+      className={`workspace-table-wrap configurable-track-table${virtualizationEnabled ? ' virtualized' : ''}`}
+    >
       <div className="table-columns-toolbar">
         <BatchTagTools
           language={language}
@@ -690,18 +806,27 @@ function ConfigurableTrackTable({
         </thead>
 
         <tbody>
-          {tracks.map((track) => (
+          {virtualTopHeight > 0 && (
+            <tr className="virtual-spacer-row" aria-hidden="true" style={{height: `${virtualTopHeight}px`}}>
+              <td
+                colSpan={visibleColumns.length + 1}
+                style={{height: `${virtualTopHeight}px`}}
+              />
+            </tr>
+          )}
+
+          {renderedTracks.map((track) => (
             <tr
               key={track.id}
               data-track-id={track.id}
-              className={rowClass(track)}
+              className={`${rowClass(track)}${virtualizationEnabled ? ' virtual-track-row' : ''}`.trim()}
               title={rowTitle(track)}
               onClick={(event) => onRowClick(track.id, event.shiftKey, event.ctrlKey || event.metaKey)}
             >
               <td className="selection-col" onClick={(event) => event.stopPropagation()}>
                 <input
                   type="checkbox"
-                  checked={selectedIDs.includes(track.id)}
+                  checked={selectedIDSet.has(track.id)}
                   aria-label={selectTrackLabel(track)}
                   onChange={() => onToggleTrackSelection(track.id)}
                 />
@@ -719,6 +844,15 @@ function ConfigurableTrackTable({
               ))}
             </tr>
           ))}
+
+          {virtualBottomHeight > 0 && (
+            <tr className="virtual-spacer-row" aria-hidden="true" style={{height: `${virtualBottomHeight}px`}}>
+              <td
+                colSpan={visibleColumns.length + 1}
+                style={{height: `${virtualBottomHeight}px`}}
+              />
+            </tr>
+          )}
 
           {tracks.length === 0 && (
             <tr className="empty-row">

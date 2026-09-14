@@ -159,9 +159,14 @@ function App() {
     [filteredTracks, tableSort, locale],
   )
 
+  const selectedIDSet = useMemo(
+    () => new Set(selectedIDs),
+    [selectedIDs],
+  )
+
   const selectedTracks = useMemo(
-    () => tracks.filter((track) => selectedIDs.includes(track.id)),
-    [tracks, selectedIDs],
+    () => tracks.filter((track) => selectedIDSet.has(track.id)),
+    [tracks, selectedIDSet],
   )
 
   const selected = selectedTracks.length === 1 ? selectedTracks[0] : null
@@ -172,7 +177,7 @@ function App() {
     const classes: string[] = []
     if (track.lastMetadataJobStatus === 'skipped') classes.push('metadata-unchanged')
     if (track.lastMetadataJobStatus === 'failed') classes.push('metadata-failed')
-    if (selectedIDs.includes(track.id)) classes.push('selected')
+    if (selectedIDSet.has(track.id)) classes.push('selected')
     if (activeTrackID === track.id) classes.push('active-row')
     return classes.join(' ')
   }
@@ -703,7 +708,7 @@ function App() {
   function moveActiveTrack(delta: number, extendSelection: boolean, preserveSelection: boolean) {
     if (visibleTracks.length === 0) return
     let index = visibleTracks.findIndex((track) => track.id === activeTrackID)
-    if (index < 0) index = visibleTracks.findIndex((track) => selectedIDs.includes(track.id))
+    if (index < 0) index = visibleTracks.findIndex((track) => selectedIDSet.has(track.id))
     if (index < 0) index = delta > 0 ? -1 : 0
     moveActiveTrackTo(index + delta, extendSelection, preserveSelection)
   }
@@ -779,7 +784,7 @@ function App() {
   }
 
   function toggleAllVisible() {
-    if (visibleTracks.length > 0 && visibleTracks.every((track) => selectedIDs.includes(track.id))) {
+    if (visibleTracks.length > 0 && visibleTracks.every((track) => selectedIDSet.has(track.id))) {
       clearTrackSelection()
       return
     }
@@ -1261,6 +1266,7 @@ function App() {
                 tracks={visibleTracks}
                 coverRevision={tagRevision}
                 selectedIDs={selectedIDs}
+                activeTrackID={activeTrackID}
                 selectedTracks={selectedTracks}
                 batchToolsRevision={tagRevision}
                 batchToolsDisabled={busy || scanning}
