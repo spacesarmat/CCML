@@ -88,6 +88,10 @@ function App() {
   const [mediaLoading, setMediaLoading] = useState(false)
   const [mediaFallbackLoading, setMediaFallbackLoading] = useState(false)
   const [mediaError, setMediaError] = useState('')
+  const [mediaPlaying, setMediaPlaying] = useState(false)
+  const [mediaCurrentTime, setMediaCurrentTime] = useState(0)
+  const [mediaDuration, setMediaDuration] = useState(0)
+  const [mediaVolume, setMediaVolume] = useState(1)
   const [spectrograms, setSpectrograms] = useState<SpectrogramComparison | null>(null)
   const [spectrogramLoading, setSpectrogramLoading] = useState(false)
   const [spectrogramError, setSpectrogramError] = useState('')
@@ -158,6 +162,9 @@ function App() {
     setMediaLoading(false)
     setMediaFallbackLoading(false)
     setMediaError('')
+    setMediaPlaying(false)
+    setMediaCurrentTime(0)
+    setMediaDuration(0)
     setProcessedPath('')
     setSpectrograms(null)
     setSpectrogramError('')
@@ -182,6 +189,16 @@ function App() {
         if (mediaRequest.current === request) setMediaLoading(false)
       })
   }, [selected?.id, status?.ffmpegReady, tagRevision])
+
+  useEffect(() => {
+    setMediaPlaying(false)
+    setMediaCurrentTime(0)
+    setMediaDuration(trackMedia?.durationMs ? trackMedia.durationMs / 1000 : 0)
+  }, [trackMedia?.audioUrl, trackMedia?.durationMs])
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = mediaVolume
+  }, [mediaVolume, trackMedia?.audioUrl])
 
   useEffect(() => {
     if (inspectorTab !== 'analysis' || !selected) return
@@ -417,7 +434,51 @@ function App() {
   }
 
 
+  async function toggleAudioPlayback() {
+    const audio = audioRef.current
+    if (!audio || mediaLoading || mediaFallbackLoading) return
+    if (!audio.paused) {
+      audio.pause()
+      return
+    }
+
+    setMediaError('')
+    try {
+      await audio.play()
+    } catch {
+      await handleAudioPlaybackError()
+    }
+  }
+
+  function updateAudioMetadata() {
+    const audio = audioRef.current
+    if (!audio) return
+    const duration = Number.isFinite(audio.duration) && audio.duration > 0
+      ? audio.duration
+      : (trackMedia?.durationMs || 0) / 1000
+    setMediaDuration(duration)
+    setMediaCurrentTime(Number.isFinite(audio.currentTime) ? audio.currentTime : 0)
+    audio.volume = mediaVolume
+  }
+
+  function seekAudio(value: number) {
+    const audio = audioRef.current
+    if (!audio || !Number.isFinite(value)) return
+    const nativeDuration = Number.isFinite(audio.duration) ? audio.duration : 0
+    const duration = mediaDuration > 0 ? mediaDuration : Math.max(0, nativeDuration)
+    const next = Math.max(0, Math.min(value, duration || value))
+    audio.currentTime = next
+    setMediaCurrentTime(next)
+  }
+
+  function changeAudioVolume(value: number) {
+    const next = Math.max(0, Math.min(1, value))
+    setMediaVolume(next)
+    if (audioRef.current) audioRef.current.volume = next
+  }
+
   async function handleAudioPlaybackError() {
+    setMediaPlaying(false)
     if (!selected || !trackMedia || mediaFallbackLoading) return
     if (trackMedia.isPreview || mediaFallbackTried.current) {
       setMediaError(t('media.playbackFailed'))
@@ -771,14 +832,57 @@ function App() {
                 {(mediaLoading || mediaFallbackLoading) && <span>{mediaFallbackLoading ? t('media.compatibilityPreview') : t('media.preparing')}</span>}
                 {!mediaLoading && !mediaFallbackLoading && mediaError && <span className="media-error" title={mediaError}>{t('media.unavailable')}</span>}
                 {!mediaLoading && !mediaFallbackLoading && trackMedia?.audioUrl && (
-                  <audio
-                    ref={audioRef}
-                    key={trackMedia.audioUrl}
-                    controls
-                    preload="metadata"
-                    src={trackMedia.audioUrl}
-                    onError={() => void handleAudioPlaybackError()}
-                  />
+                  <div className={`inspector-player-ready${trackMedia.isPreview ? ' is-preview' : ''}`}>
+                    <audio
+                      ref={audioRef}
+                      key={trackMedia.audioUrl}
+                      preload="metadata"
+                      src={trackMedia.audioUrl}
+                      onLoadedMetadata={updateAudioMetadata}
+                      onDurationChange={updateAudioMetadata}
+                      onTimeUpdate={() => setMediaCurrentTime(audioRef.current?.currentTime || 0)}
+                      onPlay={() => setMediaPlaying(true)}
+                      onPause={() => setMediaPlaying(false)}
+                      onEnded={() => setMediaPlaying(false)}
+                      onError={() => void handleAudioPlaybackError()}
+                    />
+                    <div className="inspector-player-controls">
+                      <button
+                        type="button"
+                        className="player-toggle"
+                        onClick={() => void toggleAudioPlayback()}
+                        aria-label={mediaPlaying ? t('media.pause') : t('media.play')}
+                        title={mediaPlaying ? t('media.pause') : t('media.play')}
+                      >
+                        {mediaPlaying ? 'Ⅱ' : '▶'}
+                      </button>
+                      <span className="player-time">{formatPlayerTime(mediaCurrentTime)}</span>
+                      <input
+                        className="player-seek"
+                        type="range"
+                        min="0"
+                        max={Math.max(mediaDuration, 0.1)}
+                        step="0.1"
+                        value={Math.min(mediaCurrentTime, mediaDuration || mediaCurrentTime)}
+                        onChange={(event) => seekAudio(Number(event.target.value))}
+                        aria-label={t('media.seek')}
+                        disabled={mediaDuration <= 0}
+                      />
+                      <span className="player-time">{formatPlayerTime(mediaDuration)}</span>
+                      <input
+                        className="player-volume"
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={mediaVolume}
+                        onChange={(event) => changeAudioVolume(Number(event.target.value))}
+                        aria-label={t('media.volume')}
+                        title={t('media.volume')}
+                      />
+                      {trackMedia.isPreview && <span className="player-preview-badge">{t('media.preview')}</span>}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -926,6 +1030,14 @@ function formatDuration(ms: number): string {
   const minutes = Math.floor(total / 60)
   const seconds = total % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+function formatPlayerTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
+  const total = Math.floor(seconds)
+  const minutes = Math.floor(total / 60)
+  const rest = total % 60
+  return `${minutes}:${rest.toString().padStart(2, '0')}`
 }
 
 function formatLongDuration(ms: number, language: AppLanguage): string {

@@ -1,0 +1,213 @@
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -87,5 +87,9 @@
+   const [trackMedia, setTrackMedia] = useState<TrackMedia | null>(null)
+   const [mediaLoading, setMediaLoading] = useState(false)
+   const [mediaFallbackLoading, setMediaFallbackLoading] = useState(false)
+   const [mediaError, setMediaError] = useState('')
++  const [mediaPlaying, setMediaPlaying] = useState(false)
++  const [mediaCurrentTime, setMediaCurrentTime] = useState(0)
++  const [mediaDuration, setMediaDuration] = useState(0)
++  const [mediaVolume, setMediaVolume] = useState(1)
+   const [spectrograms, setSpectrograms] = useState<SpectrogramComparison | null>(null)
+@@ -157,5 +161,8 @@
+     setTrackMedia(null)
+     setMediaLoading(false)
+     setMediaFallbackLoading(false)
+     setMediaError('')
++    setMediaPlaying(false)
++    setMediaCurrentTime(0)
++    setMediaDuration(0)
+     setProcessedPath('')
+@@ -184,4 +191,14 @@
+   }, [selected?.id, status?.ffmpegReady, tagRevision])
+ 
+   useEffect(() => {
++    setMediaPlaying(false)
++    setMediaCurrentTime(0)
++    setMediaDuration(trackMedia?.durationMs ? trackMedia.durationMs / 1000 : 0)
++  }, [trackMedia?.audioUrl, trackMedia?.durationMs])
++
++  useEffect(() => {
++    if (audioRef.current) audioRef.current.volume = mediaVolume
++  }, [mediaVolume, trackMedia?.audioUrl])
++
++  useEffect(() => {
+     if (inspectorTab !== 'analysis' || !selected) return
+@@ -420,3 +437,47 @@
++  async function toggleAudioPlayback() {
++    const audio = audioRef.current
++    if (!audio || mediaLoading || mediaFallbackLoading) return
++    if (!audio.paused) {
++      audio.pause()
++      return
++    }
++
++    setMediaError('')
++    try {
++      await audio.play()
++    } catch {
++      await handleAudioPlaybackError()
++    }
++  }
++
++  function updateAudioMetadata() {
++    const audio = audioRef.current
++    if (!audio) return
++    const duration = Number.isFinite(audio.duration) && audio.duration > 0
++      ? audio.duration
++      : (trackMedia?.durationMs || 0) / 1000
++    setMediaDuration(duration)
++    setMediaCurrentTime(Number.isFinite(audio.currentTime) ? audio.currentTime : 0)
++    audio.volume = mediaVolume
++  }
++
++  function seekAudio(value: number) {
++    const audio = audioRef.current
++    if (!audio || !Number.isFinite(value)) return
++    const nativeDuration = Number.isFinite(audio.duration) ? audio.duration : 0
++    const duration = mediaDuration > 0 ? mediaDuration : Math.max(0, nativeDuration)
++    const next = Math.max(0, Math.min(value, duration || value))
++    audio.currentTime = next
++    setMediaCurrentTime(next)
++  }
++
++  function changeAudioVolume(value: number) {
++    const next = Math.max(0, Math.min(1, value))
++    setMediaVolume(next)
++    if (audioRef.current) audioRef.current.volume = next
++  }
++
+   async function handleAudioPlaybackError() {
++    setMediaPlaying(false)
+     if (!selected || !trackMedia || mediaFallbackLoading) return
+     if (trackMedia.isPreview || mediaFallbackTried.current) {
+@@ -773,10 +834,53 @@
+                 {!mediaLoading && !mediaFallbackLoading && trackMedia?.audioUrl && (
+-                  <audio
+-                    ref={audioRef}
+-                    key={trackMedia.audioUrl}
+-                    controls
+-                    preload="metadata"
+-                    src={trackMedia.audioUrl}
+-                    onError={() => void handleAudioPlaybackError()}
+-                  />
++                  <div className={`inspector-player-ready${trackMedia.isPreview ? ' is-preview' : ''}`}>
++                    <audio
++                      ref={audioRef}
++                      key={trackMedia.audioUrl}
++                      preload="metadata"
++                      src={trackMedia.audioUrl}
++                      onLoadedMetadata={updateAudioMetadata}
++                      onDurationChange={updateAudioMetadata}
++                      onTimeUpdate={() => setMediaCurrentTime(audioRef.current?.currentTime || 0)}
++                      onPlay={() => setMediaPlaying(true)}
++                      onPause={() => setMediaPlaying(false)}
++                      onEnded={() => setMediaPlaying(false)}
++                      onError={() => void handleAudioPlaybackError()}
++                    />
++                    <div className="inspector-player-controls">
++                      <button
++                        type="button"
++                        className="player-toggle"
++                        onClick={() => void toggleAudioPlayback()}
++                        aria-label={mediaPlaying ? t('media.pause') : t('media.play')}
++                        title={mediaPlaying ? t('media.pause') : t('media.play')}
++                      >
++                        {mediaPlaying ? 'Ⅱ' : '▶'}
++                      </button>
++                      <span className="player-time">{formatPlayerTime(mediaCurrentTime)}</span>
++                      <input
++                        className="player-seek"
++                        type="range"
++                        min="0"
++                        max={Math.max(mediaDuration, 0.1)}
++                        step="0.1"
++                        value={Math.min(mediaCurrentTime, mediaDuration || mediaCurrentTime)}
++                        onChange={(event) => seekAudio(Number(event.target.value))}
++                        aria-label={t('media.seek')}
++                        disabled={mediaDuration <= 0}
++                      />
++                      <span className="player-time">{formatPlayerTime(mediaDuration)}</span>
++                      <input
++                        className="player-volume"
++                        type="range"
++                        min="0"
++                        max="1"
++                        step="0.05"
++                        value={mediaVolume}
++                        onChange={(event) => changeAudioVolume(Number(event.target.value))}
++                        aria-label={t('media.volume')}
++                        title={t('media.volume')}
++                      />
++                      {trackMedia.isPreview && <span className="player-preview-badge">{t('media.preview')}</span>}
++                    </div>
++                  </div>
+                 )}
+@@ -923,9 +1027,17 @@
+ function formatDuration(ms: number): string {
+   if (!ms) return '–'
+   const total = Math.round(ms / 1000)
+   const minutes = Math.floor(total / 60)
+   const seconds = total % 60
+   return `${minutes}:${seconds.toString().padStart(2, '0')}`
+ }
+ 
++function formatPlayerTime(seconds: number): string {
++  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
++  const total = Math.floor(seconds)
++  const minutes = Math.floor(total / 60)
++  const rest = total % 60
++  return `${minutes}:${rest.toString().padStart(2, '0')}`
++}
++
+ function formatLongDuration(ms: number, language: AppLanguage): string {
+diff --git a/frontend/src/i18n.ts b/frontend/src/i18n.ts
+--- a/frontend/src/i18n.ts
++++ b/frontend/src/i18n.ts
+@@ -199,6 +199,11 @@
+   'media.coverAlt': 'Embedded cover art',
+   'media.preparing': 'Preparing player…',
+   'media.unavailable': 'Player unavailable',
+   'media.compatibilityPreview': 'Preparing compatibility preview…',
+   'media.playbackFailed': 'The track could not be played in the embedded player.',
++  'media.play': 'Play',
++  'media.pause': 'Pause',
++  'media.seek': 'Playback position',
++  'media.volume': 'Volume',
++  'media.preview': 'Compatibility preview',
+   'spectrogram.title': 'Spectrogram comparison',
+@@ -610,6 +615,11 @@
+   'media.coverAlt': 'Встроенная обложка',
+   'media.preparing': 'Подготовка плеера…',
+   'media.unavailable': 'Плеер недоступен',
+   'media.compatibilityPreview': 'Подготовка совместимого аудио…',
+   'media.playbackFailed': 'Не удалось воспроизвести трек во встроенном плеере.',
++  'media.play': 'Воспроизвести',
++  'media.pause': 'Пауза',
++  'media.seek': 'Позиция воспроизведения',
++  'media.volume': 'Громкость',
++  'media.preview': 'Совместимый предпросмотр',
+   'spectrogram.title': 'Сравнение спектрограмм',
+diff --git a/frontend/src/styles.css b/frontend/src/styles.css
+--- a/frontend/src/styles.css
++++ b/frontend/src/styles.css
+@@ -575,7 +575,15 @@
+ .inspector-duration { margin-top: 5px; display: block; color: #93a4b8; font-size: 8px; font-variant-numeric: tabular-nums; }
+-.inspector-player { min-width: 0; min-height: 34px; display: flex; align-items: center; }
+-.inspector-player audio { width: 100%; height: 32px; display: block; }
++.inspector-player { min-width: 0; min-height: 36px; display: flex; align-items: center; }
+ .inspector-player > span { width: 100%; padding: 7px 9px; border: 1px solid #273548; border-radius: 7px; background: #0b1119; color: #788ba3; font-size: 8px; text-align: center; }
+ .inspector-player .media-error { color: #c98186; border-color: #573338; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
++.inspector-player-ready { width: 100%; min-width: 0; }
++.inspector-player-ready audio { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
++.inspector-player-controls { min-width: 0; display: grid; grid-template-columns: 28px 32px minmax(64px, 1fr) 32px 48px; gap: 6px; align-items: center; padding: 5px 6px; border: 1px solid #273548; border-radius: 8px; background: #0b1119; }
++.inspector-player-controls .player-toggle { width: 28px; height: 26px; padding: 0; display: grid; place-items: center; border-color: #354860; border-radius: 6px; color: #dce5f0; font-size: 10px; line-height: 1; }
++.inspector-player-controls .player-time { color: #92a2b7; font-size: 8px; font-variant-numeric: tabular-nums; text-align: center; }
++.inspector-player-controls input[type="range"] { min-width: 0; width: 100%; height: 18px; margin: 0; padding: 0; accent-color: #6b86ff; cursor: pointer; }
++.inspector-player-controls input[type="range"]:disabled { cursor: default; opacity: .45; }
++.inspector-player-controls .player-volume { width: 48px; }
++.player-preview-badge { grid-column: 1 / -1; justify-self: end; margin-top: -2px; color: #7f91aa; font-size: 7px; letter-spacing: .03em; }
+ 
+ .spectrogram-section { display: grid; gap: 7px; padding-top: 8px; border-top: 1px solid #202a38; }

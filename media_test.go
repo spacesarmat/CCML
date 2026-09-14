@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/tommyo123/mtag"
 )
 
 func TestBrowserFriendlyAudio(t *testing.T) {
@@ -50,5 +52,39 @@ func TestIsWithinMediaCache(t *testing.T) {
 	}
 	if isWithin(outside, root) {
 		t.Fatal("expected path outside cache to be rejected")
+	}
+}
+
+func TestSelectArtworkPrefersFrontCover(t *testing.T) {
+	images := []mtag.Picture{
+		{Type: mtag.PictureOther, MIME: "image/png", Data: []byte("fallback")},
+		{Type: mtag.PictureCoverFront, MIME: "image/jpeg", Data: []byte("front")},
+	}
+	picture, ok := selectArtwork(images)
+	if !ok {
+		t.Fatal("expected artwork")
+	}
+	if picture.Type != mtag.PictureCoverFront || string(picture.Data) != "front" {
+		t.Fatalf("selected picture = type %d data %q", picture.Type, string(picture.Data))
+	}
+}
+
+func TestSelectArtworkFallsBackToEmbeddedImage(t *testing.T) {
+	images := []mtag.Picture{
+		{Type: mtag.PictureOther, MIME: "image/jpeg", Data: []byte("cover")},
+	}
+	picture, ok := selectArtwork(images)
+	if !ok {
+		t.Fatal("expected fallback artwork")
+	}
+	if string(picture.Data) != "cover" {
+		t.Fatalf("selected data = %q", string(picture.Data))
+	}
+}
+
+func TestExtensionForImageUsesPayloadSignature(t *testing.T) {
+	png := []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}
+	if got := extensionForImage("image/jpeg", png); got != ".png" {
+		t.Fatalf("extensionForImage() = %q, want .png", got)
 	}
 }

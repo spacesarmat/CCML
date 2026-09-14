@@ -1,0 +1,60 @@
+﻿CCML — Stage 4: Keyboard navigation + shortcuts
+
+Prerequisite:
+Stage 3 Inspector Player is already installed.
+
+Added:
+- Arrow Up / Arrow Down: move active row and select it
+- Page Up / Page Down: jump by 10 rows
+- Home / End: first / last visible row
+- Shift + navigation: extend contiguous selection
+- Ctrl + navigation: move active row without changing current selection
+- Ctrl + click: toggle a row in multi-selection
+- Shift + click: select a range
+- Ctrl + A: select all visible rows
+- Ctrl + F: focus and select the library search field
+- Space: Play / Pause the current single selected track
+- Enter: make the active row the single selection and open Tags Inspector
+- Esc: clear active row and selection
+- active row is visually distinct from batch selection
+- keyboard navigation auto-scrolls the active row into view
+
+Not changed:
+- metadata providers
+- artwork embedding
+- loudnorm / limiter
+- audio processing
+- spectrograms
+- database schema
+
+Install:
+
+1. Stop Wails:
+   Ctrl+C
+
+2. Extract ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage4-keyboard-navigation.ps1"
+
+4. Build frontend:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+5. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+Quick test:
+- click one table row
+- press Up/Down
+- hold Shift and press Up/Down
+- Ctrl+A, then Esc
+- Ctrl+F
+- select one row and press Space to Play/Pause
+- Ctrl+click multiple rows
+- Shift+click another row
+
+Next isolated stage:
+Stage 5 — user-selectable columns + persistent table layout.

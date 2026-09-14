@@ -308,7 +308,7 @@ func (m *mediaService) ensureArtwork(input string) (resultPath string, resultErr
 	if err != nil {
 		return "", err
 	}
-	for _, ext := range []string{".jpg", ".png", ".webp"} {
+	for _, ext := range []string{".jpg", ".png", ".webp", ".gif"} {
 		path := filepath.Join(m.cacheDir, "artwork", key+ext)
 		if regularFileExists(path) {
 			return path, nil
@@ -324,18 +324,34 @@ func (m *mediaService) ensureArtwork(input string) (resultPath string, resultErr
 			resultErr = errors.Join(resultErr, err)
 		}
 	}()
-	for _, picture := range file.Images() {
-		if picture.Type != mtag.PictureCoverFront || len(picture.Data) == 0 {
+	picture, ok := selectArtwork(file.Images())
+	if !ok {
+		return "", nil
+	}
+	ext := extensionForImage(picture.MIME, picture.Data)
+	path := filepath.Join(m.cacheDir, "artwork", key+ext)
+	if err := writeCacheFile(path, picture.Data); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+func selectArtwork(images []mtag.Picture) (mtag.Picture, bool) {
+	var fallback mtag.Picture
+	fallbackSet := false
+	for _, picture := range images {
+		if len(picture.Data) == 0 {
 			continue
 		}
-		ext := extensionForImageMIME(picture.MIME)
-		path := filepath.Join(m.cacheDir, "artwork", key+ext)
-		if err := writeCacheFile(path, picture.Data); err != nil {
-			return "", err
+		if picture.Type == mtag.PictureCoverFront {
+			return picture, true
 		}
-		return path, nil
+		if !fallbackSet {
+			fallback = picture
+			fallbackSet = true
+		}
 	}
-	return "", nil
+	return fallback, fallbackSet
 }
 
 func (m *mediaService) ensureSpectrogram(ctx context.Context, input string) (string, error) {
@@ -467,16 +483,37 @@ func contentTypeForPath(path string) string {
 		return "image/png"
 	case ".webp":
 		return "image/webp"
+	case ".gif":
+		return "image/gif"
 	}
 	return mime.TypeByExtension(strings.ToLower(filepath.Ext(path)))
 }
 
-func extensionForImageMIME(value string) string {
+func extensionForImage(value string, data []byte) string {
+	if len(data) >= 3 && data[0] == 0xff && data[1] == 0xd8 && data[2] == 0xff {
+		return ".jpg"
+	}
+	if len(data) >= 8 &&
+		data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G' &&
+		data[4] == 0x0d && data[5] == 0x0a && data[6] == 0x1a && data[7] == 0x0a {
+		return ".png"
+	}
+	if len(data) >= 6 && data[0] == 'G' && data[1] == 'I' && data[2] == 'F' {
+		return ".gif"
+	}
+	if len(data) >= 12 &&
+		data[0] == 'R' && data[1] == 'I' && data[2] == 'F' && data[3] == 'F' &&
+		data[8] == 'W' && data[9] == 'E' && data[10] == 'B' && data[11] == 'P' {
+		return ".webp"
+	}
+
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "image/png":
 		return ".png"
 	case "image/webp":
 		return ".webp"
+	case "image/gif":
+		return ".gif"
 	default:
 		return ".jpg"
 	}

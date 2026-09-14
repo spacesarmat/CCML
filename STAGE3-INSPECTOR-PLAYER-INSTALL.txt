@@ -1,0 +1,41 @@
+﻿CCML — Stage 3: Inspector Player
+
+Scope:
+- frontend only
+- custom Inspector Play/Pause control
+- seek/progress slider
+- current / total time
+- volume control
+- keeps existing direct-stream -> FFmpeg compatibility-preview fallback
+- shows a compatibility-preview badge when fallback is active
+- loudnorm/audio processing backend is NOT changed
+- spectrogram logic is NOT changed
+
+Install:
+
+1. Stop Wails dev:
+   Ctrl+C
+
+2. Extract this ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Run:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage3-inspector-player.ps1"
+
+4. Build only the frontend:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML\frontend
+   npm run build
+
+5. Start:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   wails dev
+
+Test:
+- select one track
+- Play starts playback
+- Pause stops it
+- seek slider changes position
+- current/total time updates
+- volume slider changes volume
+- switching to another track resets time
+- if direct WebView playback fails, CCML keeps the existing compatibility-preview fallback

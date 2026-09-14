@@ -1,0 +1,47 @@
+﻿CCML — Stage 3.1: Inspector embedded-cover hotfix
+
+Problem:
+Inspector showed the music-note placeholder even when an MP3 contained embedded artwork.
+
+Cause:
+media.go accepted only pictures whose APIC role was exactly Front Cover.
+Some valid MP3 files store their only artwork with APIC type Other (or another role).
+
+Fix:
+- prefer Front Cover when present
+- otherwise use the first non-empty embedded image
+- identify JPEG/PNG/GIF/WebP by payload signature before trusting MIME
+- support cached GIF artwork
+- add regression tests
+
+This hotfix does NOT change:
+- Inspector player controls
+- loudnorm
+- limiter
+- audio processing
+- spectrogram generation
+
+Install:
+
+1. Stop Wails:
+   Ctrl+C
+
+2. Extract the ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage3.1-cover-hotfix.ps1"
+
+4. Test backend:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   go test .
+
+Expected:
+   ok  github.com/spacesarmat/CCML
+
+5. Start:
+   wails dev
+
+No npm run build is required because this hotfix changes Go backend files only.
+
+Test the same track in Inspector. Re-select the track if it was already selected.

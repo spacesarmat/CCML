@@ -90,7 +90,7 @@ func (p *ITunesProvider) Search(ctx context.Context, query model.MetadataQuery) 
 			Title: track.TrackName, Artist: track.ArtistName, Album: track.CollectionName,
 			ReleaseDate: normalizeRFC3339Date(track.ReleaseDate), Year: yearFromDate(track.ReleaseDate), Genre: track.PrimaryGenreName,
 			TrackNumber: track.TrackNumber, TrackTotal: track.TrackCount, DiscNumber: track.DiscNumber, DiscTotal: track.DiscCount,
-			ArtworkURL: artwork, ArtworkWidth: 1200, ArtworkHeight: 1200, ArtworkEmbeddable: false,
+			ArtworkURL: artwork, ArtworkWidth: 1200, ArtworkHeight: 1200, ArtworkEmbeddable: artwork != "",
 			DurationMS: track.TrackTimeMillis,
 		})
 	}

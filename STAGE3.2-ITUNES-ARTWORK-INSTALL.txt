@@ -1,0 +1,52 @@
+﻿CCML — Stage 3.2: Apple iTunes artwork embedding hotfix
+
+Problem:
+Apple iTunes candidates displayed artwork in Metadata Inspector, but CCML did not offer
+the "Apply with artwork" action and therefore did not embed the cover into the audio file.
+
+Cause:
+internal/metadata/itunes.go always returned:
+    ArtworkEmbeddable: false
+
+Fix:
+- Apple iTunes artwork is marked embeddable when a non-empty artwork URL is returned.
+- Existing explicit UI flow remains intact:
+    Apply tags              -> text metadata only
+    Apply with artwork      -> text metadata + embedded front cover
+- Adds regression checks for the embeddable flag and 1200x1200 artwork URL.
+
+Not changed:
+- player
+- loudnorm / limiter
+- spectrograms
+- tagging write implementation
+- frontend source
+
+Install:
+
+1. Stop Wails:
+   Ctrl+C
+
+2. Extract ZIP into:
+   C:\Users\ANDYBUM\GolandProjects\CCML
+
+3. Apply:
+   powershell -ExecutionPolicy Bypass -File "C:\Users\ANDYBUM\GolandProjects\CCML\apply-stage3.2-itunes-artwork-hotfix.ps1"
+
+4. Test:
+   cd C:\Users\ANDYBUM\GolandProjects\CCML
+   go test ./internal/metadata
+   go test ./internal/tagging
+
+5. Start:
+   wails dev
+
+No npm run build is required.
+
+Verification:
+- select the track
+- open Metadata
+- run metadata search again (important: old cached candidate may still carry artworkEmbeddable=false)
+- Apple iTunes candidate should now show an "Apply with artwork" button
+- use that button, not "Apply tags"
+- after applying, re-select the track; Inspector should show the embedded cover

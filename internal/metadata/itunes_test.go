@@ -31,4 +31,10 @@ func TestITunesProviderParsesSong(t *testing.T) {
 	if items[0].Album != "Discovery" || items[0].ReleaseDate != "2000-11-30" || items[0].TrackTotal != 14 {
 		t.Fatalf("unexpected candidate: %+v", items[0])
 	}
+	if !items[0].ArtworkEmbeddable {
+		t.Fatal("Apple iTunes artwork should be available for explicit embedding")
+	}
+	if items[0].ArtworkURL != "https://example.test/1200x1200bb.jpg" {
+		t.Fatalf("ArtworkURL = %q", items[0].ArtworkURL)
+	}
 }
