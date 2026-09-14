@@ -6512,3 +6512,145 @@ button:disabled:hover {
 :root[data-ccml-theme='light'] .duplicate-audio-summary {
   background: #f7fbff;
 }
+
+/* Stage 16.4.1 — duplicate groups readability hotfix */
+
+/*
+  Some duplicate-group cards can collapse into thin unreadable stripes on
+  larger libraries and certain UI scale combinations. Force a stable readable
+  header layout for every group.
+*/
+.duplicate-groups,
+.duplicate-groups-list {
+  align-content: start;
+  gap: 12px;
+}
+
+.duplicate-group-card {
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--ccml-radius-lg);
+  background: var(--ccml-surface-1);
+}
+
+.duplicate-group-card + .duplicate-group-card {
+  margin-top: 12px;
+}
+
+.duplicate-group-head,
+.duplicate-group-card .duplicate-group-head {
+  min-height: 64px;
+}
+
+.duplicate-group-head > button,
+.duplicate-group-head button {
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  line-height: 1.35;
+}
+
+.duplicate-group-head > button > span,
+.duplicate-group-head button > span {
+  min-width: 0;
+}
+
+.duplicate-group-title {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.duplicate-group-title strong,
+.duplicate-group-title b {
+  display: block;
+  overflow: hidden;
+  color: var(--ccml-text-strong);
+  font-size: 14px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duplicate-group-title small {
+  display: block;
+  overflow: hidden;
+  color: var(--ccml-text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duplicate-group-type {
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 8px;
+  justify-self: start;
+  align-self: start;
+  overflow: hidden;
+  border-radius: 999px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duplicate-group-head svg,
+.duplicate-group-head .duplicate-expand-icon,
+.duplicate-group-head .duplicate-caret {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.duplicate-group-body {
+  padding-top: 10px;
+}
+
+.duplicate-group-card article,
+.duplicate-group-card button,
+.duplicate-group-card span,
+.duplicate-group-card strong,
+.duplicate-group-card small {
+  line-height: inherit;
+}
+
+.duplicate-empty,
+.duplicate-empty-state {
+  padding: 20px;
+  text-align: center;
+}
+
+:root[data-ccml-theme='light'] .duplicate-group-card {
+  background: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+}
+
+@media (max-width: 1180px) {
+  .duplicate-group-head > button,
+  .duplicate-group-head button {
+    grid-template-columns: 18px minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .duplicate-group-type {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 840px) {
+  .duplicate-group-title strong,
+  .duplicate-group-title b {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .duplicate-group-title small {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
