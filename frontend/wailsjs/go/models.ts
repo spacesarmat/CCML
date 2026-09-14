@@ -407,6 +407,7 @@ export namespace model {
 	    confidence: number;
 	    applied: boolean;
 	    skipped: boolean;
+	    warning: string;
 	    searchMode: string;
 	    searchDurationMs: number;
 	    providersResponded: number;
@@ -426,6 +427,7 @@ export namespace model {
 	        this.confidence = source["confidence"];
 	        this.applied = source["applied"];
 	        this.skipped = source["skipped"];
+	        this.warning = source["warning"];
 	        this.searchMode = source["searchMode"];
 	        this.searchDurationMs = source["searchDurationMs"];
 	        this.providersResponded = source["providersResponded"];

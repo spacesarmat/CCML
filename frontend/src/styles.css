@@ -1076,3 +1076,13 @@ body { min-width: 1080px; overflow: hidden; }
 .job-active-track-link:focus-visible code {
   color: #a8c9f3;
 }
+/* Stage 9.1 v2 — non-fatal automatic artwork fallback. */
+.job-item-warning {
+  grid-column: 2 / -1;
+  color: #d5b76d !important;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .job-item-warning { grid-column: auto; }
+}

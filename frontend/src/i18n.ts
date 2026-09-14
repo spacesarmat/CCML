@@ -127,6 +127,7 @@ const en = {
   'jobs.libraryQueued': 'Metadata enrichment queued for the entire library: {count} track(s)',
   'jobs.resultApplied': '{source} · {confidence}% · tags applied',
   'jobs.resultSkipped': '{source} · {confidence}% · skipped',
+  'jobs.warning': 'Warning: {message}',
   'jobs.pipeline': '{mode} · {seconds}s · providers answered: {responded} · skipped: {skipped}',
   'jobs.earlyStop': 'early stop',
 
@@ -561,6 +562,7 @@ const ru: Record<TranslationKey, string> = {
   'jobs.libraryQueued': 'Дополнение метаданных всей библиотеки добавлено в очередь: {count} треков',
   'jobs.resultApplied': '{source} · {confidence}% · теги применены',
   'jobs.resultSkipped': '{source} · {confidence}% · пропущено',
+  'jobs.warning': 'Предупреждение: {message}',
   'jobs.pipeline': '{mode} · {seconds}с · ответило источников: {responded} · пропущено: {skipped}',
   'jobs.earlyStop': 'раннее завершение',
 

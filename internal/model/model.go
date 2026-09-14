@@ -326,6 +326,7 @@ type MetadataEnrichmentItem struct {
 	Confidence         float64 `json:"confidence"`
 	Applied            bool    `json:"applied"`
 	Skipped            bool    `json:"skipped"`
+	Warning            string  `json:"warning"`
 	SearchMode         string  `json:"searchMode"`
 	SearchDurationMS   int64   `json:"searchDurationMs"`
 	ProvidersResponded int     `json:"providersResponded"`

@@ -202,6 +202,7 @@ function JobsPanel({language, open, onClose, onMessage, onRevealTrack}: Props) {
                             <small>{t('jobs.attempts')}: {item.attempts}</small>
                             {resultText && <small className="job-item-result">{resultText}</small>}
                             {pipelineText && <small className="job-item-pipeline">{pipelineText}</small>}
+                            {result?.warning && <small className="job-item-warning">{t('jobs.warning', {message: result.warning})}</small>}
                             {item.error && <small className="job-item-error">{item.error}</small>}
                           </div>
                         )
@@ -226,6 +227,7 @@ type EnrichmentItemResult = {
   confidence?: number
   applied?: boolean
   skipped?: boolean
+  warning?: string
   searchMode?: string
   searchDurationMs?: number
   providersResponded?: number

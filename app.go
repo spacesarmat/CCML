@@ -877,6 +877,32 @@ func normalizeEnrichmentOptions(opts *model.MetadataEnrichmentOptions) error {
 	return nil
 }
 
+func isArtworkFetchError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(strings.TrimSpace(err.Error()))
+	prefixes := []string{
+		"parse artwork url:",
+		"unsupported artwork url scheme",
+		"artwork url has no host",
+		"create artwork request:",
+		"download artwork:",
+		"read artwork response:",
+		"close artwork response:",
+		"artwork exceeds ",
+		"cover image exceeds ",
+		"cover image is empty",
+		"unsupported cover image type",
+	}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(message, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 func (a *App) enrichMetadataTrack(ctx context.Context, trackID int64, opts model.MetadataEnrichmentOptions) (model.MetadataEnrichmentItem, error) {
 	item := model.MetadataEnrichmentItem{TrackID: trackID}
 	track, err := a.store.TrackByID(ctx, trackID)
@@ -917,6 +943,10 @@ func (a *App) enrichMetadataTrack(ctx context.Context, trackID int64, opts model
 		return item, nil
 	}
 	applyResult, err := a.tagEditor.ApplyMetadataCandidateWithPolicy(ctx, trackID, candidate, opts.IncludeArtwork, opts.OnlyMissing)
+	if err != nil && opts.IncludeArtwork && ctx.Err() == nil && isArtworkFetchError(err) {
+		item.Warning = fmt.Sprintf("artwork skipped: %v", err)
+		applyResult, err = a.tagEditor.ApplyMetadataCandidateWithPolicy(ctx, trackID, candidate, false, opts.OnlyMissing)
+	}
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "no applicable fields") {
 			item.Skipped = true

@@ -313,6 +313,7 @@ export type MetadataEnrichmentItem = {
   confidence: number
   applied: boolean
   skipped: boolean
+  warning: string
   searchMode: string
   searchDurationMs: number
   providersResponded: number
