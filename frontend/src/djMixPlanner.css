@@ -929,3 +929,185 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Stage 20.2: DJ Mix Planner preview player */
+
+.mix-planner-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.mix-planner-preview {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 8px 9px;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(420px, 1.4fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: 8px;
+  background: var(--ccml-surface-1);
+}
+
+.mix-planner-preview-track {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.mix-planner-preview-cover {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: 6px;
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text-muted);
+  font-size: 16px;
+}
+
+.mix-planner-preview-cover img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.mix-planner-preview-title {
+  min-width: 0;
+}
+
+.mix-planner-preview-title strong,
+.mix-planner-preview-title span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mix-planner-preview-title strong {
+  color: var(--ccml-text-strong);
+  font-size: 8.5px;
+}
+
+.mix-planner-preview-title span {
+  margin-top: 3px;
+  color: var(--ccml-text-muted);
+  font-size: 6.5px;
+}
+
+.mix-planner-preview-meta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mix-planner-preview-meta em {
+  padding: 2px 5px;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: 999px;
+  color: var(--ccml-text-muted);
+  font-size: 6px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.mix-planner-preview-meta em.is-preview {
+  border-color: var(--ccml-accent-border);
+  background: var(--ccml-accent-soft);
+  color: var(--ccml-text-strong);
+}
+
+.mix-planner-preview-player {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.mix-planner-preview-status {
+  min-height: 13px;
+  overflow: hidden;
+  color: var(--ccml-text-muted);
+  font-size: 6.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mix-planner-preview-status.is-error {
+  color: var(--ccml-danger);
+}
+
+.mix-planner-preview-controls {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 30px 30px 38px 52px minmax(120px, 1fr) 52px 38px 90px;
+  align-items: center;
+  gap: 5px;
+}
+
+.mix-planner-preview-controls button {
+  min-width: 0;
+  min-height: 28px;
+  padding: 3px 5px;
+  border-radius: 6px;
+  font-size: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mix-planner-preview-controls .mix-preview-toggle {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.mix-planner-preview-time {
+  color: var(--ccml-text-muted);
+  font-size: 6.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mix-planner-preview-seek,
+.mix-planner-preview-volume {
+  width: 100%;
+  min-width: 0;
+}
+
+.mix-planner-table-wrap {
+  flex: 1 1 auto;
+}
+
+.mix-planner-table tr.is-preview-selected td {
+  background-color: color-mix(in srgb, var(--ccml-accent-soft) 42%, var(--ccml-surface-1));
+}
+
+.mix-planner-table tr.is-preview-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--ccml-accent);
+}
+
+.mix-planner-table tr.is-start.is-preview-selected td {
+  background-color: color-mix(in srgb, var(--ccml-accent-soft) 82%, var(--ccml-surface-1));
+}
+
+@media (max-width: 1050px) {
+  .mix-planner-preview {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .mix-planner-preview-controls {
+    grid-template-columns: 30px 30px 38px 45px minmax(90px, 1fr) 45px 38px;
+  }
+
+  .mix-planner-preview-volume {
+    grid-column: 1 / -1;
+  }
+}

@@ -90,6 +90,8 @@ export function QuarantineDuplicateTracks(arg1:Array<number>,arg2:string):Promis
 
 export function ReadTrackTags(arg1:number):Promise<model.TagSnapshot>;
 
+export function RecalculateDJMixPlan(arg1:model.DJMixPlan,arg2:model.DJMixPlanOptions):Promise<model.DJMixPlan>;
+
 export function RefreshMetadata(arg1:number):Promise<model.MetadataLookupResult>;
 
 export function RemoveCoverArt(arg1:Array<number>):Promise<model.TagApplyResult>;

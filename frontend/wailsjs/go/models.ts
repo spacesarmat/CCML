@@ -215,6 +215,11 @@ export namespace model {
 	    energy: number;
 	    energyDelta: number;
 	    pinned: boolean;
+	    locked: boolean;
+	    timelineStartMs: number;
+	    timelineEndMs: number;
+	    transitionNote: string;
+	    cueNote: string;
 	    score: number;
 	    warnings: string[];
 	
@@ -236,6 +241,11 @@ export namespace model {
 	        this.energy = source["energy"];
 	        this.energyDelta = source["energyDelta"];
 	        this.pinned = source["pinned"];
+	        this.locked = source["locked"];
+	        this.timelineStartMs = source["timelineStartMs"];
+	        this.timelineEndMs = source["timelineEndMs"];
+	        this.transitionNote = source["transitionNote"];
+	        this.cueNote = source["cueNote"];
 	        this.score = source["score"];
 	        this.warnings = source["warnings"];
 	    }
@@ -270,6 +280,8 @@ export namespace model {
 	    lookahead: number;
 	    pinnedCount: number;
 	    ignoredPins: number;
+	    lockedCount: number;
+	    manualOrder: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new DJMixPlan(source);
@@ -288,6 +300,8 @@ export namespace model {
 	        this.lookahead = source["lookahead"];
 	        this.pinnedCount = source["pinnedCount"];
 	        this.ignoredPins = source["ignoredPins"];
+	        this.lockedCount = source["lockedCount"];
+	        this.manualOrder = source["manualOrder"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

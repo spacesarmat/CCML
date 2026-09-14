@@ -1,6 +1,6 @@
-import {useEffect, useMemo, useState, type DragEvent} from 'react'
+import {useEffect, useMemo, useRef, useState, type DragEvent} from 'react'
 import {translate, type AppLanguage, type TranslationKey} from './i18n'
-import type {DJMixPin, DJMixPlan, DJMixPlanOptions, DJMixPlanStep, DJMixSavedPlan} from './types'
+import type {DJMixPin, DJMixPlan, DJMixPlanOptions, DJMixPlanStep, DJMixSavedPlan, TrackMedia} from './types'
 import './djMixPlanner.css'
 
 type Props = {
@@ -43,9 +43,26 @@ function DJMixPlannerModal({
   const [manualBusy, setManualBusy] = useState(false)
   const [dragTrackID, setDragTrackID] = useState(0)
   const [dragOverTrackID, setDragOverTrackID] = useState(0)
+  const [previewTrackID, setPreviewTrackID] = useState(0)
+  const [previewMedia, setPreviewMedia] = useState<TrackMedia | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewFallbackLoading, setPreviewFallbackLoading] = useState(false)
+  const [previewError, setPreviewError] = useState('')
+  const [previewPlaying, setPreviewPlaying] = useState(false)
+  const [previewCurrentTime, setPreviewCurrentTime] = useState(0)
+  const [previewDuration, setPreviewDuration] = useState(0)
+  const [previewVolume, setPreviewVolume] = useState(1)
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null)
+  const previewRequestRef = useRef(0)
+  const previewFallbackTriedRef = useRef(false)
+  const previewAutoplayRef = useRef(0)
 
   const t = (key: TranslationKey, params?: Record<string, string | number>) => translate(language, key, params)
   const scopeIDs = useMemo(() => selectedIDs.length >= 2 ? selectedIDs : [], [selectedIDs])
+  const previewStep = useMemo(
+    () => plan?.steps?.find((step) => step.track.id === previewTrackID) ?? null,
+    [plan, previewTrackID],
+  )
   const effectiveScopeIDs = savedScopeIDs ?? scopeIDs
   const scopeLabel = savedScopeIDs !== null
     ? t('mixPlanner.scopeSaved', {count: savedScopeIDs.length > 0 ? savedScopeIDs.length : libraryCount})
@@ -63,6 +80,13 @@ function DJMixPlannerModal({
     setSavedScopeIDs(null)
     setError('')
     setPlan(null)
+    setPreviewTrackID(0)
+    setPreviewMedia(null)
+    setPreviewError('')
+    setPreviewPlaying(false)
+    setPreviewCurrentTime(0)
+    setPreviewDuration(0)
+    previewAutoplayRef.current = 0
     void refreshSavedPlans()
     void build(seed, {}, scopeIDs)
   }, [open])
@@ -70,13 +94,100 @@ function DJMixPlannerModal({
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.preventDefault()
-      onClose()
+      const target = event.target as HTMLElement | null
+      const editing = Boolean(target?.closest('input, textarea, select, button, [contenteditable="true"]'))
+
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+
+      if (
+        event.key === ' ' &&
+        !editing &&
+        previewTrackID > 0 &&
+        previewMedia?.audioUrl &&
+        !previewLoading &&
+        !previewFallbackLoading
+      ) {
+        event.preventDefault()
+        void togglePreviewPlayback()
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+  }, [
+    open,
+    onClose,
+    previewFallbackLoading,
+    previewLoading,
+    previewMedia?.audioUrl,
+    previewTrackID,
+  ])
+
+  useEffect(() => {
+    if (!open || previewTrackID <= 0) return
+    const app = window.go?.main?.App
+    if (!app) return
+
+    const request = ++previewRequestRef.current
+    const audio = previewAudioRef.current
+    if (audio) {
+      audio.pause()
+      audio.currentTime = 0
+    }
+
+    previewFallbackTriedRef.current = false
+    setPreviewMedia(null)
+    setPreviewLoading(true)
+    setPreviewFallbackLoading(false)
+    setPreviewError('')
+    setPreviewPlaying(false)
+    setPreviewCurrentTime(0)
+    setPreviewDuration(0)
+
+    void app.PrepareTrackMedia(previewTrackID)
+      .then((result) => {
+        if (previewRequestRef.current === request) setPreviewMedia(result)
+      })
+      .catch((err) => {
+        if (previewRequestRef.current === request) {
+          setPreviewError(err instanceof Error ? err.message : String(err))
+        }
+      })
+      .finally(() => {
+        if (previewRequestRef.current === request) setPreviewLoading(false)
+      })
+  }, [open, previewTrackID])
+
+  useEffect(() => {
+    setPreviewPlaying(false)
+    setPreviewCurrentTime(0)
+    setPreviewDuration(previewMedia?.durationMs ? previewMedia.durationMs / 1000 : 0)
+
+    if (!previewMedia?.audioUrl || previewAutoplayRef.current !== previewTrackID) return
+    const timer = window.setTimeout(() => {
+      const audio = previewAudioRef.current
+      if (!audio || previewAutoplayRef.current !== previewTrackID) return
+      previewAutoplayRef.current = 0
+      void audio.play().catch(() => void handlePreviewPlaybackError())
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [previewMedia?.audioUrl, previewMedia?.durationMs, previewTrackID])
+
+  useEffect(() => {
+    if (previewAudioRef.current) previewAudioRef.current.volume = previewVolume
+  }, [previewVolume, previewMedia?.audioUrl])
+
+  useEffect(() => {
+    if (open) return
+    previewAutoplayRef.current = 0
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause()
+      previewAudioRef.current.currentTime = 0
+    }
+  }, [open])
 
   function plannerOptions(seed = startTrackID, pinState = pins): DJMixPlanOptions {
     const pinnedTracks: DJMixPin[] = Object.entries(pinState)
@@ -104,6 +215,11 @@ function DJMixPlannerModal({
     try {
       const result = await window.go.main.App.PlanDJMix(planScope, plannerOptions(seed, pinState))
       setPlan(result)
+      setPreviewTrackID((current) => (
+        current > 0 && (result.steps ?? []).some((step) => step.track.id === current)
+          ? current
+          : (result.steps?.[0]?.track.id ?? 0)
+      ))
       setStartTrackID(result.startTrackId || seed)
       onMessage(t('mixPlanner.ready', {count: result.steps?.length ?? 0}))
     } catch (err) {
@@ -177,6 +293,7 @@ function DJMixPlannerModal({
       setPreferEnergyFlow(options.preferEnergyFlow)
       setPins(nextPins)
       setPlan(saved.plan)
+      setPreviewTrackID(saved.plan.steps?.[0]?.track.id ?? 0)
       onMessage(t('mixPlanner.loaded', {name: saved.name}))
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -301,6 +418,109 @@ function DJMixPlannerModal({
     })
   }
 
+  function selectPreviewTrack(trackID: number, autoplay = false) {
+    if (trackID <= 0) return
+    if (autoplay) previewAutoplayRef.current = trackID
+
+    if (previewTrackID === trackID) {
+      if (autoplay && previewMedia?.audioUrl && !previewLoading && !previewFallbackLoading) {
+        previewAutoplayRef.current = 0
+        void togglePreviewPlayback()
+      }
+      return
+    }
+
+    setPreviewTrackID(trackID)
+  }
+
+  async function togglePreviewPlayback() {
+    const audio = previewAudioRef.current
+    if (!audio || previewLoading || previewFallbackLoading) return
+    if (!audio.paused) {
+      audio.pause()
+      return
+    }
+
+    setPreviewError('')
+    try {
+      await audio.play()
+    } catch {
+      await handlePreviewPlaybackError()
+    }
+  }
+
+  function stopPreviewPlayback() {
+    const audio = previewAudioRef.current
+    if (!audio) return
+    audio.pause()
+    audio.currentTime = 0
+    setPreviewCurrentTime(0)
+    setPreviewPlaying(false)
+  }
+
+  function updatePreviewMetadata() {
+    const audio = previewAudioRef.current
+    if (!audio) return
+    const duration = Number.isFinite(audio.duration) && audio.duration > 0
+      ? audio.duration
+      : (previewMedia?.durationMs || 0) / 1000
+    setPreviewDuration(duration)
+    setPreviewCurrentTime(Number.isFinite(audio.currentTime) ? audio.currentTime : 0)
+    audio.volume = previewVolume
+  }
+
+  function seekPreview(value: number) {
+    const audio = previewAudioRef.current
+    if (!audio || !Number.isFinite(value)) return
+    const nativeDuration = Number.isFinite(audio.duration) ? audio.duration : 0
+    const duration = previewDuration > 0 ? previewDuration : Math.max(0, nativeDuration)
+    const next = Math.max(0, Math.min(value, duration || value))
+    audio.currentTime = next
+    setPreviewCurrentTime(next)
+  }
+
+  function skipPreview(deltaSeconds: number) {
+    const audio = previewAudioRef.current
+    if (!audio) return
+    seekPreview((Number.isFinite(audio.currentTime) ? audio.currentTime : previewCurrentTime) + deltaSeconds)
+  }
+
+  function changePreviewVolume(value: number) {
+    const next = Math.max(0, Math.min(1, value))
+    setPreviewVolume(next)
+    if (previewAudioRef.current) previewAudioRef.current.volume = next
+  }
+
+  async function handlePreviewPlaybackError() {
+    setPreviewPlaying(false)
+    const app = window.go?.main?.App
+    if (!app || previewTrackID <= 0 || !previewMedia || previewFallbackLoading) return
+
+    if (previewMedia.isPreview || previewFallbackTriedRef.current) {
+      setPreviewError(t('media.playbackFailed'))
+      return
+    }
+
+    previewFallbackTriedRef.current = true
+    previewAutoplayRef.current = previewTrackID
+    const request = previewRequestRef.current
+    setPreviewFallbackLoading(true)
+    setPreviewError('')
+
+    try {
+      const url = await app.PrepareTrackAudioPreview(previewTrackID)
+      if (previewRequestRef.current !== request) return
+      setPreviewMedia((current) => current ? {...current, audioUrl: url, isPreview: true} : current)
+    } catch (err) {
+      previewAutoplayRef.current = 0
+      if (previewRequestRef.current === request) {
+        setPreviewError(err instanceof Error ? err.message : String(err))
+      }
+    } finally {
+      if (previewRequestRef.current === request) setPreviewFallbackLoading(false)
+    }
+  }
+
   if (!open) return null
 
   return (
@@ -397,6 +617,90 @@ function DJMixPlannerModal({
 
         {plan && (
           <div className="mix-planner-body">
+            {previewStep && (
+              <div className="mix-planner-preview">
+                <div className="mix-planner-preview-track">
+                  <div className="mix-planner-preview-cover">
+                    {previewMedia?.coverUrl
+                      ? <img src={previewMedia.coverUrl} alt="" />
+                      : <span>в™Є</span>}
+                  </div>
+                  <div className="mix-planner-preview-title">
+                    <strong>{previewStep.track.artist || 'вЂ”'} вЂ” {previewStep.track.title || previewStep.track.fileName}</strong>
+                    <span>{previewStep.track.genre || previewStep.track.album || previewStep.track.path}</span>
+                    <div className="mix-planner-preview-meta">
+                      <em>{formatBPM(previewStep.adjustedBpm || previewStep.track.bpm)} BPM</em>
+                      <em>{previewStep.camelot || previewStep.openKey || 'вЂ”'}</em>
+                      <em>{formatDuration(previewStep.track.durationMs)}</em>
+                      {previewMedia?.isPreview && <em className="is-preview">{t('media.preview')}</em>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mix-planner-preview-player">
+                  <audio
+                    ref={previewAudioRef}
+                    key={previewMedia?.audioUrl || `preview-${previewTrackID}`}
+                    preload="metadata"
+                    src={previewMedia?.audioUrl || undefined}
+                    onLoadedMetadata={updatePreviewMetadata}
+                    onDurationChange={updatePreviewMetadata}
+                    onTimeUpdate={() => setPreviewCurrentTime(previewAudioRef.current?.currentTime || 0)}
+                    onPlay={() => setPreviewPlaying(true)}
+                    onPause={() => setPreviewPlaying(false)}
+                    onEnded={() => setPreviewPlaying(false)}
+                    onError={() => void handlePreviewPlaybackError()}
+                  />
+
+                  {previewLoading || previewFallbackLoading
+                    ? <span className="mix-planner-preview-status">{previewFallbackLoading ? t('media.compatibilityPreview') : t('media.preparing')}</span>
+                    : previewError
+                      ? <span className="mix-planner-preview-status is-error" title={previewError}>{t('media.unavailable')}: {previewError}</span>
+                      : <span className="mix-planner-preview-status">{previewPlaying ? t('media.pause') : t('media.play')} В· Space</span>}
+
+                  <div className="mix-planner-preview-controls">
+                    <button
+                      type="button"
+                      className="mix-preview-toggle"
+                      onClick={() => void togglePreviewPlayback()}
+                      disabled={!previewMedia?.audioUrl || previewLoading || previewFallbackLoading}
+                      title={previewPlaying ? t('media.pause') : t('media.play')}
+                      aria-label={previewPlaying ? t('media.pause') : t('media.play')}
+                    >
+                      {previewPlaying ? 'в…Ў' : 'в–¶'}
+                    </button>
+                    <button type="button" onClick={stopPreviewPlayback} disabled={!previewMedia?.audioUrl} title="Stop" aria-label="Stop">в– </button>
+                    <button type="button" onClick={() => skipPreview(-10)} disabled={!previewMedia?.audioUrl} title="в€’10 s">в€’10</button>
+                    <span className="mix-planner-preview-time">{formatPlayerTime(previewCurrentTime)}</span>
+                    <input
+                      className="mix-planner-preview-seek"
+                      type="range"
+                      min="0"
+                      max={Math.max(previewDuration, 0.1)}
+                      step="0.1"
+                      value={Math.min(previewCurrentTime, previewDuration || previewCurrentTime)}
+                      onChange={(event) => seekPreview(Number(event.target.value))}
+                      aria-label={t('media.seek')}
+                      disabled={previewDuration <= 0}
+                    />
+                    <span className="mix-planner-preview-time">{formatPlayerTime(previewDuration)}</span>
+                    <button type="button" onClick={() => skipPreview(10)} disabled={!previewMedia?.audioUrl} title="+10 s">+10</button>
+                    <input
+                      className="mix-planner-preview-volume"
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={previewVolume}
+                      onChange={(event) => changePreviewVolume(Number(event.target.value))}
+                      aria-label={t('media.volume')}
+                      title={t('media.volume')}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="mix-planner-summary">
               <Summary value={plan.steps?.length ?? 0} label={t('mixPlanner.planTracks')} />
               <Summary value={`${Math.round((plan.averageScore || 0) * 100)}%`} label={t('mixPlanner.avgScore')} />
@@ -435,6 +739,7 @@ function DJMixPlannerModal({
                         step={step}
                         timelineStartMS={effectiveTimelineStartMS(steps, index)}
                         isStart={step.track.id === plan.startTrackId}
+                        isPreviewSelected={step.track.id === previewTrackID}
                         isDragging={dragTrackID === step.track.id}
                         isDropTarget={dragOverTrackID === step.track.id}
                         busy={manualBusy}
@@ -446,6 +751,8 @@ function DJMixPlannerModal({
                         onMoveDown={() => moveManualStep(step.track.id, 1)}
                         onTransitionNote={(value) => updateManualNote(step.track.id, 'transitionNote', value)}
                         onCueNote={(value) => updateManualNote(step.track.id, 'cueNote', value)}
+                        onSelectPreview={() => selectPreviewTrack(step.track.id)}
+                        onPreviewPlay={() => selectPreviewTrack(step.track.id, true)}
                         onDragStart={(event) => {
                           if (step.locked || (event.target as HTMLElement).closest('input, textarea, button')) {
                             event.preventDefault()
@@ -496,6 +803,7 @@ function PlannerRow({
   step,
   timelineStartMS,
   isStart,
+  isPreviewSelected,
   isDragging,
   isDropTarget,
   busy,
@@ -507,6 +815,8 @@ function PlannerRow({
   onMoveDown,
   onTransitionNote,
   onCueNote,
+  onSelectPreview,
+  onPreviewPlay,
   onDragStart,
   onDragOver,
   onDrop,
@@ -516,6 +826,7 @@ function PlannerRow({
   step: DJMixPlanStep
   timelineStartMS: number
   isStart: boolean
+  isPreviewSelected: boolean
   isDragging: boolean
   isDropTarget: boolean
   busy: boolean
@@ -527,6 +838,8 @@ function PlannerRow({
   onMoveDown: () => void
   onTransitionNote: (value: string) => void
   onCueNote: (value: string) => void
+  onSelectPreview: () => void
+  onPreviewPlay: () => void
   onDragStart: (event: DragEvent<HTMLTableRowElement>) => void
   onDragOver: (event: DragEvent<HTMLTableRowElement>) => void
   onDrop: (event: DragEvent<HTMLTableRowElement>) => void
@@ -548,6 +861,7 @@ function PlannerRow({
   const timelineEndMS = timelineStartMS + Math.max(0, step.track.durationMs || 0)
   const classes = [
     isStart ? 'is-start' : '',
+    isPreviewSelected ? 'is-preview-selected' : '',
     step.pinned ? 'is-pinned' : '',
     step.locked ? 'is-locked' : '',
     isDragging ? 'is-dragging' : '',
@@ -562,6 +876,14 @@ function PlannerRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest('input, textarea, select, button')) return
+        onSelectPreview()
+      }}
+      onDoubleClick={(event) => {
+        if ((event.target as HTMLElement).closest('input, textarea, select, button')) return
+        onPreviewPlay()
+      }}
       title={step.locked ? t('mixPlanner.lockedHint') : t('mixPlanner.dragHint')}
     >
       <td className="mix-position">{step.position}</td>
@@ -696,6 +1018,16 @@ function formatTimeline(valueMS: number): string {
 
 function formatDuration(valueMS: number): string {
   return formatTimeline(Math.max(0, valueMS || 0))
+}
+
+function formatPlayerTime(valueSeconds: number): string {
+  const total = Math.max(0, Math.floor(Number.isFinite(valueSeconds) ? valueSeconds : 0))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
 function Summary({value, label}: {value: string | number; label: string}) {

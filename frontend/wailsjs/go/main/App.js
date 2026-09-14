@@ -178,6 +178,10 @@ export function ReadTrackTags(arg1) {
   return window['go']['main']['App']['ReadTrackTags'](arg1);
 }
 
+export function RecalculateDJMixPlan(arg1, arg2) {
+  return window['go']['main']['App']['RecalculateDJMixPlan'](arg1, arg2);
+}
+
 export function RefreshMetadata(arg1) {
   return window['go']['main']['App']['RefreshMetadata'](arg1);
 }
