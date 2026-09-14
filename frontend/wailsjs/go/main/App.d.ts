@@ -28,8 +28,6 @@ export function EnrichMetadata(arg1:Array<number>,arg2:model.MetadataEnrichmentO
 
 export function FindDuplicates():Promise<Array<model.DuplicateGroup>>;
 
-export function VerifyDuplicateAudio(arg1:Array<number>):Promise<model.DuplicateAudioVerification>;
-
 export function GenerateSpectrograms(arg1:number,arg2:string):Promise<model.SpectrogramComparison>;
 
 export function GetMetadataSettings():Promise<model.MetadataSettings>;
@@ -103,5 +101,7 @@ export function TestMetadataProviders(arg1:model.MetadataSettings):Promise<Array
 export function UndoTagChange(arg1:number):Promise<model.TagApplyResult>;
 
 export function UpdateFFmpeg():Promise<model.FFmpegUpdateResult>;
+
+export function VerifyDuplicateAudio(arg1:Array<number>):Promise<model.DuplicateAudioVerification>;
 
 export function WriteReplayGain(arg1:number,arg2:number):Promise<model.Loudness>;

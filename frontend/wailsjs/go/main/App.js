@@ -54,10 +54,6 @@ export function FindDuplicates() {
   return window['go']['main']['App']['FindDuplicates']();
 }
 
-export function VerifyDuplicateAudio(arg1) {
-  return window['go']['main']['App']['VerifyDuplicateAudio'](arg1);
-}
-
 export function GenerateSpectrograms(arg1, arg2) {
   return window['go']['main']['App']['GenerateSpectrograms'](arg1, arg2);
 }
@@ -204,6 +200,10 @@ export function UndoTagChange(arg1) {
 
 export function UpdateFFmpeg() {
   return window['go']['main']['App']['UpdateFFmpeg']();
+}
+
+export function VerifyDuplicateAudio(arg1) {
+  return window['go']['main']['App']['VerifyDuplicateAudio'](arg1);
 }
 
 export function WriteReplayGain(arg1, arg2) {
