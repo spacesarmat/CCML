@@ -15,7 +15,60 @@ type Props = {
   onDelete: (trackIDs: number[]) => Promise<boolean>
 }
 
-type FilterMode = 'all' | 'exact' | 'possible'
+type FilterMode = 'all' | 'exact' | 'possible' | 'unresolved'
+
+type QueueDecisionKind = 'keepBest' | 'keepAll' | 'quarantineSelected' | 'skip'
+
+type QueueDecision = {
+  kind: QueueDecisionKind
+  trackIDs: number[]
+  signature: string
+}
+
+const duplicateQueueStorageKey = 'ccml.duplicate-decisions.v1'
+
+function duplicateGroupSignature(group: DuplicateGroup): string {
+  return group.tracks.map((track) => track.id).sort((left, right) => left - right).join(',')
+}
+
+function expectedKeepBestIDs(group: DuplicateGroup): number[] {
+  if (!group.recommendedTrackId) return []
+  return group.tracks
+    .filter((track) => track.id !== group.recommendedTrackId)
+    .map((track) => track.id)
+    .sort((left, right) => left - right)
+}
+
+function validQueueDecision(group: DuplicateGroup, decision: QueueDecision | undefined): QueueDecision | null {
+  if (!decision || decision.signature !== duplicateGroupSignature(group)) return null
+
+  const groupIDs = new Set(group.tracks.map((track) => track.id))
+  const ids = [...new Set(decision.trackIDs)].sort((left, right) => left - right)
+  if (ids.some((id) => !groupIDs.has(id))) return null
+
+  if (decision.kind === 'keepBest') {
+    const expected = expectedKeepBestIDs(group)
+    if (expected.length === 0 || expected.length !== ids.length) return null
+    if (expected.some((id, index) => id !== ids[index])) return null
+  } else if (decision.kind === 'quarantineSelected') {
+    if (ids.length === 0 || ids.length >= group.tracks.length) return null
+  } else if (ids.length !== 0) {
+    return null
+  }
+
+  return {...decision, trackIDs: ids}
+}
+
+function loadQueueDecisions(): Record<string, QueueDecision> {
+  try {
+    const raw = window.localStorage.getItem(duplicateQueueStorageKey)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, QueueDecision> : {}
+  } catch {
+    return {}
+  }
+}
 
 type PendingDelete = {
   groupKey: string
@@ -81,6 +134,8 @@ function DuplicateGroupsView({
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [audioChecks, setAudioChecks] = useState<Record<string, DuplicateAudioVerification>>({})
+  const [queueDecisions, setQueueDecisions] = useState<Record<string, QueueDecision>>(loadQueueDecisions)
+  const [queueReviewOpen, setQueueReviewOpen] = useState(false)
 
   const copy = language === 'ru'
     ? {
@@ -96,6 +151,34 @@ function DuplicateGroupsView({
         files: 'Файлов в группах',
         exactGroups: 'Точных',
         possibleGroups: 'Возможных',
+        unresolved: 'Не обработано',
+        processed: 'Обработано',
+        queue: 'Очередь',
+        reviewQueue: 'Проверить очередь',
+        queueDecision: 'Решение группы',
+        queuePending: 'Без решения',
+        queueKeepBest: 'Оставить лучший',
+        queueKeepAll: 'Оставить всё',
+        queueQuarantineSelected: 'Карантин выбранных',
+        queueSkip: 'Пропустить',
+        queueReset: 'Сбросить решение',
+        selectExceptBest: 'Выделить кроме лучшего',
+        nextUnresolved: 'Следующая необработанная',
+        queueReviewTitle: 'План обработки дубликатов',
+        queueReviewHint: 'Пакетное применение использует только безопасный карантин. Безвозвратное удаление остаётся доступно только для одной группы вручную.',
+        queueBestGroups: 'Оставить лучший',
+        queueKeepAllGroups: 'Оставить всё',
+        queueManualGroups: 'Карантин выбранных',
+        queueSkippedGroups: 'Пропущено',
+        queueUnresolvedGroups: 'Без решения',
+        queueFilesToQuarantine: 'Файлов в карантин',
+        queueFilesRemain: 'Файлов останется',
+        queuePossibleWarning: (count: number) => `В плане есть ${count} возможных групп (Remix/Edit/Intro и т. п.). Проверьте их особенно внимательно перед применением.`,
+        queueApply: 'Применить карантин',
+        queueClose: 'Закрыть',
+        queueNothingToApply: 'В плане нет файлов для карантина.',
+        queueLimit: 'За одну пакетную операцию можно обработать не более 500 файлов.',
+        queuePlanned: 'Запланировано',
         none: 'Подходящих групп не найдено.',
         selectGroup: 'Выберите группу дубликатов слева.',
         groupList: 'Группы',
@@ -120,8 +203,8 @@ function DuplicateGroupsView({
         metadataScore: 'теги',
         scoreTitle: 'Эвристическая оценка качества. Не является доказательством, что версии идентичны.',
         selected: (count: number, total: number) => `Выбрано ${count} из ${total}`,
-        keepBest: 'Оставить лучший',
-        keepBestHint: 'Выделить все файлы группы, кроме рекомендованного. Ничего не удаляется автоматически.',
+        keepBest: 'Выделить кроме лучшего',
+        keepBestHint: 'Только выделить все файлы группы, кроме рекомендованного. Для очереди используйте решение «Оставить лучший».',
         noLeader: 'Нет явного лидера',
         clear: 'Снять выделение',
         quarantine: 'В карантин…',
@@ -198,6 +281,34 @@ function DuplicateGroupsView({
         files: 'Files in groups',
         exactGroups: 'Exact',
         possibleGroups: 'Possible',
+        unresolved: 'Unresolved',
+        processed: 'Processed',
+        queue: 'Queue',
+        reviewQueue: 'Review queue',
+        queueDecision: 'Group decision',
+        queuePending: 'No decision',
+        queueKeepBest: 'Keep best',
+        queueKeepAll: 'Keep all',
+        queueQuarantineSelected: 'Quarantine selected',
+        queueSkip: 'Skip',
+        queueReset: 'Reset decision',
+        selectExceptBest: 'Select except best',
+        nextUnresolved: 'Next unresolved',
+        queueReviewTitle: 'Duplicate processing plan',
+        queueReviewHint: 'Batch apply uses safe quarantine only. Permanent deletion remains a manual single-group action.',
+        queueBestGroups: 'Keep best',
+        queueKeepAllGroups: 'Keep all',
+        queueManualGroups: 'Quarantine selected',
+        queueSkippedGroups: 'Skipped',
+        queueUnresolvedGroups: 'Unresolved',
+        queueFilesToQuarantine: 'Files to quarantine',
+        queueFilesRemain: 'Files remaining',
+        queuePossibleWarning: (count: number) => `The plan contains ${count} possible groups (Remix/Edit/Intro etc.). Review them especially carefully before applying.`,
+        queueApply: 'Apply quarantine',
+        queueClose: 'Close',
+        queueNothingToApply: 'There are no files queued for quarantine.',
+        queueLimit: 'A single batch operation can process at most 500 files.',
+        queuePlanned: 'Planned',
         none: 'No matching duplicate groups.',
         selectGroup: 'Select a duplicate group on the left.',
         groupList: 'Groups',
@@ -222,8 +333,8 @@ function DuplicateGroupsView({
         metadataScore: 'tags',
         scoreTitle: 'Heuristic quality score. It does not prove that the versions are identical.',
         selected: (count: number, total: number) => `Selected ${count} of ${total}`,
-        keepBest: 'Keep best',
-        keepBestHint: 'Select every file in this group except the recommended one. Nothing is removed automatically.',
+        keepBest: 'Select except best',
+        keepBestHint: 'Only select every file except the recommendation. Use the Keep best queue decision to plan batch quarantine.',
         noLeader: 'No clear leader',
         clear: 'Clear selection',
         quarantine: 'Quarantine…',
@@ -288,12 +399,25 @@ function DuplicateGroupsView({
         } as Record<string, string>,
       }
 
+  const validDecisions = useMemo(() => {
+    const result: Record<string, QueueDecision> = {}
+    for (const group of groups) {
+      const decision = validQueueDecision(group, queueDecisions[group.key])
+      if (decision) result[group.key] = decision
+    }
+    return result
+  }, [groups, queueDecisions])
+
+  const processedCount = Object.keys(validDecisions).length
+  const unresolvedCount = Math.max(0, groups.length - processedCount)
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
 
     return groups.filter((group) => {
       if (filter === 'exact' && group.matchClass === 'possible') return false
       if (filter === 'possible' && group.matchClass !== 'possible') return false
+      if (filter === 'unresolved' && validDecisions[group.key]) return false
       if (!needle) return true
 
       const haystack = [
@@ -311,14 +435,30 @@ function DuplicateGroupsView({
 
       return haystack.includes(needle)
     })
-  }, [groups, filter, query])
+  }, [groups, filter, query, validDecisions])
 
   useEffect(() => {
     setSelectedIDs(new Set())
     setPendingDelete(null)
     setDeleteConfirm('')
     setAudioChecks({})
+    setQueueDecisions((current) => {
+      const next: Record<string, QueueDecision> = {}
+      for (const group of groups) {
+        const decision = validQueueDecision(group, current[group.key])
+        if (decision) next[group.key] = decision
+      }
+      return next
+    })
   }, [groups])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(duplicateQueueStorageKey, JSON.stringify(queueDecisions))
+    } catch {
+      // Local persistence is helpful but must never block duplicate work.
+    }
+  }, [queueDecisions])
 
   useEffect(() => {
     if (filtered.length === 0) {
@@ -330,9 +470,128 @@ function DuplicateGroupsView({
     }
   }, [filtered, activeGroupKey])
 
+  useEffect(() => {
+    if (!activeGroupKey) {
+      setSelectedIDs(new Set())
+      return
+    }
+    const decision = validDecisions[activeGroupKey]
+    if (decision?.kind === 'keepBest' || decision?.kind === 'quarantineSelected') {
+      setSelectedIDs(new Set(decision.trackIDs))
+    } else {
+      setSelectedIDs(new Set())
+    }
+  }, [activeGroupKey, validDecisions])
+
   const exactCount = groups.filter((group) => group.matchClass !== 'possible').length
   const possibleCount = groups.length - exactCount
   const activeGroup = filtered.find((group) => group.key === activeGroupKey) ?? null
+
+  const queuePlan = useMemo(() => {
+    const quarantineIDs = new Set<number>()
+    let keepBestGroups = 0
+    let keepAllGroups = 0
+    let manualGroups = 0
+    let skippedGroups = 0
+    let possibleActionGroups = 0
+
+    for (const group of groups) {
+      const decision = validDecisions[group.key]
+      if (!decision) continue
+
+      switch (decision.kind) {
+        case 'keepBest':
+          keepBestGroups++
+          decision.trackIDs.forEach((id) => quarantineIDs.add(id))
+          if (group.matchClass === 'possible') possibleActionGroups++
+          break
+        case 'quarantineSelected':
+          manualGroups++
+          decision.trackIDs.forEach((id) => quarantineIDs.add(id))
+          if (group.matchClass === 'possible') possibleActionGroups++
+          break
+        case 'keepAll':
+          keepAllGroups++
+          break
+        case 'skip':
+          skippedGroups++
+          break
+      }
+    }
+
+    return {
+      keepBestGroups,
+      keepAllGroups,
+      manualGroups,
+      skippedGroups,
+      unresolvedGroups: unresolvedCount,
+      possibleActionGroups,
+      quarantineTrackIDs: [...quarantineIDs],
+      filesRemain: Math.max(0, groupTrackCount(groups) - quarantineIDs.size),
+    }
+  }, [groups, validDecisions, unresolvedCount])
+
+  function queueDecisionLabel(decision: QueueDecision | undefined): string {
+    switch (decision?.kind) {
+      case 'keepBest': return copy.queueKeepBest
+      case 'keepAll': return copy.queueKeepAll
+      case 'quarantineSelected': return copy.queueQuarantineSelected
+      case 'skip': return copy.queueSkip
+      default: return copy.queuePending
+    }
+  }
+
+  function setGroupDecision(group: DuplicateGroup, kind: QueueDecisionKind) {
+    let trackIDs: number[] = []
+
+    if (kind === 'keepBest') {
+      trackIDs = expectedKeepBestIDs(group)
+      if (trackIDs.length === 0) return
+    } else if (kind === 'quarantineSelected') {
+      trackIDs = selectedTracks(group).map((track) => track.id).sort((left, right) => left - right)
+      if (trackIDs.length === 0 || trackIDs.length >= group.tracks.length) return
+    }
+
+    const decision: QueueDecision = {
+      kind,
+      trackIDs,
+      signature: duplicateGroupSignature(group),
+    }
+    setQueueDecisions((current) => ({...current, [group.key]: decision}))
+    setSelectedIDs(new Set(trackIDs))
+  }
+
+  function resetGroupDecision(group: DuplicateGroup) {
+    setQueueDecisions((current) => {
+      const next = {...current}
+      delete next[group.key]
+      return next
+    })
+    setSelectedIDs(new Set())
+  }
+
+  function selectNextUnresolved() {
+    if (groups.length === 0) return
+    const start = Math.max(0, groups.findIndex((group) => group.key === activeGroupKey))
+    for (let offset = 1; offset <= groups.length; offset++) {
+      const group = groups[(start + offset) % groups.length]
+      if (!validDecisions[group.key]) {
+        setFilter('all')
+        setActiveGroupKey(group.key)
+        return
+      }
+    }
+  }
+
+  async function applyQueuePlan() {
+    if (queuePlan.quarantineTrackIDs.length === 0 || queuePlan.quarantineTrackIDs.length > 500) return
+    const ok = await onQuarantine(queuePlan.quarantineTrackIDs)
+    if (!ok) return
+
+    setQueueReviewOpen(false)
+    setQueueDecisions({})
+    setSelectedIDs(new Set())
+  }
 
   function badge(group: DuplicateGroup) {
     if (group.matchClass === 'isrc') return copy.isrc
@@ -471,6 +730,13 @@ function DuplicateGroupsView({
             <span>{copy.subtitle}</span>
           </div>
           <div className="duplicate-command-actions">
+            <button
+              type="button"
+              className="duplicate-queue-review-trigger"
+              onClick={() => setQueueReviewOpen(true)}
+            >
+              {copy.reviewQueue} <b>{processedCount}/{groups.length}</b>
+            </button>
             <button type="button" onClick={onBack}>{copy.back}</button>
             <button type="button" onClick={onRefresh} disabled={busy}>{copy.refresh}</button>
           </div>
@@ -490,15 +756,29 @@ function DuplicateGroupsView({
             onChange={(event) => setQuery(event.target.value)}
           />
           <div className="duplicate-filter-buttons">
-            {(['all', 'exact', 'possible'] as FilterMode[]).map((mode) => (
+            {(['all', 'exact', 'possible', 'unresolved'] as FilterMode[]).map((mode) => (
               <button
                 type="button"
                 key={mode}
                 className={filter === mode ? 'active' : ''}
                 onClick={() => setFilter(mode)}
               >
-                {mode === 'all' ? copy.all : mode === 'exact' ? copy.exact : copy.filterPossible}
-                <b>{mode === 'all' ? groups.length : mode === 'exact' ? exactCount : possibleCount}</b>
+                {mode === 'all'
+                  ? copy.all
+                  : mode === 'exact'
+                    ? copy.exact
+                    : mode === 'possible'
+                      ? copy.filterPossible
+                      : copy.unresolved}
+                <b>
+                  {mode === 'all'
+                    ? groups.length
+                    : mode === 'exact'
+                      ? exactCount
+                      : mode === 'possible'
+                        ? possibleCount
+                        : unresolvedCount}
+                </b>
               </button>
             ))}
           </div>
@@ -525,6 +805,9 @@ function DuplicateGroupsView({
                       {group.tracks.length} {copy.files.toLocaleLowerCase()} · {Math.round(group.confidence * 100)}%
                       {' · '}{formatSpread(group.durationSpreadMs)}
                     </small>
+                    <em className={`duplicate-master-decision ${validDecisions[group.key]?.kind || 'pending'}`}>
+                      {queueDecisionLabel(validDecisions[group.key])}
+                    </em>
                   </span>
                   <span className="duplicate-master-score" title={copy.scoreTitle}>
                     {recommended?.score ?? '—'}
@@ -557,6 +840,57 @@ function DuplicateGroupsView({
                 </header>
 
                 <div className="duplicate-detail-scroll">
+                  <div className="duplicate-queue-toolbar">
+                    <span>
+                      {copy.queueDecision}: <strong>{queueDecisionLabel(validDecisions[activeGroup.key])}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      className={validDecisions[activeGroup.key]?.kind === 'keepBest' ? 'active' : ''}
+                      disabled={busy || !activeGroup.recommendedTrackId}
+                      title={activeGroup.recommendedTrackId ? copy.keepBestHint : copy.noLeader}
+                      onClick={() => setGroupDecision(activeGroup, 'keepBest')}
+                    >
+                      {copy.queueKeepBest}
+                    </button>
+                    <button
+                      type="button"
+                      className={validDecisions[activeGroup.key]?.kind === 'keepAll' ? 'active' : ''}
+                      disabled={busy}
+                      onClick={() => setGroupDecision(activeGroup, 'keepAll')}
+                    >
+                      {copy.queueKeepAll}
+                    </button>
+                    <button
+                      type="button"
+                      className={validDecisions[activeGroup.key]?.kind === 'quarantineSelected' ? 'active' : ''}
+                      disabled={busy || activeSelected.length === 0 || activeSelected.length >= activeGroup.tracks.length}
+                      onClick={() => setGroupDecision(activeGroup, 'quarantineSelected')}
+                    >
+                      {copy.queueQuarantineSelected}
+                    </button>
+                    <button
+                      type="button"
+                      className={validDecisions[activeGroup.key]?.kind === 'skip' ? 'active' : ''}
+                      disabled={busy}
+                      onClick={() => setGroupDecision(activeGroup, 'skip')}
+                    >
+                      {copy.queueSkip}
+                    </button>
+                    {validDecisions[activeGroup.key] && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => resetGroupDecision(activeGroup)}
+                      >
+                        {copy.queueReset}
+                      </button>
+                    )}
+                    <button type="button" disabled={busy || unresolvedCount === 0} onClick={selectNextUnresolved}>
+                      {copy.nextUnresolved}
+                    </button>
+                  </div>
+
                   <div className="duplicate-group-actions">
                     <span>{copy.selected(activeSelected.length, activeGroup.tracks.length)}</span>
                     <button
@@ -691,6 +1025,88 @@ function DuplicateGroupsView({
           </main>
         </div>
       </section>
+
+      {queueReviewOpen && (
+        <div
+          className="duplicate-queue-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !busy) setQueueReviewOpen(false)
+          }}
+        >
+          <section className="duplicate-queue-modal" role="dialog" aria-modal="true" aria-labelledby="duplicate-queue-title">
+            <header>
+              <div>
+                <h2 id="duplicate-queue-title">{copy.queueReviewTitle}</h2>
+                <span>{copy.queueReviewHint}</span>
+              </div>
+              <button type="button" disabled={busy} onClick={() => setQueueReviewOpen(false)} aria-label={copy.queueClose}>×</button>
+            </header>
+
+            <div className="duplicate-queue-body">
+              <div className="duplicate-queue-progress">
+                <strong>{copy.processed}: {processedCount}/{groups.length}</strong>
+                <span>{copy.queueUnresolvedGroups}: {queuePlan.unresolvedGroups}</span>
+              </div>
+
+              <div className="duplicate-queue-summary-grid">
+                <div><strong>{queuePlan.keepBestGroups}</strong><span>{copy.queueBestGroups}</span></div>
+                <div><strong>{queuePlan.keepAllGroups}</strong><span>{copy.queueKeepAllGroups}</span></div>
+                <div><strong>{queuePlan.manualGroups}</strong><span>{copy.queueManualGroups}</span></div>
+                <div><strong>{queuePlan.skippedGroups}</strong><span>{copy.queueSkippedGroups}</span></div>
+                <div><strong>{queuePlan.quarantineTrackIDs.length}</strong><span>{copy.queueFilesToQuarantine}</span></div>
+                <div><strong>{queuePlan.filesRemain}</strong><span>{copy.queueFilesRemain}</span></div>
+              </div>
+
+              {queuePlan.possibleActionGroups > 0 && (
+                <p className="duplicate-queue-warning">{copy.queuePossibleWarning(queuePlan.possibleActionGroups)}</p>
+              )}
+
+              {queuePlan.quarantineTrackIDs.length > 500 && (
+                <p className="duplicate-queue-warning danger">{copy.queueLimit}</p>
+              )}
+
+              {queuePlan.quarantineTrackIDs.length === 0 && (
+                <p className="duplicate-queue-note">{copy.queueNothingToApply}</p>
+              )}
+
+              <div className="duplicate-queue-plan-list">
+                {groups.map((group) => {
+                  const decision = validDecisions[group.key]
+                  if (!decision) return null
+                  return (
+                    <div className={`duplicate-queue-plan-row ${decision.kind}`} key={group.key}>
+                      <span>
+                        <strong>{group.artist || '—'} — {group.title || '—'}</strong>
+                        <small>{queueDecisionLabel(decision)}</small>
+                      </span>
+                      <b>
+                        {decision.kind === 'keepBest' || decision.kind === 'quarantineSelected'
+                          ? `${decision.trackIDs.length} → ${copy.quarantine}`
+                          : '—'}
+                      </b>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <footer>
+              <button type="button" disabled={busy} onClick={() => setQueueReviewOpen(false)}>
+                {copy.queueClose}
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={busy || queuePlan.quarantineTrackIDs.length === 0 || queuePlan.quarantineTrackIDs.length > 500}
+                onClick={() => void applyQueuePlan()}
+              >
+                {copy.queueApply} · {queuePlan.quarantineTrackIDs.length}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
 
       {pendingDelete && (
         <div
