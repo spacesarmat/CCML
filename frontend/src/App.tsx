@@ -33,6 +33,7 @@ import type {
 import ConfigurableTrackTable from './ConfigurableTrackTable'
 import {loadTableSort, saveTableSort, sortTracks, type TableSort} from './tableSort'
 import {applyTheme, loadTheme, saveTheme, type AppTheme} from './theme'
+import {applyUIScale, loadUIScale, saveUIScale, type AppUIScale} from './uiScale'
 
 function compactProviderMessage(value: string | undefined): string {
   if (!value) return ''
@@ -67,6 +68,11 @@ function App() {
   const [theme, setTheme] = useState<AppTheme>(() => {
     const initial = loadTheme()
     applyTheme(initial)
+    return initial
+  })
+  const [uiScale, setUIScale] = useState<AppUIScale>(() => {
+    const initial = loadUIScale()
+    applyUIScale(initial)
     return initial
   })
   const [status, setStatus] = useState<SystemStatus | null>(null)
@@ -388,6 +394,12 @@ function App() {
     setTheme(nextTheme)
     applyTheme(nextTheme)
     saveTheme(nextTheme)
+  }
+
+  function changeUIScale(nextScale: AppUIScale) {
+    setUIScale(nextScale)
+    applyUIScale(nextScale)
+    saveUIScale(nextScale)
   }
 
   async function run<T>(label: string, work: () => Promise<T>): Promise<T | undefined> {
@@ -1230,7 +1242,7 @@ function App() {
 
       <HelpModal language={language} open={helpOpen} version={t('footer.version')} onClose={() => setHelpOpen(false)} />
       <JobsPanel language={language} open={jobsOpen} onClose={() => setJobsOpen(false)} onMessage={setMessage} onRevealTrack={revealJobTrack} />
-      <SettingsModal language={language} theme={theme} open={settingsOpen} status={status} onClose={() => setSettingsOpen(false)} onSaved={async () => { await refreshStatus() }} onMessage={setMessage} onThemeChange={changeTheme} />
+      <SettingsModal language={language} theme={theme} uiScale={uiScale} open={settingsOpen} status={status} onClose={() => setSettingsOpen(false)} onSaved={async () => { await refreshStatus() }} onMessage={setMessage} onThemeChange={changeTheme} onUIScaleChange={changeUIScale} />
 
       <footer className="workspace-statusbar">
         <div><span className={scanning ? 'status-busy-dot' : busy ? 'status-busy-dot' : 'status-ready-dot'} />{scanning ? t('footer.scanning') : busy ? t('footer.working') : message}</div>

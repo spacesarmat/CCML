@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react'
 import { translate, type AppLanguage, type TranslationKey } from './i18n'
 import {APP_THEMES, type AppTheme} from './theme'
+import {UI_SCALES, type AppUIScale} from './uiScale'
 import type { MetadataProviderReport, MetadataSettings, SystemStatus } from './types'
 
 type Props = {
   language: AppLanguage
   theme: AppTheme
+  uiScale: AppUIScale
   open: boolean
   status: SystemStatus | null
   onClose: () => void
   onSaved: (settings: MetadataSettings) => Promise<void> | void
   onMessage: (message: string) => void
   onThemeChange: (theme: AppTheme) => void
+  onUIScaleChange: (scale: AppUIScale) => void
 }
 
-function SettingsModal({language, theme, open, status, onClose, onSaved, onMessage, onThemeChange}: Props) {
+function SettingsModal({language, theme, uiScale, open, status, onClose, onSaved, onMessage, onThemeChange, onUIScaleChange}: Props) {
   const t = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(language, key, params)
   const [settings, setSettings] = useState<MetadataSettings | null>(null)
   const [loading, setLoading] = useState(false)
@@ -137,6 +140,27 @@ function SettingsModal({language, theme, open, status, onClose, onSaved, onMessa
                   </button>
                 )
               })}
+            </div>
+
+            <div className="ui-scale-setting">
+              <div className="ui-scale-copy">
+                <strong>{t('settings.uiScale')}</strong>
+                <small>{t('settings.uiScaleHint')}</small>
+              </div>
+              <div className="ui-scale-options" role="radiogroup" aria-label={t('settings.uiScale')}>
+                {UI_SCALES.map((scale) => (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={uiScale === scale}
+                    className={uiScale === scale ? 'active' : ''}
+                    key={scale}
+                    onClick={() => onUIScaleChange(scale)}
+                  >
+                    {scale}%
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
 
