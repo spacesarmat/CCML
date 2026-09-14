@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState, type DragEvent} from 'react'
 import {translate, type AppLanguage, type TranslationKey} from './i18n'
-import type {DJMixPin, DJMixPlan, DJMixPlanOptions, DJMixPlanStep, DJMixSavedPlan, TrackMedia} from './types'
+import type {DJMixPin, DJMixPlan, DJMixPlanOptions, DJMixPlanStep, DJMixSavedPlan, TrackMedia, TrackWaveform} from './types'
 import './djMixPlanner.css'
 
 type Props = {
@@ -52,8 +52,12 @@ function DJMixPlannerModal({
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0)
   const [previewDuration, setPreviewDuration] = useState(0)
   const [previewVolume, setPreviewVolume] = useState(1)
+  const [previewWaveform, setPreviewWaveform] = useState<TrackWaveform | null>(null)
+  const [previewWaveformLoading, setPreviewWaveformLoading] = useState(false)
+  const [previewWaveformError, setPreviewWaveformError] = useState('')
   const previewAudioRef = useRef<HTMLAudioElement | null>(null)
   const previewRequestRef = useRef(0)
+  const previewWaveformRequestRef = useRef(0)
   const previewFallbackTriedRef = useRef(false)
   const previewAutoplayRef = useRef(0)
 
@@ -86,6 +90,9 @@ function DJMixPlannerModal({
     setPreviewPlaying(false)
     setPreviewCurrentTime(0)
     setPreviewDuration(0)
+    setPreviewWaveform(null)
+    setPreviewWaveformLoading(false)
+    setPreviewWaveformError('')
     previewAutoplayRef.current = 0
     void refreshSavedPlans()
     void build(seed, {}, scopeIDs)
@@ -158,6 +165,30 @@ function DJMixPlannerModal({
       })
       .finally(() => {
         if (previewRequestRef.current === request) setPreviewLoading(false)
+      })
+  }, [open, previewTrackID])
+
+  useEffect(() => {
+    if (!open || previewTrackID <= 0) return
+    const app = window.go?.main?.App
+    if (!app) return
+
+    const request = ++previewWaveformRequestRef.current
+    setPreviewWaveform(null)
+    setPreviewWaveformLoading(true)
+    setPreviewWaveformError('')
+
+    void app.PrepareTrackWaveform(previewTrackID, 900)
+      .then((result) => {
+        if (previewWaveformRequestRef.current === request) setPreviewWaveform(result)
+      })
+      .catch((err) => {
+        if (previewWaveformRequestRef.current === request) {
+          setPreviewWaveformError(err instanceof Error ? err.message : String(err))
+        }
+      })
+      .finally(() => {
+        if (previewWaveformRequestRef.current === request) setPreviewWaveformLoading(false)
       })
   }, [open, previewTrackID])
 
@@ -658,6 +689,17 @@ function DJMixPlannerModal({
                       ? <span className="mix-planner-preview-status is-error" title={previewError}>{t('media.unavailable')}: {previewError}</span>
                       : <span className="mix-planner-preview-status">{previewPlaying ? t('media.pause') : t('media.play')} В· Space</span>}
 
+                  <WaveformOverview
+                    waveform={previewWaveform}
+                    loading={previewWaveformLoading}
+                    error={previewWaveformError}
+                    currentTime={previewCurrentTime}
+                    duration={previewDuration || ((previewWaveform?.durationMs || 0) / 1000)}
+                    loadingLabel={t('media.preparing')}
+                    unavailableLabel={t('media.unavailable')}
+                    onSeek={seekPreview}
+                  />
+
                   <div className="mix-planner-preview-controls">
                     <button
                       type="button"
@@ -1028,6 +1070,129 @@ function formatPlayerTime(valueSeconds: number): string {
   return hours > 0
     ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
     : `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+function WaveformOverview({
+  waveform,
+  loading,
+  error,
+  currentTime,
+  duration,
+  loadingLabel,
+  unavailableLabel,
+  onSeek,
+}: {
+  waveform: TrackWaveform | null
+  loading: boolean
+  error: string
+  currentTime: number
+  duration: number
+  loadingLabel: string
+  unavailableLabel: string
+  onSeek: (value: number) => void
+}) {
+  const [hoverRatio, setHoverRatio] = useState<number | null>(null)
+  const peaks = waveform?.peaks ?? []
+
+  if (loading) {
+    return <div className="mix-planner-waveform is-loading" title={loadingLabel} aria-label={loadingLabel} />
+  }
+  if (error || peaks.length === 0) {
+    return (
+      <div
+        className="mix-planner-waveform is-unavailable"
+        title={error || unavailableLabel}
+        aria-label={unavailableLabel}
+      >
+        <span>{unavailableLabel}</span>
+      </div>
+    )
+  }
+
+  const safeDuration = Math.max(0, duration || ((waveform?.durationMs || 0) / 1000))
+  const progress = safeDuration > 0 ? Math.max(0, Math.min(1, currentTime / safeDuration)) : 0
+  const playedInset = Math.max(0, Math.min(100, 100 - progress * 100))
+  const path = buildWaveformPath(peaks)
+
+  function ratioFromClientX(clientX: number, element: HTMLDivElement): number {
+    const rect = element.getBoundingClientRect()
+    if (rect.width <= 0) return 0
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+  }
+
+  return (
+    <div
+      className="mix-planner-waveform"
+      role="slider"
+      tabIndex={0}
+      aria-label="Waveform seek"
+      aria-valuemin={0}
+      aria-valuemax={Math.max(0, safeDuration)}
+      aria-valuenow={Math.max(0, Math.min(currentTime, safeDuration || currentTime))}
+      onPointerMove={(event) => {
+        const ratio = ratioFromClientX(event.clientX, event.currentTarget)
+        setHoverRatio(ratio)
+        if (safeDuration > 0 && (event.buttons & 1) === 1) {
+          onSeek(ratio * safeDuration)
+        }
+      }}
+      onPointerLeave={() => setHoverRatio(null)}
+      onPointerDown={(event) => {
+        if (safeDuration <= 0) return
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+        const ratio = ratioFromClientX(event.clientX, event.currentTarget)
+        setHoverRatio(ratio)
+        onSeek(ratio * safeDuration)
+      }}
+      onKeyDown={(event) => {
+        if (safeDuration <= 0) return
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          event.preventDefault()
+          onSeek(currentTime + (event.key === 'ArrowLeft' ? -5 : 5))
+        }
+      }}
+    >
+      <svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
+        <path className="mix-waveform-base" d={path} />
+      </svg>
+      <svg
+        viewBox="0 0 1000 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        style={{clipPath: `inset(0 ${playedInset}% 0 0)`}}
+      >
+        <path className="mix-waveform-played" d={path} />
+      </svg>
+      <span className="mix-planner-waveform-playhead" style={{left: `${progress * 100}%`}} />
+      {hoverRatio !== null && safeDuration > 0 && (
+        <span className="mix-planner-waveform-hover" style={{left: `${hoverRatio * 100}%`}}>
+          {formatPlayerTime(hoverRatio * safeDuration)}
+        </span>
+      )}
+      <span className="mix-planner-waveform-hint">click / drag seek В· в†ђ в†’ 5s</span>
+    </div>
+  )
+}
+
+function buildWaveformPath(peaks: number[]): string {
+  if (peaks.length === 0) return ''
+  const width = 1000
+  const center = 50
+  const amplitude = 46
+  const top: string[] = []
+  const bottom: string[] = []
+
+  for (let index = 0; index < peaks.length; index += 1) {
+    const ratio = peaks.length === 1 ? 0 : index / (peaks.length - 1)
+    const x = ratio * width
+    const raw = Number.isFinite(peaks[index]) ? Math.max(0, Math.min(1, peaks[index])) : 0
+    const shaped = Math.pow(raw, 0.62)
+    const delta = shaped * amplitude
+    top.push(`${x.toFixed(2)},${(center - delta).toFixed(2)}`)
+    bottom.push(`${x.toFixed(2)},${(center + delta).toFixed(2)}`)
+  }
+
+  return `M ${top.join(' L ')} L ${bottom.reverse().join(' L ')} Z`
 }
 
 function Summary({value, label}: {value: string | number; label: string}) {

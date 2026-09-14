@@ -158,6 +158,10 @@ export function PrepareTrackMedia(arg1) {
   return window['go']['main']['App']['PrepareTrackMedia'](arg1);
 }
 
+export function PrepareTrackWaveform(arg1, arg2) {
+  return window['go']['main']['App']['PrepareTrackWaveform'](arg1, arg2);
+}
+
 export function PreviewRename(arg1, arg2) {
   return window['go']['main']['App']['PreviewRename'](arg1, arg2);
 }

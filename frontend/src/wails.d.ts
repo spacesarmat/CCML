@@ -22,6 +22,7 @@ import type {
   ProcessingResult,
   SpectrogramComparison,
   TrackMedia,
+  TrackWaveform,
   ScanResult,
   SystemStatus,
   TagApplyResult,
@@ -71,6 +72,7 @@ declare global {
           ListTagHistory(limit: number): Promise<TagHistory[]>
           UndoTagChange(changeSetID: number): Promise<TagApplyResult>
           PrepareTrackMedia(trackID: number): Promise<TrackMedia>
+          PrepareTrackWaveform(trackID: number, buckets: number): Promise<TrackWaveform>
           PrepareTrackCover(trackID: number): Promise<string>
           PrepareTrackAudioPreview(trackID: number): Promise<string>
           GenerateSpectrograms(trackID: number, processedPath: string): Promise<SpectrogramComparison>

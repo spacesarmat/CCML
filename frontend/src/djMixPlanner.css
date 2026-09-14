@@ -1111,3 +1111,113 @@
     grid-column: 1 / -1;
   }
 }
+
+/* Stage 20.3: DJ Mix Planner cached waveform */
+
+.mix-planner-waveform {
+  position: relative;
+  min-width: 0;
+  height: 64px;
+  overflow: hidden;
+  border: 1px solid var(--ccml-border-subtle);
+  border-radius: 7px;
+  background:
+    linear-gradient(to bottom, transparent 49%, var(--ccml-border-subtle) 50%, transparent 51%),
+    var(--ccml-surface-2);
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+}
+
+.mix-planner-waveform.is-loading,
+.mix-planner-waveform.is-unavailable {
+  display: grid;
+  place-items: center;
+  cursor: default;
+  color: var(--ccml-text-muted);
+  font-size: 6.5px;
+}
+
+.mix-planner-waveform.is-loading::before {
+  content: "";
+  width: 42%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ccml-border);
+  animation: mix-waveform-loading 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes mix-waveform-loading {
+  from { transform: scaleX(0.35); opacity: 0.45; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+.mix-planner-waveform svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.mix-planner-waveform .mix-waveform-base {
+  fill: var(--ccml-text-muted);
+  opacity: 0.48;
+}
+
+.mix-planner-waveform .mix-waveform-played {
+  fill: var(--ccml-accent);
+  opacity: 0.95;
+}
+
+.mix-planner-waveform-playhead {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ccml-text-strong);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ccml-bg-elevated) 50%, transparent);
+  pointer-events: none;
+}
+
+.mix-planner-waveform-hover {
+  position: absolute;
+  z-index: 4;
+  top: 4px;
+  transform: translateX(-50%);
+  padding: 2px 4px;
+  border: 1px solid var(--ccml-border);
+  border-radius: 4px;
+  background: var(--ccml-bg-elevated);
+  color: var(--ccml-text-strong);
+  box-shadow: var(--ccml-shadow-sm);
+  font-size: 6px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.mix-planner-waveform-hint {
+  position: absolute;
+  z-index: 2;
+  right: 5px;
+  bottom: 3px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ccml-bg-elevated) 72%, transparent);
+  color: var(--ccml-text-muted);
+  font-size: 5.5px;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .mix-planner-waveform {
+    height: 54px;
+  }
+
+  .mix-planner-waveform-hint {
+    display: none;
+  }
+}

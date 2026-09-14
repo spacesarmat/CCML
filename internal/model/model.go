@@ -285,6 +285,15 @@ type TrackMedia struct {
 	IsPreview  bool   `json:"isPreview"`
 }
 
+// TrackWaveform contains cached full-track peak data for interactive seeking.
+type TrackWaveform struct {
+	TrackID     int64     `json:"trackId"`
+	DurationMS  int64     `json:"durationMs"`
+	SampleRate  int       `json:"sampleRate"`
+	BucketCount int       `json:"bucketCount"`
+	Peaks       []float64 `json:"peaks"`
+}
+
 // SpectrogramComparison contains generated before/after spectrogram images.
 type SpectrogramComparison struct {
 	BeforeURL  string `json:"beforeUrl"`

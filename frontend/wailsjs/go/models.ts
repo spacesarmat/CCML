@@ -1549,5 +1549,25 @@ export namespace model {
 	    }
 	}
 
+	export class TrackWaveform {
+	    trackId: number;
+	    durationMs: number;
+	    sampleRate: number;
+	    bucketCount: number;
+	    peaks: number[];
+
+	    static createFrom(source: any = {}) {
+	        return new TrackWaveform(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.trackId = source["trackId"];
+	        this.durationMs = source["durationMs"];
+	        this.sampleRate = source["sampleRate"];
+	        this.bucketCount = source["bucketCount"];
+	        this.peaks = source["peaks"];
+	    }
+	}
 }
 

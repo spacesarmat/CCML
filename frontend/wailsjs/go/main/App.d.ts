@@ -80,6 +80,8 @@ export function PrepareTrackCover(arg1:number):Promise<string>;
 
 export function PrepareTrackMedia(arg1:number):Promise<model.TrackMedia>;
 
+export function PrepareTrackWaveform(arg1:number,arg2:number):Promise<model.TrackWaveform>;
+
 export function PreviewRename(arg1:number,arg2:model.OrganizeRequest):Promise<string>;
 
 export function PreviewTagEdits(arg1:Array<number>,arg2:model.TagPatch):Promise<Array<model.TagPreview>>;

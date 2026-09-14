@@ -319,6 +319,14 @@ export type TrackMedia = {
   isPreview: boolean
 }
 
+export type TrackWaveform = {
+  trackId: number
+  durationMs: number
+  sampleRate: number
+  bucketCount: number
+  peaks: number[]
+}
+
 export type SpectrogramComparison = {
   beforeUrl: string
   afterUrl: string
