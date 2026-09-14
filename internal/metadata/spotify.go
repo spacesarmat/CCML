@@ -29,6 +29,12 @@ type SpotifyProvider struct {
 	tokenExpiry time.Time
 }
 
+type spotifyImage struct {
+	URL    string `json:"url"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+}
+
 func NewSpotifyProvider(accessToken, clientID, clientSecret, market string) *SpotifyProvider {
 	market = strings.ToUpper(strings.TrimSpace(market))
 	if market == "" {
@@ -121,11 +127,7 @@ func (p *SpotifyProvider) searchWithToken(ctx context.Context, query model.Metad
 					Artists     []struct {
 						Name string `json:"name"`
 					} `json:"artists"`
-					Images []struct {
-						URL    string `json:"url"`
-						Width  int    `json:"width"`
-						Height int    `json:"height"`
-					} `json:"images"`
+					Images []spotifyImage `json:"images"`
 				} `json:"album"`
 			} `json:"items"`
 		} `json:"tracks"`
@@ -142,12 +144,7 @@ func (p *SpotifyProvider) searchWithToken(ctx context.Context, query model.Metad
 				artistNames = append(artistNames, name)
 			}
 		}
-		artwork, artworkWidth, artworkHeight := "", 0, 0
-		if len(track.Album.Images) > 0 {
-			artwork = track.Album.Images[0].URL
-			artworkWidth = track.Album.Images[0].Width
-			artworkHeight = track.Album.Images[0].Height
-		}
+		artwork, artworkWidth, artworkHeight, artworkEmbeddable := selectSpotifyArtwork(track.Album.Images)
 		albumArtists := make([]string, 0, len(track.Album.Artists))
 		for _, artist := range track.Album.Artists {
 			if name := strings.TrimSpace(artist.Name); name != "" {
@@ -159,11 +156,50 @@ func (p *SpotifyProvider) searchWithToken(ctx context.Context, query model.Metad
 			Title: track.Name, Artist: strings.Join(artistNames, ", "), Album: track.Album.Name, AlbumArtist: strings.Join(albumArtists, ", "),
 			ReleaseDate: track.Album.ReleaseDate, Year: yearFromDate(track.Album.ReleaseDate),
 			ISRC: track.ExternalIDs.ISRC, TrackNumber: track.TrackNumber, TrackTotal: track.Album.TotalTracks, DiscNumber: track.DiscNumber,
-			ArtworkURL: artwork, ArtworkWidth: artworkWidth, ArtworkHeight: artworkHeight, ArtworkEmbeddable: false,
+			ArtworkURL: artwork, ArtworkWidth: artworkWidth, ArtworkHeight: artworkHeight, ArtworkEmbeddable: artworkEmbeddable,
 			DurationMS: track.DurationMS,
 		})
 	}
 	return items, nil
+}
+
+// selectSpotifyArtwork chooses the largest valid public HTTP(S) album image.
+//
+// Spotify track search already returns album.images URLs. Historically CCML
+// copied the URL into MetadataCandidate but hard-coded ArtworkEmbeddable=false,
+// so the shared Tagging Service never even attempted the download.
+func selectSpotifyArtwork(images []spotifyImage) (string, int, int, bool) {
+	bestURL := ""
+	bestWidth := 0
+	bestHeight := 0
+	bestArea := -1
+
+	for _, image := range images {
+		rawURL := strings.TrimSpace(image.URL)
+		if rawURL == "" {
+			continue
+		}
+		parsed, err := url.Parse(rawURL)
+		if err != nil || parsed.Host == "" {
+			continue
+		}
+		if parsed.Scheme != "https" && parsed.Scheme != "http" {
+			continue
+		}
+
+		area := image.Width * image.Height
+		if bestURL == "" || area > bestArea {
+			bestURL = rawURL
+			bestWidth = image.Width
+			bestHeight = image.Height
+			bestArea = area
+		}
+	}
+
+	if bestURL == "" {
+		return "", 0, 0, false
+	}
+	return bestURL, bestWidth, bestHeight, true
 }
 
 func (p *SpotifyProvider) token(ctx context.Context) (string, error) {
