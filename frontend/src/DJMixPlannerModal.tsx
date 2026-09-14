@@ -52,6 +52,7 @@ function DJMixPlannerModal({
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0)
   const [previewDuration, setPreviewDuration] = useState(0)
   const [previewVolume, setPreviewVolume] = useState(1)
+  const [previewAutoAdvance, setPreviewAutoAdvance] = useState(false)
   const [previewWaveform, setPreviewWaveform] = useState<TrackWaveform | null>(null)
   const [previewWaveformLoading, setPreviewWaveformLoading] = useState(false)
   const [previewWaveformError, setPreviewWaveformError] = useState('')
@@ -517,6 +518,17 @@ function DJMixPlannerModal({
     }
   }
 
+  function handlePreviewEnded() {
+    setPreviewPlaying(false)
+    if (previewDuration > 0) setPreviewCurrentTime(previewDuration)
+
+    const nextTrackID = previewNextStep?.track.id ?? 0
+    if (!previewAutoAdvance || nextTrackID <= 0) return
+
+    previewAutoplayRef.current = nextTrackID
+    setPreviewTrackID(nextTrackID)
+  }
+
   function stopPreviewPlayback() {
     const audio = previewAudioRef.current
     if (!audio) return
@@ -716,7 +728,7 @@ function DJMixPlannerModal({
                     onTimeUpdate={() => setPreviewCurrentTime(previewAudioRef.current?.currentTime || 0)}
                     onPlay={() => setPreviewPlaying(true)}
                     onPause={() => setPreviewPlaying(false)}
-                    onEnded={() => setPreviewPlaying(false)}
+                    onEnded={handlePreviewEnded}
                     onError={() => void handlePreviewPlaybackError()}
                   />
 
@@ -773,6 +785,16 @@ function DJMixPlannerModal({
                       aria-label="Next track"
                     >
                       вЏ­
+                    </button>
+                    <button
+                      type="button"
+                      className={`mix-preview-auto${previewAutoAdvance ? ' is-active' : ''}`}
+                      onClick={() => setPreviewAutoAdvance((current) => !current)}
+                      aria-pressed={previewAutoAdvance}
+                      title="Auto-play next track when the current preview ends"
+                      aria-label="Auto-play next track"
+                    >
+                      AUTO
                     </button>
                     <button type="button" onClick={() => skipPreview(-10)} disabled={!previewMedia?.audioUrl} title="в€’10 s">в€’10</button>
                     <span className="mix-planner-preview-time">{formatPlayerTime(previewCurrentTime)}</span>
