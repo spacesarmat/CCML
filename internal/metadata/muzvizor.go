@@ -55,68 +55,27 @@ func (p *MuzvizorProvider) Name() string { return "MUZVIZOR" }
 func (p *MuzvizorProvider) Kind() string { return ProviderKindDJPool }
 
 func (p *MuzvizorProvider) Search(ctx context.Context, query model.MetadataQuery) ([]model.MetadataCandidate, error) {
-	term := strings.TrimSpace(strings.TrimSpace(query.Artist) + " " + strings.TrimSpace(query.Title))
+	term := muzvizorSearchTerm(query)
 	if term == "" {
 		return nil, fmt.Errorf("artist or title is required")
 	}
 
-	// MUZVIZOR exposes a public search input, but does not publish a supported
-	// developer API. Keep a small list of public GET shapes used by web search
-	// pages. We only accept parsed rows that independently match Artist/Title.
-	targets := []struct {
-		path  string
-		param string
-	}{
-		{path: "/tracks", param: "search"},
-		{path: "/search", param: "query"},
-		{path: "/search", param: "q"},
-		{path: "/tracks", param: "q"},
+	// MUZVIZOR's public track search uses /tracks?query=... . Keep the provider
+	// on that confirmed web contract instead of guessing alternate endpoints.
+	values := url.Values{}
+	values.Set("query", term)
+	searchURL := p.baseURL + "/tracks?" + values.Encode()
+
+	doc, err := p.fetchHTML(ctx, searchURL)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, err
 	}
 
-	seen := map[string]bool{}
-	var collected []model.MetadataCandidate
-	var firstErr error
-	successfulResponses := 0
-
-	for _, target := range targets {
-		values := url.Values{}
-		values.Set(target.param, term)
-		searchURL := p.baseURL + target.path + "?" + values.Encode()
-
-		doc, err := p.fetchHTML(ctx, searchURL)
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
-			}
-			if firstErr == nil {
-				firstErr = err
-			}
-			continue
-		}
-		successfulResponses++
-
-		items := muzvizorCandidatesFromHTML(doc, searchURL, query)
-		for _, item := range items {
-			key := normalizeText(item.Artist) + "\x00" + normalizeText(item.Title) +
-				"\x00" + formatMuzvizorBPM(item.BPM) + "\x00" + strings.ToUpper(strings.TrimSpace(item.Key))
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-			collected = append(collected, item)
-		}
-
-		// A real search endpoint returning useful matches is enough. Do not send
-		// additional requests to the site once we have a candidate set.
-		if len(collected) > 0 {
-			break
-		}
-	}
-
+	collected := muzvizorCandidatesFromHTML(doc, searchURL, query)
 	if len(collected) == 0 {
-		if successfulResponses == 0 && firstErr != nil {
-			return nil, firstErr
-		}
 		return nil, nil
 	}
 
@@ -127,6 +86,19 @@ func (p *MuzvizorProvider) Search(ctx context.Context, query model.MetadataQuery
 		collected = collected[:12]
 	}
 	return collected, nil
+}
+
+func muzvizorSearchTerm(query model.MetadataQuery) string {
+	artist := strings.TrimSpace(query.Artist)
+	title := strings.TrimSpace(query.Title)
+	switch {
+	case artist != "" && title != "":
+		return artist + " - " + title
+	case artist != "":
+		return artist
+	default:
+		return title
+	}
 }
 
 func (p *MuzvizorProvider) fetchHTML(ctx context.Context, target string) (string, error) {
