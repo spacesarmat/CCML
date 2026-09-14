@@ -735,6 +735,7 @@ export namespace model {
 	    soundCloudEnabled: boolean;
 	    yandexMusicEnabled: boolean;
 	    traxsourceEnabled: boolean;
+	    muzvizorEnabled: boolean;
 	    traxsourceApiKey: string;
 	    metadataEnrichmentConcurrency: number;
 	    theAudioDBApiKey: string;
@@ -768,6 +769,7 @@ export namespace model {
 	        this.soundCloudEnabled = source["soundCloudEnabled"];
 	        this.yandexMusicEnabled = source["yandexMusicEnabled"];
 	        this.traxsourceEnabled = source["traxsourceEnabled"];
+	        this.muzvizorEnabled = source["muzvizorEnabled"];
 	        this.traxsourceApiKey = source["traxsourceApiKey"];
 	        this.metadataEnrichmentConcurrency = source["metadataEnrichmentConcurrency"];
 	        this.theAudioDBApiKey = source["theAudioDBApiKey"];

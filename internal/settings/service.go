@@ -95,8 +95,9 @@ func DefaultsFromEnvironment() model.MetadataSettings {
 		SoundCloudEnabled:  strings.TrimSpace(os.Getenv("SOUNDCLOUD_ACCESS_TOKEN")) != "",
 		YandexMusicEnabled: strings.TrimSpace(os.Getenv("YANDEX_MUSIC_TOKEN")) != "",
 		TraxsourceEnabled:  false,
+		MuzvizorEnabled:    false,
 
-		TraxsourceAPIKey:         strings.TrimSpace(os.Getenv("TRAXSOURCE_API_KEY")),
+		TraxsourceAPIKey: strings.TrimSpace(os.Getenv("TRAXSOURCE_API_KEY")),
 
 		TheAudioDBAPIKey:         strings.TrimSpace(os.Getenv("THEAUDIODB_API_KEY")),
 		ITunesCountry:            strings.TrimSpace(os.Getenv("ITUNES_COUNTRY")),

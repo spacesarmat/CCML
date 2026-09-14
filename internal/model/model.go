@@ -484,6 +484,7 @@ type MetadataSettings struct {
 	SoundCloudEnabled  bool `json:"soundCloudEnabled"`
 	YandexMusicEnabled bool `json:"yandexMusicEnabled"`
 	TraxsourceEnabled  bool `json:"traxsourceEnabled"`
+	MuzvizorEnabled    bool `json:"muzvizorEnabled"`
 
 	TraxsourceAPIKey string `json:"traxsourceApiKey"`
 

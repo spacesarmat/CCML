@@ -354,6 +354,7 @@ export type MetadataSettings = {
   soundCloudEnabled: boolean
   yandexMusicEnabled: boolean
   traxsourceEnabled: boolean
+  muzvizorEnabled?: boolean
   traxsourceApiKey: string
   metadataEnrichmentConcurrency: number
   theAudioDBApiKey: string
