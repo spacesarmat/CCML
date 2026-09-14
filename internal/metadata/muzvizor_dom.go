@@ -84,8 +84,14 @@ func muzvizorRenderedCandidatesFromHTML(doc, sourceURL string, query model.Metad
 }
 
 func muzvizorDOMTitleArtist(row string) (artist, title string) {
+	if title = muzvizorDOMTextByClass(row, "track__title"); title != "" {
+		if artist = muzvizorDOMTextByClass(row, "track__artist"); artist != "" {
+			return artist, title
+		}
+	}
+
 	lines := muzvizorDOMColumnLines(row, "track__column_title")
-	values := make([]string, 0, 2)
+	values := make([]string, 0, len(lines))
 	for _, value := range lines {
 		value = strings.TrimSpace(value)
 		if value == "" || muzvizorNoiseLine(value) {
@@ -99,11 +105,34 @@ func muzvizorDOMTitleArtist(row string) (artist, title string) {
 		}
 		values = append(values, value)
 	}
-	if len(values) < 2 {
-		return "", ""
+	if len(values) >= 2 {
+		return values[len(values)-1], values[len(values)-2]
 	}
-	// MUZVIZOR renders Title first and Artist second inside the title column.
-	return values[1], values[0]
+
+	rowLines := muzvizorVisibleLines(row)
+	for index, value := range rowLines {
+		if _, ok := parseMuzvizorBPM(value); !ok {
+			continue
+		}
+		if artist, title = muzvizorPreviousArtistTitle(rowLines, index); artist != "" && title != "" {
+			return artist, title
+		}
+	}
+	return "", ""
+}
+
+func muzvizorDOMTextByClass(row, className string) string {
+	blocks := muzvizorDOMDivBlocksByClass(row, className)
+	if len(blocks) == 0 {
+		return ""
+	}
+	for _, value := range muzvizorVisibleLines(blocks[0]) {
+		value = strings.TrimSpace(value)
+		if value != "" && !muzvizorNoiseLine(value) {
+			return value
+		}
+	}
+	return ""
 }
 
 func muzvizorDOMBPM(row string) (float64, bool) {

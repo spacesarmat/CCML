@@ -128,9 +128,12 @@ func (p *MuzvizorProvider) fetchHTML(ctx context.Context, target string) (string
 }
 
 func muzvizorCandidatesFromHTML(doc, sourceURL string, query model.MetadataQuery) []model.MetadataCandidate {
-	if items, rowsFound := muzvizorRenderedCandidatesFromHTML(doc, sourceURL, query); rowsFound {
+	if items, rowsFound := muzvizorRenderedCandidatesFromHTML(doc, sourceURL, query); rowsFound && len(items) > 0 {
 		return items
 	}
+	// A rendered row can contain decorative/badge text that makes a strict DOM
+	// extraction fail even though the visible track sequence is complete. Do not
+	// let the mere presence of track__row_main suppress the proven text parser.
 	lines := muzvizorVisibleLines(doc)
 	if len(lines) == 0 {
 		return nil

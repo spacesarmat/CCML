@@ -63,6 +63,71 @@ func TestMuzvizorRenderedDOMParsesColumnsAndStage(t *testing.T) {
 	}
 }
 
+func TestMuzvizorRenderedDOMIgnoresDecorativeTitlePrefix(t *testing.T) {
+	t.Parallel()
+
+	const fixture = `
+	<div class="track__row track__row_main">
+	  <div class="track__column track__column_stage">
+	    <div class="track__stage track__stage_prime"></div>
+	  </div>
+	  <div class="track__column track__column_title">
+	    <span>Club Ready</span>
+	    <div class="track__title">Москва (Nei Blend)</div>
+	    <div class="track__artist">Винтаж, DJ Smash</div>
+	    <span>TOP 100</span>
+	  </div>
+	  <div class="track__column track__column_bpm">140</div>
+	  <div class="track__column track__column_key">11A</div>
+	  <div class="track__column track__column_genre"><span>House,</span><span>Pop</span></div>
+	</div>`
+
+	items, rowsFound := muzvizorRenderedCandidatesFromHTML(
+		fixture,
+		"https://muzvizor.com/genres/house",
+		model.MetadataQuery{Artist: "Винтаж, DJ Smash", Title: "Москва (Nei Blend)"},
+	)
+	if !rowsFound || len(items) != 1 {
+		t.Fatalf("decorative prefix must not hide the track: rows=%v items=%+v", rowsFound, items)
+	}
+	if items[0].Artist != "Винтаж, DJ Smash" || items[0].Title != "Москва (Nei Blend)" {
+		t.Fatalf("unexpected identity: %+v", items[0])
+	}
+	if items[0].Stage != "Prime Time" || items[0].BPM != 140 || items[0].Key != "11A" || items[0].Genre != "House, Pop" {
+		t.Fatalf("unexpected DJ fields: %+v", items[0])
+	}
+}
+
+func TestMuzvizorPageTextFallbackRunsWhenDOMRowsDoNotMatch(t *testing.T) {
+	t.Parallel()
+
+	const fixture = `
+	<div class="track__row track__row_main">
+	  <div class="track__column track__column_stage"><div class="track__stage track__stage_prime"></div></div>
+	  <div class="track__column track__column_title">
+	    <span>Club Ready</span>
+	    <span>Москва (Nei Blend)</span>
+	    <span>Винтаж, DJ Smash</span>
+	    <span>TOP 100</span>
+	  </div>
+	  <div class="track__column track__column_bpm">140</div>
+	  <div class="track__column track__column_key">11A</div>
+	  <div class="track__column track__column_genre"><span>House,</span><span>Pop</span></div>
+	</div>`
+
+	items := muzvizorCandidatesFromHTML(
+		fixture,
+		"https://muzvizor.com/genres/house",
+		model.MetadataQuery{Artist: "Винтаж, DJ Smash", Title: "Москва (Nei Blend)"},
+	)
+	if len(items) != 1 {
+		t.Fatalf("visible row sequence must recover the candidate: %+v", items)
+	}
+	if items[0].Artist != "Винтаж, DJ Smash" || items[0].Title != "Москва (Nei Blend)" {
+		t.Fatalf("unexpected fallback identity: %+v", items[0])
+	}
+}
+
 func TestMuzvizorRenderedDOMRejectsUnrelatedTrack(t *testing.T) {
 	t.Parallel()
 
