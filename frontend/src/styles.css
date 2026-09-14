@@ -2052,3 +2052,230 @@ textarea:focus {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Stage 11.2.1 — complete semantic theme coverage */
+
+/* Library command area */
+.workspace-commandbar {
+  border-bottom-color: var(--ccml-border-subtle);
+  background: var(--ccml-surface-1);
+}
+.workspace-title-block h2 {
+  color: var(--ccml-text-strong);
+}
+.workspace-title-block span {
+  color: var(--ccml-text-muted);
+}
+.workspace-search input {
+  background: var(--ccml-input);
+  color: var(--ccml-text);
+}
+.library-filterbar {
+  border-bottom-color: var(--ccml-border-subtle);
+  background: var(--ccml-sidebar);
+}
+.metadata-filter button {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+  color: var(--ccml-text-muted);
+}
+.metadata-filter button:hover:not(:disabled) {
+  border-color: var(--ccml-border-strong);
+  background: var(--ccml-surface-hover);
+  color: var(--ccml-text);
+}
+.metadata-filter button.active {
+  border-color: var(--ccml-accent-border);
+  background: var(--ccml-accent-soft);
+  color: var(--ccml-text-strong);
+  box-shadow: inset 0 0 0 1px var(--ccml-accent-soft);
+}
+.selection-toolbar {
+  border-bottom-color: var(--ccml-accent-border);
+  background: var(--ccml-accent-soft);
+}
+.selection-toolbar strong {
+  color: var(--ccml-text-strong);
+}
+
+/* Sidebar */
+.sidebar-heading,
+.sidebar-empty,
+.sidebar-scan-path,
+.sidebar-scan-progress span,
+.sidebar-stats > div:not(.sidebar-heading) {
+  color: var(--ccml-text-dim);
+}
+.sidebar-nav {
+  color: var(--ccml-text-muted);
+}
+.sidebar-nav:hover:not(:disabled) {
+  background: var(--ccml-surface-hover);
+}
+.sidebar-nav.active {
+  background: var(--ccml-accent-soft);
+  color: var(--ccml-text-strong);
+  box-shadow: inset 2px 0 0 var(--ccml-accent);
+}
+.sidebar-nav b {
+  background: var(--ccml-surface-3);
+  color: var(--ccml-text-dim);
+}
+.sidebar-nav.active b {
+  background: var(--ccml-accent-soft);
+  color: var(--ccml-text);
+}
+.sidebar-folder.active {
+  background: var(--ccml-surface-2);
+}
+.sidebar-folder-path,
+.sidebar-folder-remove {
+  color: var(--ccml-text-muted);
+}
+.sidebar-folder-remove:hover:not(:disabled) {
+  background: var(--ccml-surface-hover);
+  color: var(--ccml-danger);
+}
+.sidebar-scan {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+}
+.sidebar-scan-progress strong,
+.sidebar-stats strong {
+  color: var(--ccml-text-strong);
+}
+.sidebar-update {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text-muted);
+}
+
+/* Library table and column toolbar */
+.table-columns-toolbar {
+  border-bottom-color: var(--ccml-border-subtle);
+  background: var(--ccml-bg-elevated);
+}
+.workspace-table .title-cell {
+  color: var(--ccml-text-strong);
+}
+.workspace-table tbody tr:hover {
+  background: var(--ccml-row-hover);
+}
+.workspace-table tbody tr.selected,
+.workspace-table tbody tr.active-row.selected {
+  background: var(--ccml-row-selected);
+}
+.workspace-table tbody tr.selected > td:first-child,
+.workspace-table tbody tr.active-row.selected > td:first-child {
+  box-shadow: inset 3px 0 0 var(--ccml-accent);
+}
+.workspace-table tbody tr.active-row {
+  outline-color: var(--ccml-accent);
+}
+
+/* Inspector */
+.workspace-inspector {
+  border-left-color: var(--ccml-border-subtle);
+  background: var(--ccml-bg-elevated);
+}
+.inspector-head {
+  border-bottom-color: var(--ccml-border-subtle);
+}
+.inspector-kicker {
+  color: var(--ccml-text-dim);
+}
+.inspector-head h2,
+.inspector-section > h3,
+.spectrogram-heading h3 {
+  color: var(--ccml-text-strong);
+}
+.inspector-head p,
+.inspector-duration,
+.inspector-section label,
+.player-preview-badge,
+.spectrogram-card figcaption span {
+  color: var(--ccml-text-muted);
+}
+.inspector-tabs {
+  border-bottom-color: var(--ccml-border-subtle);
+  background: var(--ccml-sidebar);
+}
+.inspector-tabs button {
+  color: var(--ccml-text-dim);
+}
+.inspector-tabs button:hover:not(:disabled) {
+  background: var(--ccml-surface-hover);
+}
+.inspector-tabs button.active {
+  border-bottom-color: var(--ccml-accent);
+  background: var(--ccml-surface-2);
+  color: var(--ccml-text-strong);
+}
+.inspector-section > h3,
+.spectrogram-section {
+  border-color: var(--ccml-border-subtle);
+}
+.inspector-artwork {
+  border-color: var(--ccml-border);
+  background: linear-gradient(145deg, var(--ccml-surface-3), var(--ccml-surface-1));
+  color: var(--ccml-text-dim);
+}
+.inspector-player > span,
+.inspector-player-controls {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+}
+.inspector-player-controls .player-toggle {
+  border-color: var(--ccml-border-strong);
+  color: var(--ccml-text-strong);
+}
+.inspector-player-controls .player-time {
+  color: var(--ccml-text-muted);
+}
+.inspector-player-controls input[type='range'] {
+  accent-color: var(--ccml-accent);
+}
+.spectrogram-card {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+}
+.spectrogram-card figcaption {
+  border-bottom-color: var(--ccml-border-subtle);
+}
+.spectrogram-card figcaption strong {
+  color: var(--ccml-text-strong);
+}
+
+/* Settings / Jobs late-stage controls */
+.settings-concurrency-row {
+  border-color: var(--ccml-border);
+  background: var(--ccml-surface-1);
+}
+.settings-concurrency-row label {
+  color: var(--ccml-text-muted);
+}
+.settings-concurrency-row small,
+.job-parallel-metrics,
+.job-item-pipeline {
+  color: var(--ccml-text-dim) !important;
+}
+
+/* Make the Light warning/error states readable without bringing dark surfaces back. */
+:root[data-ccml-theme='light'] .metadata-filter button.unchanged.active {
+  border-color: rgba(152, 111, 33, .42);
+  background: rgba(152, 111, 33, .10);
+  color: #7a5819;
+}
+:root[data-ccml-theme='light'] .metadata-filter button.failed.active {
+  border-color: rgba(180, 71, 80, .38);
+  background: rgba(180, 71, 80, .09);
+  color: #963943;
+}
+:root[data-ccml-theme='light'] .workspace-table tbody tr.metadata-unchanged {
+  background: rgba(152, 111, 33, .055);
+}
+:root[data-ccml-theme='light'] .workspace-table tbody tr.metadata-failed {
+  background: rgba(180, 71, 80, .055);
+}
+:root[data-ccml-theme='light'] .spectrogram-card img {
+  background: #dde4eb;
+}

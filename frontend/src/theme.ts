@@ -1,3 +1,5 @@
+import { WindowSetDarkTheme, WindowSetLightTheme } from '../wailsjs/runtime/runtime'
+
 export type AppTheme = 'midnight' | 'graphite' | 'ocean' | 'light'
 
 export const APP_THEMES: AppTheme[] = ['midnight', 'graphite', 'ocean', 'light']
@@ -28,6 +30,16 @@ export function applyTheme(theme: AppTheme): void {
   if (typeof document === 'undefined') return
   document.documentElement.dataset.ccmlTheme = theme
   document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark'
+
+  try {
+    if (theme === 'light') {
+      WindowSetLightTheme()
+    } else {
+      WindowSetDarkTheme()
+    }
+  } catch {
+    // CSS theme still works if native window theming is unavailable.
+  }
 }
 
 export function isAppTheme(value: unknown): value is AppTheme {
