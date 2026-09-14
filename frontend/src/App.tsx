@@ -31,6 +31,15 @@ import type {
 } from './types'
 
 import ConfigurableTrackTable from './ConfigurableTrackTable'
+import LibraryFilterPanel from './LibraryFilterPanel'
+import {
+  applyLibraryFilters,
+  countActiveLibraryFilters,
+  createEmptyLibraryFilters,
+  loadLibraryFilters,
+  saveLibraryFilters,
+  type LibraryFilters,
+} from './libraryFilters'
 import {loadTableSort, saveTableSort, sortTracks, type TableSort} from './tableSort'
 import {applyTheme, loadTheme, saveTheme, type AppTheme} from './theme'
 import {applyUIScale, loadUIScale, saveUIScale, type AppUIScale} from './uiScale'
@@ -101,6 +110,7 @@ function App() {
   const [jobsOpen, setJobsOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [metadataFilter, setMetadataFilter] = useState<'all' | 'skipped' | 'failed'>('all')
+  const [libraryFilters, setLibraryFilters] = useState<LibraryFilters>(() => loadLibraryFilters())
   const [tableSort, setTableSort] = useState<TableSort[]>(() => loadTableSort())
   const [mainView, setMainView] = useState<'library' | 'duplicates'>('library')
   const [inspectorTab, setInspectorTab] = useState<'tags' | 'metadata' | 'analysis' | 'organize'>('tags')
@@ -130,11 +140,16 @@ function App() {
   const locale = localeFor(language)
   const t = (key: TranslationKey, params?: TranslateParams) => translate(language, key, params)
 
-  const filteredTracks = useMemo(
-    () => metadataFilter === 'all'
-      ? tracks
-      : tracks.filter((track) => track.lastMetadataJobStatus === metadataFilter),
-    [tracks, metadataFilter],
+  const filteredTracks = useMemo(() => {
+    const byColumns = applyLibraryFilters(tracks, libraryFilters)
+    return metadataFilter === 'all'
+      ? byColumns
+      : byColumns.filter((track) => track.lastMetadataJobStatus === metadataFilter)
+  }, [tracks, libraryFilters, metadataFilter])
+
+  const activeLibraryFilterCount = useMemo(
+    () => countActiveLibraryFilters(libraryFilters),
+    [libraryFilters],
   )
 
   const visibleTracks = useMemo(
@@ -723,10 +738,30 @@ function App() {
     clearTrackSelection()
   }
 
+  function changeLibraryFilters(next: LibraryFilters) {
+    setMainView('library')
+    setLibraryFilters(next)
+    saveLibraryFilters(next)
+    clearTrackSelection()
+  }
+
+  function clearLibraryFilters() {
+    const empty = createEmptyLibraryFilters()
+    setMainView('library')
+    setLibraryFilters(empty)
+    saveLibraryFilters(empty)
+    clearTrackSelection()
+  }
+
   async function revealJobTrack(trackID: number) {
     setJobsOpen(false)
     setMainView('library')
     setMetadataFilter('all')
+    if (activeLibraryFilterCount > 0) {
+      const empty = createEmptyLibraryFilters()
+      setLibraryFilters(empty)
+      saveLibraryFilters(empty)
+    }
 
     // A search query can hide the requested track even though it exists in the
     // library. Clear it and reload the complete library before selecting.
@@ -1072,7 +1107,7 @@ function App() {
               <div className="workspace-commandbar">
                 <div className="workspace-title-block">
                   <h2>{t('library.title')}</h2>
-                  <span>{metadataFilter === 'all'
+                  <span>{metadataFilter === 'all' && activeLibraryFilterCount === 0
                     ? t('library.shown', {count: formatNumber(tracks.length, locale)})
                     : t('library.shownFiltered', {count: formatNumber(filteredTracks.length, locale), total: formatNumber(tracks.length, locale)})}</span>
                 </div>
@@ -1116,6 +1151,14 @@ function App() {
                   <button className={`unchanged ${metadataFilter === 'skipped' ? 'active' : ''}`} onClick={() => changeMetadataFilter('skipped')} disabled={unchangedAfterEnrichment === 0}>{t('library.filterUnchanged')} · {formatNumber(unchangedAfterEnrichment, locale)}</button>
                   <button className={`failed ${metadataFilter === 'failed' ? 'active' : ''}`} onClick={() => changeMetadataFilter('failed')} disabled={failedAfterEnrichment === 0}>{t('library.filterFailed')} · {formatNumber(failedAfterEnrichment, locale)}</button>
                 </div>
+                <LibraryFilterPanel
+                  language={language}
+                  locale={locale}
+                  tracks={tracks}
+                  filters={libraryFilters}
+                  onChange={changeLibraryFilters}
+                  onClear={clearLibraryFilters}
+                />
                 <span className="filter-legend">
                   {unchangedAfterEnrichment > 0 && <i className="legend-dot warn" title={t('library.enrichmentLegendUnchanged')} />}
                   {failedAfterEnrichment > 0 && <i className="legend-dot bad" title={t('library.enrichmentLegendFailed')} />}

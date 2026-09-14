@@ -82,7 +82,9 @@ const HELP: Record<AppLanguage, HelpCopy> = {
         summary: 'Поиск, фильтрация и выбор треков.',
         bullets: [
           'Поиск медиатеки интерактивный: после ввода текста CCML автоматически обновляет результаты примерно через 280 мс. Enter или кнопка «Поиск» запускают запрос немедленно; «Очистить» сбрасывает строку и возвращает полный список.',
-          'Фильтры позволяют отдельно показать все треки, записи без изменений после обогащения и записи, где обработка метаданных завершилась ошибкой.',
+          'Быстрые фильтры статуса отдельно показывают все треки, записи без изменений после обогащения и записи, где обработка метаданных завершилась ошибкой.',
+          'Кнопка «Фильтры» добавляет комбинируемые фильтры по Исполнителю, Жанру, Лейблу, Кодеку, Тональности, Году, BPM и LUFS. Категории работают по AND, несколько значений внутри одной категории — по OR.',
+          'Активные фильтры сохраняются между запусками и работают поверх интерактивного поиска. «Сбросить фильтры» возвращает полный результат текущего поискового запроса.',
           'Обычный клик выбирает одну строку. Чекбоксы, Ctrl+клик и Shift+клик используются для массового выделения.',
           'При перемещении клавишами активная строка автоматически прокручивается в видимую область.',
           'Кнопка «Колонки» над таблицей позволяет включать и скрывать поля. Порядок меняется перетаскиванием маркеров; раскладка сохраняется между запусками.',
@@ -254,7 +256,9 @@ const HELP: Record<AppLanguage, HelpCopy> = {
         summary: 'Search, filter and select tracks.',
         bullets: [
           'Library search is interactive: after typing, CCML automatically refreshes results after about 280 ms. Enter or Search runs immediately; Clear resets the query and restores the full list.',
-          'Filters can show all tracks, unchanged enrichment results, or metadata jobs that failed.',
+          'Quick status filters can show all tracks, unchanged enrichment results, or metadata jobs that failed.',
+          'The Filters control adds combinable Artist, Genre, Label, Codec, Key, Year, BPM and LUFS filters. Categories combine with AND; multiple values inside one category combine with OR.',
+          'Active filters persist between launches and work on top of interactive search. Clear filters restores the complete result of the current search query.',
           'A normal click selects one row. Checkboxes, Ctrl+click and Shift+click are for multi-selection.',
           'Keyboard navigation automatically scrolls the active row into view.',
           'The Columns control above the table shows or hides fields. Reorder them by dragging the handles; the layout persists between launches.',
