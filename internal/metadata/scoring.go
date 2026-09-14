@@ -210,6 +210,22 @@ func buildSuggested(items []model.MetadataCandidate) model.MetadataCandidate {
 		}
 		return bestValue
 	}
+	pickFloat := func(field string, get func(model.MetadataCandidate) float64) float64 {
+		bestValue := 0.0
+		bestScore := -1.0
+		for _, item := range items {
+			v := get(item)
+			if v <= 0 {
+				continue
+			}
+			score := item.Confidence + sourceFieldBonus(field, item.Source)
+			if score > bestScore {
+				bestScore = score
+				bestValue = v
+			}
+		}
+		return bestValue
+	}
 
 	base.AlbumArtist = pickString("albumArtist", func(c model.MetadataCandidate) string { return c.AlbumArtist })
 	base.ReleaseDate = pickString("releaseDate", func(c model.MetadataCandidate) string { return c.ReleaseDate })
@@ -221,6 +237,9 @@ func buildSuggested(items []model.MetadataCandidate) model.MetadataCandidate {
 	base.TrackTotal = pickInt("trackTotal", func(c model.MetadataCandidate) int { return c.TrackTotal })
 	base.DiscNumber = pickInt("discNumber", func(c model.MetadataCandidate) int { return c.DiscNumber })
 	base.DiscTotal = pickInt("discTotal", func(c model.MetadataCandidate) int { return c.DiscTotal })
+	base.BPM = pickFloat("bpm", func(c model.MetadataCandidate) float64 { return c.BPM })
+	base.Key = pickString("key", func(c model.MetadataCandidate) string { return c.Key })
+	base.KeyScale = pickString("keyScale", func(c model.MetadataCandidate) string { return c.KeyScale })
 	if base.Year == 0 {
 		base.Year = pickInt("year", func(c model.MetadataCandidate) int { return c.Year })
 	}
@@ -271,6 +290,8 @@ func buildFieldOptions(items []model.MetadataCandidate) []model.MetadataFieldOpt
 		{"label", func(c model.MetadataCandidate) string { return c.Label }},
 		{"catalogNumber", func(c model.MetadataCandidate) string { return c.CatalogNumber }},
 		{"isrc", func(c model.MetadataCandidate) string { return c.ISRC }},
+		{"key", func(c model.MetadataCandidate) string { return c.Key }},
+		{"keyScale", func(c model.MetadataCandidate) string { return c.KeyScale }},
 	}
 	type intField struct {
 		name string
@@ -283,8 +304,15 @@ func buildFieldOptions(items []model.MetadataCandidate) []model.MetadataFieldOpt
 		{"discNumber", func(c model.MetadataCandidate) int { return c.DiscNumber }},
 		{"discTotal", func(c model.MetadataCandidate) int { return c.DiscTotal }},
 	}
+	type floatField struct {
+		name string
+		get  func(model.MetadataCandidate) float64
+	}
+	floatFields := []floatField{
+		{"bpm", func(c model.MetadataCandidate) float64 { return c.BPM }},
+	}
 
-	options := make([]model.MetadataFieldOption, 0, len(items)*5)
+	options := make([]model.MetadataFieldOption, 0, len(items)*8)
 	seen := map[string]struct{}{}
 	for _, item := range items {
 		for _, field := range stringFields {
@@ -310,6 +338,18 @@ func buildFieldOptions(items []model.MetadataCandidate) []model.MetadataFieldOpt
 			}
 			seen[key] = struct{}{}
 			options = append(options, model.MetadataFieldOption{Field: field.name, Number: value, Source: item.Source, ExternalID: item.ExternalID, Confidence: item.Confidence})
+		}
+		for _, field := range floatFields {
+			value := field.get(item)
+			if value <= 0 {
+				continue
+			}
+			key := field.name + "\x00" + strconv.FormatFloat(value, 'f', 3, 64)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			options = append(options, model.MetadataFieldOption{Field: field.name, Decimal: value, Source: item.Source, ExternalID: item.ExternalID, Confidence: item.Confidence})
 		}
 	}
 	return options

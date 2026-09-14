@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -655,6 +656,9 @@ func snapshotFromFile(f *mtag.File) model.TagSnapshot {
 		TrackTotal:    f.TrackTotal(),
 		DiscNumber:    f.Disc(),
 		DiscTotal:     f.DiscTotal(),
+		BPM:           parseTagBPM(firstCustomValue(f, "BPM", "TBPM")),
+		Key:           firstCustomValue(f, "INITIALKEY", "TKEY", "KEY"),
+		KeyScale:      firstCustomValue(f, "KEYSCALE", "KEY_SCALE"),
 	}
 	for _, image := range f.ImageSummaries() {
 		if image.Type == mtag.PictureCoverFront {
@@ -664,6 +668,30 @@ func snapshotFromFile(f *mtag.File) model.TagSnapshot {
 		}
 	}
 	return state
+}
+
+func firstCustomValue(f *mtag.File, keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(f.CustomValue(key)); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func parseTagBPM(raw string) float64 {
+	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || value <= 0 || value > 400 {
+		return 0
+	}
+	return value
+}
+
+func formatTagBPM(value float64) string {
+	if value <= 0 || value > 400 {
+		return ""
+	}
+	return strconv.FormatFloat(value, 'f', -1, 64)
 }
 
 func frontCover(images []mtag.Picture) coverData {
@@ -722,6 +750,9 @@ func writeState(ctx context.Context, path string, state model.TagSnapshot, cover
 	f.SetCustomValues("DATE", singleOrNoneString(state.ReleaseDate)...)
 	f.SetTrack(state.TrackNumber, state.TrackTotal)
 	f.SetDisc(state.DiscNumber, state.DiscTotal)
+	f.SetCustomValues("BPM", singleOrNoneString(formatTagBPM(state.BPM))...)
+	f.SetCustomValues("INITIALKEY", singleOrNoneString(state.Key)...)
+	f.SetCustomValues("KEYSCALE", singleOrNoneString(state.KeyScale)...)
 
 	switch cover.mode {
 	case coverSet:
@@ -797,6 +828,12 @@ func patchFromCandidate(candidate model.MetadataCandidate) model.TagPatch {
 	addInt("trackTotal", candidate.TrackTotal, &patch.TrackTotal)
 	addInt("discNumber", candidate.DiscNumber, &patch.DiscNumber)
 	addInt("discTotal", candidate.DiscTotal, &patch.DiscTotal)
+	if candidate.BPM > 0 && candidate.BPM <= 400 {
+		patch.Fields = append(patch.Fields, "bpm")
+		patch.BPM = candidate.BPM
+	}
+	addString("key", candidate.Key, &patch.Key)
+	addString("keyScale", candidate.KeyScale, &patch.KeyScale)
 	return patch
 }
 
@@ -833,6 +870,12 @@ func filterMissingPatch(before model.TagSnapshot, patch model.TagPatch) model.Ta
 			empty = before.DiscNumber == 0
 		case "discTotal":
 			empty = before.DiscTotal == 0
+		case "bpm":
+			empty = before.BPM <= 0
+		case "key":
+			empty = strings.TrimSpace(before.Key) == ""
+		case "keyScale":
+			empty = strings.TrimSpace(before.KeyScale) == ""
 		default:
 			empty = true
 		}
@@ -880,6 +923,12 @@ func applyPatch(before model.TagSnapshot, patch model.TagPatch) model.TagSnapsho
 			after.DiscNumber = patch.DiscNumber
 		case "discTotal":
 			after.DiscTotal = patch.DiscTotal
+		case "bpm":
+			after.BPM = patch.BPM
+		case "key":
+			after.Key = patch.Key
+		case "keyScale":
+			after.KeyScale = patch.KeyScale
 		}
 	}
 	return after
@@ -901,6 +950,7 @@ func validateRequest(trackIDs []int64, patch model.TagPatch) ([]int64, error) {
 		"title": {}, "artist": {}, "album": {}, "albumArtist": {}, "genre": {}, "composer": {}, "comment": {},
 		"label": {}, "catalogNumber": {}, "isrc": {}, "releaseDate": {},
 		"year": {}, "trackNumber": {}, "trackTotal": {}, "discNumber": {}, "discTotal": {},
+		"bpm": {}, "key": {}, "keyScale": {},
 	}
 	seen := make(map[string]struct{}, len(patch.Fields))
 	for _, field := range patch.Fields {
@@ -914,6 +964,9 @@ func validateRequest(trackIDs []int64, patch model.TagPatch) ([]int64, error) {
 	}
 	if _, ok := seen["year"]; ok && patch.Year != 0 && (patch.Year < 1000 || patch.Year > 9999) {
 		return nil, fmt.Errorf("year must be 0 or between 1000 and 9999")
+	}
+	if _, ok := seen["bpm"]; ok && patch.BPM != 0 && (patch.BPM < 20 || patch.BPM > 400) {
+		return nil, fmt.Errorf("BPM must be 0 or between 20 and 400")
 	}
 	for name, value := range map[string]int{
 		"track number": patch.TrackNumber,

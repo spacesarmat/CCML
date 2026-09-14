@@ -122,6 +122,9 @@ func (p *Probe) Read(ctx context.Context, path string) (model.Track, error) {
 		SampleRate:   int(parseInt64(audioStream.SampleRate)),
 		Channels:     audioStream.Channels,
 		BitRate:      bitRate,
+		BPM:          parsePositiveFloat(firstTag(tags, "bpm", "tbpm")),
+		Key:          firstTag(tags, "initialkey", "initial_key", "tkey", "key"),
+		KeyScale:     firstTag(tags, "keyscale", "key_scale"),
 		HasCover:     hasAttachedPicture(output),
 		CoverIndexed: true,
 	}, nil
@@ -171,6 +174,14 @@ func firstTag(tags map[string]string, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+func parsePositiveFloat(raw string) float64 {
+	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || value <= 0 || value > 400 {
+		return 0
+	}
+	return value
 }
 
 func parseSecondsMS(raw string) int64 {

@@ -42,6 +42,9 @@ const emptyPatch: TagPatch = {
   trackTotal: 0,
   discNumber: 0,
   discTotal: 0,
+  bpm: 0,
+  key: '',
+  keyScale: '',
 }
 
 function api() {
@@ -80,6 +83,9 @@ function buildInitialPatch(tracks: Track[]): TagPatch {
     trackTotal: commonNumber((track) => track.trackTotal),
     discNumber: commonNumber((track) => track.discNumber),
     discTotal: commonNumber((track) => track.discTotal),
+    bpm: commonNumber((track) => track.bpm),
+    key: commonString((track) => track.key),
+    keyScale: commonString((track) => track.keyScale),
   }
 }
 

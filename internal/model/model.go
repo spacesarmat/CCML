@@ -98,24 +98,27 @@ type LibraryStats struct {
 
 // TagSnapshot is the editable metadata state for one audio file.
 type TagSnapshot struct {
-	Title         string `json:"title"`
-	Artist        string `json:"artist"`
-	Album         string `json:"album"`
-	AlbumArtist   string `json:"albumArtist"`
-	Genre         string `json:"genre"`
-	Composer      string `json:"composer"`
-	Comment       string `json:"comment"`
-	Label         string `json:"label"`
-	CatalogNumber string `json:"catalogNumber"`
-	ISRC          string `json:"isrc"`
-	ReleaseDate   string `json:"releaseDate"`
-	Year          int    `json:"year"`
-	TrackNumber   int    `json:"trackNumber"`
-	TrackTotal    int    `json:"trackTotal"`
-	DiscNumber    int    `json:"discNumber"`
-	DiscTotal     int    `json:"discTotal"`
-	CoverMIME     string `json:"coverMime"`
-	CoverSize     int    `json:"coverSize"`
+	Title         string  `json:"title"`
+	Artist        string  `json:"artist"`
+	Album         string  `json:"album"`
+	AlbumArtist   string  `json:"albumArtist"`
+	Genre         string  `json:"genre"`
+	Composer      string  `json:"composer"`
+	Comment       string  `json:"comment"`
+	Label         string  `json:"label"`
+	CatalogNumber string  `json:"catalogNumber"`
+	ISRC          string  `json:"isrc"`
+	ReleaseDate   string  `json:"releaseDate"`
+	Year          int     `json:"year"`
+	TrackNumber   int     `json:"trackNumber"`
+	TrackTotal    int     `json:"trackTotal"`
+	DiscNumber    int     `json:"discNumber"`
+	DiscTotal     int     `json:"discTotal"`
+	BPM           float64 `json:"bpm"`
+	Key           string  `json:"key"`
+	KeyScale      string  `json:"keyScale"`
+	CoverMIME     string  `json:"coverMime"`
+	CoverSize     int     `json:"coverSize"`
 }
 
 // TagPatch describes a partial metadata edit. Fields lists the values that
@@ -138,6 +141,9 @@ type TagPatch struct {
 	TrackTotal    int      `json:"trackTotal"`
 	DiscNumber    int      `json:"discNumber"`
 	DiscTotal     int      `json:"discTotal"`
+	BPM           float64  `json:"bpm"`
+	Key           string   `json:"key"`
+	KeyScale      string   `json:"keyScale"`
 }
 
 // TagTransformRequest describes a per-track text transformation.
@@ -319,6 +325,7 @@ type MetadataScore struct {
 // MetadataCandidate is a normalized result from an external metadata provider.
 type MetadataCandidate struct {
 	Source            string        `json:"source"`
+	SourceKind        string        `json:"sourceKind"`
 	ExternalID        string        `json:"externalId"`
 	SourceURL         string        `json:"sourceUrl"`
 	Title             string        `json:"title"`
@@ -335,6 +342,9 @@ type MetadataCandidate struct {
 	TrackTotal        int           `json:"trackTotal"`
 	DiscNumber        int           `json:"discNumber"`
 	DiscTotal         int           `json:"discTotal"`
+	BPM               float64       `json:"bpm"`
+	Key               string        `json:"key"`
+	KeyScale          string        `json:"keyScale"`
 	ArtworkURL        string        `json:"artworkUrl"`
 	ArtworkWidth      int           `json:"artworkWidth"`
 	ArtworkHeight     int           `json:"artworkHeight"`
@@ -351,6 +361,7 @@ type MetadataFieldOption struct {
 	Field      string  `json:"field"`
 	Value      string  `json:"value"`
 	Number     int     `json:"number"`
+	Decimal    float64 `json:"decimal"`
 	Source     string  `json:"source"`
 	ExternalID string  `json:"externalId"`
 	Confidence float64 `json:"confidence"`
@@ -359,6 +370,7 @@ type MetadataFieldOption struct {
 // MetadataProviderReport describes one provider attempt during a lookup.
 type MetadataProviderReport struct {
 	Name       string `json:"name"`
+	Kind       string `json:"kind"`
 	Status     string `json:"status"`
 	Candidates int    `json:"candidates"`
 	DurationMS int64  `json:"durationMs"`

@@ -1414,7 +1414,7 @@ function App() {
                     {metadataLookup?.cached && <span className="metadata-cache-badge">{t('metadata.cached', {age: formatCacheAge(metadataLookup.cacheAgeSeconds, language)})}</span>}
                     {metadataLookup?.providerReports && metadataLookup.providerReports.length > 0 && (
                       <div className="inspector-provider-list">
-                        {metadataLookup.providerReports.map((report) => <div className={`inspector-provider ${report.status}`} key={report.name} title={compactProviderMessage(report.error) || undefined}><strong>{report.name}</strong><span>{report.status === 'ok' ? t('metadata.providerOk', {count: report.candidates}) : report.status === 'empty' ? t('metadata.providerEmpty') : t(report.retryable ? 'metadata.providerTemporaryError' : 'metadata.providerError')}</span><small>{(report.durationMs / 1000).toFixed(1)}s</small></div>)}
+                        {metadataLookup.providerReports.map((report) => <div className={`inspector-provider ${report.status}`} key={report.name} title={compactProviderMessage(report.error) || undefined}><strong>{report.name}{report.kind === 'dj_pool' && <em className="metadata-source-kind">{t('metadata.djPool')}</em>}</strong><span>{report.status === 'ok' ? t('metadata.providerOk', {count: report.candidates}) : report.status === 'empty' ? t('metadata.providerEmpty') : t(report.retryable ? 'metadata.providerTemporaryError' : 'metadata.providerError')}</span><small>{(report.durationMs / 1000).toFixed(1)}s</small></div>)}
                       </div>
                     )}
                     {!metadataLookup?.providerReports?.length && metadataWarnings.map((warning) => <p className="warning compact-warning" key={warning}>{compactProviderMessage(warning)}</p>)}
@@ -1424,7 +1424,7 @@ function App() {
                         <article className="inspector-candidate" key={`${item.source}-${item.externalId}-${index}`}>
                           <div className="candidate-head">
                             {item.artworkUrl && <img src={item.artworkUrl} alt={t('metadata.artworkAlt')} />}
-                            <div><strong>{item.artist} — {item.title}</strong><span>{item.album || t('metadata.unknownAlbum')}</span><small>{item.source}</small></div>
+                            <div><strong>{item.artist} — {item.title}</strong><span>{item.album || t('metadata.unknownAlbum')}</span><small>{item.source}{item.sourceKind === 'dj_pool' && <em className="metadata-source-kind">{t('metadata.djPool')}</em>}</small></div>
                             <div className={`metadata-match-badge ${item.matchClass || 'low'}`}>{Math.round(item.confidence * 100)}%</div>
                           </div>
                           <div className="candidate-facts">
@@ -1434,6 +1434,8 @@ function App() {
                             <MetadataDetail label={t('metadata.label')} value={item.label || '–'} />
                             <MetadataDetail label={t('metadata.isrc')} value={item.isrc || '–'} />
                             <MetadataDetail label={t('metadata.catalogNumber')} value={item.catalogNumber || '–'} />
+                            <MetadataDetail label={t('tags.field.bpm')} value={item.bpm ? item.bpm.toFixed(item.bpm % 1 === 0 ? 0 : 1) : '–'} />
+                            <MetadataDetail label={t('tags.field.key')} value={item.key || '–'} />
                           </div>
                           {(item.matchIssues?.length ?? 0) > 0 && <div className="metadata-issues">{(item.matchIssues ?? []).map((issue) => <span key={issue}>{t((`metadata.issue.${issue}`) as TranslationKey)}</span>)}</div>}
                           {selected && <div className="candidate-actions"><button onClick={() => void applyMetadataCandidate(item, false)} disabled={busy || item.matchClass === 'rejected'}>{t('metadata.applyTags')}</button>{item.artworkUrl && item.artworkEmbeddable && <button onClick={() => void applyMetadataCandidate(item, true)} disabled={busy || item.matchClass === 'rejected'}>{t('metadata.applyWithArtwork')}</button>}</div>}

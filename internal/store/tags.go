@@ -18,11 +18,13 @@ UPDATE tracks SET
     title=?, artist=?, album=?, album_artist=?, genre=?, year=?,
     track_number=?, track_total=?, disc_number=?, disc_total=?, composer=?, comment=?,
     label=?, catalog_number=?, isrc=?, release_date=?,
+    bpm=?, musical_key=?, key_scale=?,
     size=?, modified_unix=?, updated_at=?
 WHERE id=?`,
 		tags.Title, tags.Artist, tags.Album, tags.AlbumArtist, tags.Genre, tags.Year,
 		tags.TrackNumber, tags.TrackTotal, tags.DiscNumber, tags.DiscTotal, tags.Composer, tags.Comment,
 		tags.Label, tags.CatalogNumber, tags.ISRC, tags.ReleaseDate,
+		tags.BPM, tags.Key, tags.KeyScale,
 		size, modifiedUnix, time.Now().UTC().Format(time.RFC3339Nano), id,
 	)
 	if err != nil {

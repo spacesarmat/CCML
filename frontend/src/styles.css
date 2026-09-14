@@ -7316,3 +7316,23 @@ button:disabled:hover {
 .configurable-track-table.virtualized tbody {
   overflow-anchor: none;
 }
+/* Stage 18.0 — DJ pool metadata foundation */
+
+.metadata-source-kind {
+  margin-left: 5px;
+  padding: 1px 5px;
+  display: inline-block;
+  border: 1px solid var(--ccml-accent-border);
+  border-radius: 999px;
+  background: var(--ccml-accent-soft);
+  color: var(--ccml-text-strong);
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.25;
+  vertical-align: middle;
+}
+
+.inspector-provider strong .metadata-source-kind {
+  margin-left: 4px;
+}

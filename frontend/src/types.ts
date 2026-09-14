@@ -100,6 +100,9 @@ export type TagSnapshot = {
   trackTotal: number
   discNumber: number
   discTotal: number
+  bpm?: number
+  key?: string
+  keyScale?: string
   coverMime: string
   coverSize: number
 }
@@ -122,6 +125,9 @@ export type TagPatch = {
   trackTotal: number
   discNumber: number
   discTotal: number
+  bpm?: number
+  key?: string
+  keyScale?: string
 }
 
 export type TagTransformRequest = {
@@ -274,6 +280,7 @@ export type MetadataScore = {
 
 export type MetadataCandidate = {
   source: string
+  sourceKind?: 'catalog' | 'dj_pool' | string
   externalId: string
   sourceUrl: string
   title: string
@@ -290,6 +297,9 @@ export type MetadataCandidate = {
   trackTotal: number
   discNumber: number
   discTotal: number
+  bpm?: number
+  key?: string
+  keyScale?: string
   artworkUrl: string
   artworkWidth: number
   artworkHeight: number
@@ -305,6 +315,7 @@ export type MetadataFieldOption = {
   field: string
   value: string
   number: number
+  decimal?: number
   source: string
   externalId: string
   confidence: number
@@ -312,6 +323,7 @@ export type MetadataFieldOption = {
 
 export type MetadataProviderReport = {
   name: string
+  kind?: 'catalog' | 'dj_pool' | string
   status: 'ok' | 'empty' | 'error' | string
   candidates: number
   durationMs: number

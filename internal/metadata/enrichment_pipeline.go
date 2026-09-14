@@ -169,6 +169,7 @@ func (s *Service) searchEnrichmentOnce(
 
 type enrichmentProviderResponse struct {
 	provider string
+	kind     string
 	items    []model.MetadataCandidate
 	err      error
 	duration time.Duration
@@ -197,8 +198,10 @@ func searchProviderSet(
 			providerCtx, cancel := context.WithTimeout(groupCtx, timeout)
 			items, err := provider.Search(providerCtx, query)
 			cancel()
+			items = stampProviderCandidates(provider, items)
 			responses <- enrichmentProviderResponse{
 				provider: provider.Name(),
+				kind:     providerKind(provider),
 				items:    items,
 				err:      err,
 				duration: time.Since(started),
@@ -221,6 +224,7 @@ func searchProviderSet(
 
 			report := model.MetadataProviderReport{
 				Name:       response.provider,
+				Kind:       response.kind,
 				Candidates: len(response.items),
 				DurationMS: response.duration.Milliseconds(),
 			}

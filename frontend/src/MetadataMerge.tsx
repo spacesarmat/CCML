@@ -14,22 +14,28 @@ type MergeField =
   | 'title' | 'artist' | 'album' | 'albumArtist' | 'genre'
   | 'releaseDate' | 'year' | 'label' | 'catalogNumber' | 'isrc'
   | 'trackNumber' | 'trackTotal' | 'discNumber' | 'discTotal'
+  | 'bpm' | 'key' | 'keyScale'
 
-const fields: Array<{field: MergeField; label: TranslationKey; numeric?: boolean}> = [
+type MergeNumericKind = 'int' | 'float'
+
+const fields: Array<{field: MergeField; label: TranslationKey; numeric?: MergeNumericKind}> = [
   {field: 'title', label: 'tags.field.title'},
   {field: 'artist', label: 'tags.field.artist'},
   {field: 'album', label: 'tags.field.album'},
   {field: 'albumArtist', label: 'tags.field.albumArtist'},
   {field: 'genre', label: 'tags.field.genre'},
   {field: 'releaseDate', label: 'tags.field.releaseDate'},
-  {field: 'year', label: 'tags.field.year', numeric: true},
+  {field: 'year', label: 'tags.field.year', numeric: 'int'},
   {field: 'label', label: 'tags.field.label'},
   {field: 'catalogNumber', label: 'tags.field.catalogNumber'},
   {field: 'isrc', label: 'tags.field.isrc'},
-  {field: 'trackNumber', label: 'tags.field.track', numeric: true},
-  {field: 'trackTotal', label: 'tags.field.trackTotal', numeric: true},
-  {field: 'discNumber', label: 'tags.field.disc', numeric: true},
-  {field: 'discTotal', label: 'tags.field.discTotal', numeric: true},
+  {field: 'trackNumber', label: 'tags.field.track', numeric: 'int'},
+  {field: 'trackTotal', label: 'tags.field.trackTotal', numeric: 'int'},
+  {field: 'discNumber', label: 'tags.field.disc', numeric: 'int'},
+  {field: 'discTotal', label: 'tags.field.discTotal', numeric: 'int'},
+  {field: 'bpm', label: 'tags.field.bpm', numeric: 'float'},
+  {field: 'key', label: 'tags.field.key'},
+  {field: 'keyScale', label: 'tags.field.keyScale'},
 ]
 
 const emptyScore: MetadataScore = {
@@ -37,15 +43,21 @@ const emptyScore: MetadataScore = {
 }
 
 const emptyCandidate: MetadataCandidate = {
-  source: 'CCML Merge', externalId: '', sourceUrl: '', title: '', artist: '', album: '', albumArtist: '',
+  source: 'CCML Merge', sourceKind: 'catalog', externalId: '', sourceUrl: '', title: '', artist: '', album: '', albumArtist: '',
   releaseDate: '', year: 0, genre: '', label: '', catalogNumber: '', isrc: '', trackNumber: 0, trackTotal: 0,
-  discNumber: 0, discTotal: 0, artworkUrl: '', artworkWidth: 0, artworkHeight: 0, artworkEmbeddable: false,
+  discNumber: 0, discTotal: 0, bpm: 0, key: '', keyScale: '', artworkUrl: '', artworkWidth: 0, artworkHeight: 0, artworkEmbeddable: false,
   durationMs: 0, confidence: 0, matchClass: 'rejected', matchIssues: [], score: emptyScore,
 }
 
-function candidateValue(candidate: MetadataCandidate, field: MergeField, numeric?: boolean): string | number {
+function candidateValue(candidate: MetadataCandidate, field: MergeField, numeric?: MergeNumericKind): string | number {
   const value = candidate[field]
   return numeric ? Number(value ?? 0) : String(value ?? '')
+}
+
+function optionValue(option: MetadataFieldOption, numeric?: MergeNumericKind): string | number {
+  if (numeric === 'int') return option.number
+  if (numeric === 'float') return option.decimal ?? 0
+  return option.value
 }
 
 function buildFallbackOptions(candidates: MetadataCandidate[]): MetadataFieldOption[] {
@@ -61,7 +73,8 @@ function buildFallbackOptions(candidates: MetadataCandidate[]): MetadataFieldOpt
       result.push({
         field,
         value: numeric ? '' : String(raw),
-        number: numeric ? Number(raw) : 0,
+        number: numeric === 'int' ? Number(raw) : 0,
+        decimal: numeric === 'float' ? Number(raw) : 0,
         source: candidate.source,
         externalId: candidate.externalId,
         confidence: candidate.confidence,
@@ -96,7 +109,7 @@ export default function MetadataMerge({language, lookup, current, disabled, onAp
     for (const {field, numeric} of fields) {
       const options = grouped.get(field) ?? []
       const suggestedValue = candidateValue(suggested, field, numeric)
-      const index = options.findIndex((option) => numeric ? option.number === suggestedValue : option.value === suggestedValue)
+      const index = options.findIndex((option) => optionValue(option, numeric) === suggestedValue)
       defaults[field] = index >= 0 ? index : 0
     }
     setSelected(defaults)
@@ -108,7 +121,7 @@ export default function MetadataMerge({language, lookup, current, disabled, onAp
       const options = grouped.get(field) ?? []
       const option = options[selected[field] ?? 0]
       if (!option) continue
-      const value = numeric ? option.number : option.value
+      const value = optionValue(option, numeric)
       switch (field) {
         case 'title': candidate.title = String(value); break
         case 'artist': candidate.artist = String(value); break
@@ -124,6 +137,9 @@ export default function MetadataMerge({language, lookup, current, disabled, onAp
         case 'trackTotal': candidate.trackTotal = Number(value); break
         case 'discNumber': candidate.discNumber = Number(value); break
         case 'discTotal': candidate.discTotal = Number(value); break
+        case 'bpm': candidate.bpm = Number(value); break
+        case 'key': candidate.key = String(value); break
+        case 'keyScale': candidate.keyScale = String(value); break
       }
     }
     return candidate
@@ -157,7 +173,7 @@ export default function MetadataMerge({language, lookup, current, disabled, onAp
                 >
                   {options.map((option, index) => (
                     <option key={`${field}-${option.source}-${option.externalId}-${index}`} value={index}>
-                      {numeric ? option.number : option.value} — {option.source} ({Math.round(option.confidence * 100)}%)
+                      {optionValue(option, numeric)} — {option.source} ({Math.round(option.confidence * 100)}%)
                     </option>
                   ))}
                 </select>

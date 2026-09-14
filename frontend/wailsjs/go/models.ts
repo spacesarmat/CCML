@@ -453,6 +453,7 @@ export namespace model {
 	}
 	export class MetadataCandidate {
 	    source: string;
+	    sourceKind: string;
 	    externalId: string;
 	    sourceUrl: string;
 	    title: string;
@@ -469,6 +470,9 @@ export namespace model {
 	    trackTotal: number;
 	    discNumber: number;
 	    discTotal: number;
+	    bpm: number;
+	    key: string;
+	    keyScale: string;
 	    artworkUrl: string;
 	    artworkWidth: number;
 	    artworkHeight: number;
@@ -486,6 +490,7 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.source = source["source"];
+	        this.sourceKind = source["sourceKind"];
 	        this.externalId = source["externalId"];
 	        this.sourceUrl = source["sourceUrl"];
 	        this.title = source["title"];
@@ -502,6 +507,9 @@ export namespace model {
 	        this.trackTotal = source["trackTotal"];
 	        this.discNumber = source["discNumber"];
 	        this.discTotal = source["discTotal"];
+	        this.bpm = source["bpm"];
+	        this.key = source["key"];
+	        this.keyScale = source["keyScale"];
 	        this.artworkUrl = source["artworkUrl"];
 	        this.artworkWidth = source["artworkWidth"];
 	        this.artworkHeight = source["artworkHeight"];
@@ -627,6 +635,7 @@ export namespace model {
 	    field: string;
 	    value: string;
 	    number: number;
+	    decimal: number;
 	    source: string;
 	    externalId: string;
 	    confidence: number;
@@ -640,6 +649,7 @@ export namespace model {
 	        this.field = source["field"];
 	        this.value = source["value"];
 	        this.number = source["number"];
+	        this.decimal = source["decimal"];
 	        this.source = source["source"];
 	        this.externalId = source["externalId"];
 	        this.confidence = source["confidence"];
@@ -647,6 +657,7 @@ export namespace model {
 	}
 	export class MetadataProviderReport {
 	    name: string;
+	    kind: string;
 	    status: string;
 	    candidates: number;
 	    durationMs: number;
@@ -660,6 +671,7 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
+	        this.kind = source["kind"];
 	        this.status = source["status"];
 	        this.candidates = source["candidates"];
 	        this.durationMs = source["durationMs"];
@@ -997,6 +1009,9 @@ export namespace model {
 	    trackTotal: number;
 	    discNumber: number;
 	    discTotal: number;
+	    bpm: number;
+	    key: string;
+	    keyScale: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new TagPatch(source);
@@ -1021,6 +1036,9 @@ export namespace model {
 	        this.trackTotal = source["trackTotal"];
 	        this.discNumber = source["discNumber"];
 	        this.discTotal = source["discTotal"];
+	        this.bpm = source["bpm"];
+	        this.key = source["key"];
+	        this.keyScale = source["keyScale"];
 	    }
 	}
 	export class TagSnapshot {
@@ -1040,6 +1058,9 @@ export namespace model {
 	    trackTotal: number;
 	    discNumber: number;
 	    discTotal: number;
+	    bpm: number;
+	    key: string;
+	    keyScale: string;
 	    coverMime: string;
 	    coverSize: number;
 	
@@ -1065,6 +1086,9 @@ export namespace model {
 	        this.trackTotal = source["trackTotal"];
 	        this.discNumber = source["discNumber"];
 	        this.discTotal = source["discTotal"];
+	        this.bpm = source["bpm"];
+	        this.key = source["key"];
+	        this.keyScale = source["keyScale"];
 	        this.coverMime = source["coverMime"];
 	        this.coverSize = source["coverSize"];
 	    }

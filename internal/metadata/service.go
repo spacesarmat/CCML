@@ -73,6 +73,7 @@ func (s *Service) searchOnce(ctx context.Context, query model.MetadataQuery) (mo
 
 	type response struct {
 		provider string
+		kind     string
 		items    []model.MetadataCandidate
 		err      error
 		duration time.Duration
@@ -88,7 +89,8 @@ func (s *Service) searchOnce(ctx context.Context, query model.MetadataQuery) (mo
 			providerCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
 			defer cancel()
 			items, err := provider.Search(providerCtx, query)
-			responses <- response{provider: provider.Name(), items: items, err: err, duration: time.Since(started)}
+			items = stampProviderCandidates(provider, items)
+			responses <- response{provider: provider.Name(), kind: providerKind(provider), items: items, err: err, duration: time.Since(started)}
 		}()
 	}
 	go func() {
@@ -100,6 +102,7 @@ func (s *Service) searchOnce(ctx context.Context, query model.MetadataQuery) (mo
 	for response := range responses {
 		report := model.MetadataProviderReport{
 			Name:       response.provider,
+			Kind:       response.kind,
 			Candidates: len(response.items),
 			DurationMS: response.duration.Milliseconds(),
 		}
@@ -158,6 +161,7 @@ func (s *Service) ValidateProviders(ctx context.Context) []model.MetadataProvide
 			cancel()
 			report := model.MetadataProviderReport{
 				Name:       provider.Name(),
+				Kind:       providerKind(provider),
 				Candidates: len(items),
 				DurationMS: time.Since(started).Milliseconds(),
 			}
