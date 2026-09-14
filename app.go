@@ -978,6 +978,46 @@ func isArtworkFetchError(err error) bool {
 	return false
 }
 
+type enrichmentArtworkOption struct {
+	Source string
+	URL    string
+	Width  int
+	Height int
+}
+
+func enrichmentArtworkOptions(primary model.MetadataCandidate, ranked []model.MetadataCandidate, minimumConfidence float64) []enrichmentArtworkOption {
+	options := make([]enrichmentArtworkOption, 0, len(ranked)+1)
+	seen := make(map[string]struct{}, len(ranked)+1)
+	add := func(item model.MetadataCandidate) {
+		rawURL := strings.TrimSpace(item.ArtworkURL)
+		if !item.ArtworkEmbeddable || rawURL == "" {
+			return
+		}
+		if _, ok := seen[rawURL]; ok {
+			return
+		}
+		seen[rawURL] = struct{}{}
+		options = append(options, enrichmentArtworkOption{
+			Source: item.Source,
+			URL:    rawURL,
+			Width:  item.ArtworkWidth,
+			Height: item.ArtworkHeight,
+		})
+	}
+
+	// Try the artwork selected by CCML Merge first. If that URL is stale,
+	// forbidden, missing, or unsupported, fall back to other trusted candidates
+	// from the same lookup without changing the selected text metadata.
+	add(primary)
+	for _, item := range ranked {
+		if item.MatchClass == "rejected" || item.Confidence < minimumConfidence {
+			continue
+		}
+		add(item)
+	}
+	return options
+}
+
 func (a *App) enrichMetadataTrack(ctx context.Context, trackID int64, opts model.MetadataEnrichmentOptions) (model.MetadataEnrichmentItem, error) {
 	item := model.MetadataEnrichmentItem{TrackID: trackID}
 	track, err := a.store.TrackByID(ctx, trackID)
@@ -1024,9 +1064,40 @@ func (a *App) enrichMetadataTrack(ctx context.Context, trackID int64, opts model
 		return item, nil
 	}
 	candidate.Title = metadata.PreserveLocalVersionTitle(localTitle, candidate.Title)
-	applyResult, err := a.tagEditor.ApplyMetadataCandidateWithPolicy(ctx, trackID, candidate, opts.IncludeArtwork, opts.OnlyMissing)
-	if err != nil && opts.IncludeArtwork && ctx.Err() == nil && isArtworkFetchError(err) {
-		item.Warning = fmt.Sprintf("artwork skipped: %v", err)
+
+	var applyResult model.TagApplyResult
+	if opts.IncludeArtwork {
+		artworkOptions := enrichmentArtworkOptions(candidate, lookup.Candidates, opts.MinimumConfidence)
+		if len(artworkOptions) == 0 {
+			applyResult, err = a.tagEditor.ApplyMetadataCandidateWithPolicy(ctx, trackID, candidate, false, opts.OnlyMissing)
+		} else {
+			var lastArtworkErr error
+			for index, artwork := range artworkOptions {
+				trial := candidate
+				trial.ArtworkURL = artwork.URL
+				trial.ArtworkWidth = artwork.Width
+				trial.ArtworkHeight = artwork.Height
+				trial.ArtworkEmbeddable = true
+
+				applyResult, err = a.tagEditor.ApplyMetadataCandidateWithPolicy(ctx, trackID, trial, true, opts.OnlyMissing)
+				if err == nil {
+					if index > 0 {
+						item.Warning = fmt.Sprintf("artwork fallback used: %s", artwork.Source)
+					}
+					break
+				}
+				if ctx.Err() != nil || !isArtworkFetchError(err) {
+					break
+				}
+				lastArtworkErr = err
+			}
+
+			if err != nil && ctx.Err() == nil && isArtworkFetchError(err) {
+				item.Warning = fmt.Sprintf("artwork skipped after %d candidate(s): %v", len(artworkOptions), lastArtworkErr)
+				applyResult, err = a.tagEditor.ApplyMetadataCandidateWithPolicy(ctx, trackID, candidate, false, opts.OnlyMissing)
+			}
+		}
+	} else {
 		applyResult, err = a.tagEditor.ApplyMetadataCandidateWithPolicy(ctx, trackID, candidate, false, opts.OnlyMissing)
 	}
 	if err != nil {

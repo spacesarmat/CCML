@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"testing"
+
+	"github.com/spacesarmat/CCML/internal/model"
 )
 
 func TestIsArtworkFetchError(t *testing.T) {
@@ -42,5 +44,85 @@ func TestIsArtworkFetchError(t *testing.T) {
 
 	if isArtworkFetchError(nil) {
 		t.Fatal("nil error must not be classified as artwork fetch error")
+	}
+}
+
+func TestEnrichmentArtworkOptionsProvideTrustedFallbacks(t *testing.T) {
+	primary := model.MetadataCandidate{
+		Source:            "CCML Merge",
+		Confidence:        0.97,
+		ArtworkURL:        "https://coverartarchive.org/release/example/front-1200",
+		ArtworkWidth:      1200,
+		ArtworkHeight:     1200,
+		ArtworkEmbeddable: true,
+	}
+	ranked := []model.MetadataCandidate{
+		{
+			Source:            "Spotify",
+			Confidence:        0.96,
+			MatchClass:        "exact",
+			ArtworkURL:        "https://i.scdn.co/image/good",
+			ArtworkWidth:      1000,
+			ArtworkHeight:     1000,
+			ArtworkEmbeddable: true,
+		},
+		{
+			Source:            "MusicBrainz",
+			Confidence:        0.95,
+			MatchClass:        "high",
+			ArtworkURL:        "https://coverartarchive.org/release/example/front-1200",
+			ArtworkWidth:      1200,
+			ArtworkHeight:     1200,
+			ArtworkEmbeddable: true,
+		},
+		{
+			Source:            "Deezer",
+			Confidence:        0.90,
+			MatchClass:        "high",
+			ArtworkURL:        "https://e-cdns-images.dzcdn.net/images/cover/good/1000x1000.jpg",
+			ArtworkWidth:      1000,
+			ArtworkHeight:     1000,
+			ArtworkEmbeddable: true,
+		},
+		{
+			Source:            "Rejected",
+			Confidence:        0.99,
+			MatchClass:        "rejected",
+			ArtworkURL:        "https://example.invalid/wrong.jpg",
+			ArtworkEmbeddable: true,
+		},
+		{
+			Source:            "Below threshold",
+			Confidence:        0.80,
+			MatchClass:        "high",
+			ArtworkURL:        "https://example.invalid/low.jpg",
+			ArtworkEmbeddable: true,
+		},
+	}
+
+	got := enrichmentArtworkOptions(primary, ranked, 0.86)
+	if len(got) != 3 {
+		t.Fatalf("artwork options = %d, want 3: %+v", len(got), got)
+	}
+	if got[0].Source != "CCML Merge" || got[1].Source != "Spotify" || got[2].Source != "Deezer" {
+		t.Fatalf("unexpected artwork fallback order: %+v", got)
+	}
+}
+
+func TestEnrichmentArtworkOptionsUseProviderWhenMergeHasNoArtwork(t *testing.T) {
+	primary := model.MetadataCandidate{Source: "CCML Merge", Confidence: 0.95}
+	ranked := []model.MetadataCandidate{
+		{
+			Source:            "Deezer",
+			Confidence:        0.90,
+			MatchClass:        "high",
+			ArtworkURL:        "https://e-cdns-images.dzcdn.net/images/cover/good/1000x1000.jpg",
+			ArtworkEmbeddable: true,
+		},
+	}
+
+	got := enrichmentArtworkOptions(primary, ranked, 0.86)
+	if len(got) != 1 || got[0].Source != "Deezer" {
+		t.Fatalf("unexpected artwork fallback options: %+v", got)
 	}
 }
