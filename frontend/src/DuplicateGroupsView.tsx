@@ -76,7 +76,7 @@ function DuplicateGroupsView({
 }: Props) {
   const [filter, setFilter] = useState<FilterMode>('all')
   const [query, setQuery] = useState('')
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
+  const [activeGroupKey, setActiveGroupKey] = useState('')
   const [selectedIDs, setSelectedIDs] = useState<Set<number>>(new Set())
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState('')
@@ -85,10 +85,10 @@ function DuplicateGroupsView({
   const copy = language === 'ru'
     ? {
         title: 'Дубликаты',
-        subtitle: 'Сравните версии, оставьте нужную и безопасно уберите лишние файлы.',
+        subtitle: 'Выберите группу слева и сравните её файлы справа.',
         back: 'Назад к медиатеке',
         refresh: 'Пересчитать',
-        search: 'Фильтр по исполнителю, названию, файлу, пути или ISRC…',
+        search: 'Исполнитель, название, файл, путь или ISRC…',
         all: 'Все',
         exact: 'Точные',
         filterPossible: 'Возможные',
@@ -97,11 +97,13 @@ function DuplicateGroupsView({
         exactGroups: 'Точных',
         possibleGroups: 'Возможных',
         none: 'Подходящих групп не найдено.',
+        selectGroup: 'Выберите группу дубликатов слева.',
+        groupList: 'Группы',
         isrc: 'ISRC',
         metadata: 'Artist / Title',
-        badgePossible: 'Возможный дубль',
+        badgePossible: 'Возможный',
         confidence: 'уверенность',
-        spread: 'Разброс длительности',
+        spread: 'Разброс',
         sharedIsrc: 'Общий ISRC',
         file: 'Файл',
         quality: 'Качество',
@@ -133,7 +135,7 @@ function DuplicateGroupsView({
         deleteCancel: 'Отмена',
         deleteConfirmButton: 'Удалить безвозвратно',
         deleteFiles: (count: number) => `Файлов к удалению: ${count}`,
-        keepOneSafety: 'Backend дополнительно проверит, что в каждой группе останется хотя бы один файл.',
+        keepOneSafety: 'Backend дополнительно проверит, что в группе останется хотя бы один файл.',
         selectTrack: 'Выбрать файл для действия',
         verifyAudio: 'Проверить аудио',
         verifyAudioUnavailable: 'Для проверки аудио требуется FFmpeg.',
@@ -185,10 +187,10 @@ function DuplicateGroupsView({
       }
     : {
         title: 'Duplicates',
-        subtitle: 'Compare versions, keep the one you want and safely remove extra files.',
+        subtitle: 'Select a group on the left and compare its files on the right.',
         back: 'Back to library',
         refresh: 'Recalculate',
-        search: 'Filter by artist, title, file, path or ISRC…',
+        search: 'Artist, title, file, path or ISRC…',
         all: 'All',
         exact: 'Exact',
         filterPossible: 'Possible',
@@ -197,11 +199,13 @@ function DuplicateGroupsView({
         exactGroups: 'Exact',
         possibleGroups: 'Possible',
         none: 'No matching duplicate groups.',
+        selectGroup: 'Select a duplicate group on the left.',
+        groupList: 'Groups',
         isrc: 'ISRC',
         metadata: 'Artist / Title',
-        badgePossible: 'Possible duplicate',
+        badgePossible: 'Possible',
         confidence: 'confidence',
-        spread: 'Duration spread',
+        spread: 'Spread',
         sharedIsrc: 'Shared ISRC',
         file: 'File',
         quality: 'Quality',
@@ -233,7 +237,7 @@ function DuplicateGroupsView({
         deleteCancel: 'Cancel',
         deleteConfirmButton: 'Delete permanently',
         deleteFiles: (count: number) => `Files to delete: ${count}`,
-        keepOneSafety: 'The backend also verifies that at least one file remains in every affected group.',
+        keepOneSafety: 'The backend also verifies that at least one file remains in the group.',
         selectTrack: 'Select file for action',
         verifyAudio: 'Check audio',
         verifyAudioUnavailable: 'FFmpeg is required for audio verification.',
@@ -284,14 +288,6 @@ function DuplicateGroupsView({
         } as Record<string, string>,
       }
 
-  useEffect(() => {
-    setOpenGroups(new Set(groups.slice(0, 2).map((group) => group.key)))
-    setSelectedIDs(new Set())
-    setPendingDelete(null)
-    setDeleteConfirm('')
-    setAudioChecks({})
-  }, [groups])
-
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
 
@@ -317,17 +313,26 @@ function DuplicateGroupsView({
     })
   }, [groups, filter, query])
 
+  useEffect(() => {
+    setSelectedIDs(new Set())
+    setPendingDelete(null)
+    setDeleteConfirm('')
+    setAudioChecks({})
+  }, [groups])
+
+  useEffect(() => {
+    if (filtered.length === 0) {
+      setActiveGroupKey('')
+      return
+    }
+    if (!filtered.some((group) => group.key === activeGroupKey)) {
+      setActiveGroupKey(filtered[0].key)
+    }
+  }, [filtered, activeGroupKey])
+
   const exactCount = groups.filter((group) => group.matchClass !== 'possible').length
   const possibleCount = groups.length - exactCount
-
-  function toggleGroup(key: string) {
-    setOpenGroups((current) => {
-      const next = new Set(current)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
+  const activeGroup = filtered.find((group) => group.key === activeGroupKey) ?? null
 
   function badge(group: DuplicateGroup) {
     if (group.matchClass === 'isrc') return copy.isrc
@@ -443,9 +448,23 @@ function DuplicateGroupsView({
     })
   }
 
+  const activeScores = activeGroup ? qualityMap(activeGroup) : new Map<number, DuplicateTrackQuality>()
+  const activeVerification = activeGroup ? audioChecks[activeGroup.key] : undefined
+  const activeAudioByTrack = new Map(activeVerification?.comparisons.map((item) => [item.trackId, item]) ?? [])
+  const activeSelected = activeGroup ? selectedTracks(activeGroup) : []
+  const activeSortedTracks = activeGroup
+    ? [...activeGroup.tracks].sort((left, right) => {
+        const leftScore = activeScores.get(left.id)
+        const rightScore = activeScores.get(right.id)
+        return (rightScore?.score ?? 0) - (leftScore?.score ?? 0)
+          || (rightScore?.audioScore ?? 0) - (leftScore?.audioScore ?? 0)
+          || left.fileName.localeCompare(right.fileName)
+      })
+    : []
+
   return (
     <>
-      <section className="duplicate-workspace">
+      <section className="duplicate-workspace duplicate-master-detail">
         <header className="duplicate-commandbar">
           <div>
             <h2>{copy.title}</h2>
@@ -479,184 +498,197 @@ function DuplicateGroupsView({
                 onClick={() => setFilter(mode)}
               >
                 {mode === 'all' ? copy.all : mode === 'exact' ? copy.exact : copy.filterPossible}
-                <b>
-                  {mode === 'all' ? groups.length : mode === 'exact' ? exactCount : possibleCount}
-                </b>
+                <b>{mode === 'all' ? groups.length : mode === 'exact' ? exactCount : possibleCount}</b>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="duplicate-groups-list">
-          {filtered.length === 0 && <div className="duplicate-empty">{copy.none}</div>}
+        <div className="duplicate-browser">
+          <aside className="duplicate-master-list" aria-label={copy.groupList}>
+            {filtered.length === 0 && <div className="duplicate-master-empty">{copy.none}</div>}
 
-          {filtered.map((group) => {
-            const open = openGroups.has(group.key)
-            const scores = qualityMap(group)
-            const verification = audioChecks[group.key]
-            const audioByTrack = new Map(verification?.comparisons.map((item) => [item.trackId, item]) ?? [])
-            const groupSelected = selectedTracks(group)
-            const sortedTracks = [...group.tracks].sort((left, right) => {
-              const leftScore = scores.get(left.id)
-              const rightScore = scores.get(right.id)
-              return (rightScore?.score ?? 0) - (leftScore?.score ?? 0)
-                || (rightScore?.audioScore ?? 0) - (leftScore?.audioScore ?? 0)
-                || left.fileName.localeCompare(right.fileName)
-            })
-
-            return (
-              <article className={`duplicate-group-card ${group.matchClass}`} key={group.key}>
+            {filtered.map((group) => {
+              const active = group.key === activeGroupKey
+              const recommended = group.quality.find((item) => item.trackId === group.recommendedTrackId)
+              return (
                 <button
                   type="button"
-                  className="duplicate-group-head"
-                  aria-expanded={open}
-                  onClick={() => toggleGroup(group.key)}
+                  className={`duplicate-master-item ${group.matchClass}${active ? ' active' : ''}`}
+                  key={group.key}
+                  onClick={() => setActiveGroupKey(group.key)}
                 >
-                  <span className="duplicate-disclosure" aria-hidden="true">{open ? '⌄' : '›'}</span>
-                  <span className={`duplicate-match-badge ${group.matchClass}`}>{badge(group)}</span>
-                  <span className="duplicate-group-title">
+                  <span className={`duplicate-master-badge ${group.matchClass}`}>{badge(group)}</span>
+                  <span className="duplicate-master-title">
                     <strong>{group.artist || '—'} — {group.title || '—'}</strong>
                     <small>
-                      {group.tracks.length} · {Math.round(group.confidence * 100)}% {copy.confidence}
-                      {' · '}{copy.spread}: {formatSpread(group.durationSpreadMs)}
-                      {group.sharedIsrc ? ` · ${copy.sharedIsrc}: ${group.sharedIsrc}` : ''}
-                      {' · '}{group.recommendedTrackId ? copy.best : copy.tie}
+                      {group.tracks.length} {copy.files.toLocaleLowerCase()} · {Math.round(group.confidence * 100)}%
+                      {' · '}{formatSpread(group.durationSpreadMs)}
                     </small>
                   </span>
+                  <span className="duplicate-master-score" title={copy.scoreTitle}>
+                    {recommended?.score ?? '—'}
+                  </span>
                 </button>
+              )
+            })}
+          </aside>
 
-                {open && (
-                  <div className="duplicate-group-body">
-                    <div className="duplicate-group-actions">
-                      <span>{copy.selected(groupSelected.length, group.tracks.length)}</span>
-                      <button
-                        type="button"
-                        title={group.recommendedTrackId ? copy.keepBestHint : copy.noLeader}
-                        disabled={busy || !group.recommendedTrackId}
-                        onClick={() => selectAllExceptRecommended(group)}
-                      >
-                        {copy.keepBest}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy || groupSelected.length === 0}
-                        onClick={() => clearGroupSelection(group)}
-                      >
-                        {copy.clear}
-                      </button>
-                      <button
-                        type="button"
-                        className="duplicate-verify-audio"
-                        title={canVerifyAudio ? copy.verifyAudioHint : copy.verifyAudioUnavailable}
-                        disabled={busy || !canVerifyAudio}
-                        onClick={() => void verifyGroupAudio(group)}
-                      >
-                        {copy.verifyAudio}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy || groupSelected.length === 0}
-                        onClick={() => void quarantineGroup(group)}
-                      >
-                        {copy.quarantine}
-                      </button>
-                      <button
-                        type="button"
-                        className="duplicate-action-danger"
-                        disabled={busy || groupSelected.length === 0}
-                        onClick={() => requestDelete(group)}
-                      >
-                        {copy.delete}
-                      </button>
+          <main className="duplicate-detail-pane">
+            {!activeGroup && (
+              <div className="duplicate-detail-empty">{copy.selectGroup}</div>
+            )}
+
+            {activeGroup && (
+              <>
+                <header className="duplicate-detail-head">
+                  <div>
+                    <div className="duplicate-detail-title-row">
+                      <span className={`duplicate-master-badge ${activeGroup.matchClass}`}>{badge(activeGroup)}</span>
+                      <h3>{activeGroup.artist || '—'} — {activeGroup.title || '—'}</h3>
                     </div>
-
-                    {verification && (
-                      <div className="duplicate-audio-summary" title={copy.verifyAudioHint}>
-                        <strong>{copy.audioSummary(
-                          verification.sameCount,
-                          verification.similarCount,
-                          verification.differentCount,
-                          verification.errorCount,
-                        )}</strong>
-                        <span>{copy.audioReference}: {group.tracks.find((track) => track.id === verification.referenceTrackId)?.fileName || verification.referenceTrackId}</span>
-                      </div>
-                    )}
-
-                    <div className="duplicate-reasons">
-                      {group.reasons.map((reason) => (
-                        <span key={reason}>{copy.reasons[reason] || reason}</span>
-                      ))}
-                    </div>
-
-                    <div className="duplicate-compare-table quality-enabled action-enabled">
-                      <div className="duplicate-compare-row head">
-                        <span aria-hidden="true" />
-                        <span>{copy.file}</span>
-                        <span>{copy.quality}</span>
-                        <span>{copy.codec}</span>
-                        <span>{copy.bitrate}</span>
-                        <span>{copy.sampleRate}</span>
-                        <span>{copy.size}</span>
-                        <span>{copy.duration}</span>
-                        <span>{copy.trackIsrc}</span>
-                        <span />
-                      </div>
-
-                      {sortedTracks.map((track) => {
-                        const quality = scores.get(track.id)
-                        const recommended = group.recommendedTrackId === track.id
-                        const selected = selectedIDs.has(track.id)
-
-                        return (
-                          <div
-                            className={`duplicate-compare-row${recommended ? ' recommended' : ''}${selected ? ' action-selected' : ''}`}
-                            key={track.id}
-                          >
-                            <span className="duplicate-action-check">
-                              <input
-                                type="checkbox"
-                                checked={selected}
-                                disabled={busy}
-                                onChange={() => toggleTrackSelection(track.id)}
-                                aria-label={`${copy.selectTrack}: ${track.fileName}`}
-                              />
-                            </span>
-                            <span className="duplicate-file-cell" title={track.path}>
-                              <strong>{track.fileName}</strong>
-                              <small>{track.path}</small>
-                              {recommended && <em>{copy.best}</em>}
-                            </span>
-                            <span className="duplicate-quality-cell" title={qualityTitle(quality)}>
-                              <strong>{quality?.score ?? 0}</strong>
-                              <small>{copy.audio} {quality?.audioScore ?? 0} · {copy.metadataScore} {quality?.metadataScore ?? 0}</small>
-                              {audioByTrack.get(track.id) && (
-                                <em
-                                  className={`duplicate-audio-badge ${audioByTrack.get(track.id)?.status || ''}`}
-                                  title={audioComparisonTitle(verification, track.id)}
-                                >
-                                  {audioStatusLabel(audioByTrack.get(track.id)?.status || '')}
-                                  {audioByTrack.get(track.id)?.status !== 'reference' && audioByTrack.get(track.id)?.status !== 'error'
-                                    ? ` ${Math.round((audioByTrack.get(track.id)?.similarity || 0) * 100)}%`
-                                    : ''}
-                                </em>
-                              )}
-                            </span>
-                            <span>{track.codec || track.extension.replace('.', '').toUpperCase() || '—'}</span>
-                            <span>{formatBitRate(track.bitRate)}</span>
-                            <span>{formatSampleRate(track.sampleRate)}</span>
-                            <span>{formatSize(track.size)}</span>
-                            <span>{formatDuration(track.durationMs)}</span>
-                            <span title={track.isrc || undefined}>{track.isrc || '—'}</span>
-                            <button type="button" onClick={() => onOpenTrack(track)}>{copy.open}</button>
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <p>
+                      {activeGroup.tracks.length} · {Math.round(activeGroup.confidence * 100)}% {copy.confidence}
+                      {' · '}{copy.spread}: {formatSpread(activeGroup.durationSpreadMs)}
+                      {activeGroup.sharedIsrc ? ` · ${copy.sharedIsrc}: ${activeGroup.sharedIsrc}` : ''}
+                      {' · '}{activeGroup.recommendedTrackId ? copy.best : copy.tie}
+                    </p>
                   </div>
-                )}
-              </article>
-            )
-          })}
+                </header>
+
+                <div className="duplicate-detail-scroll">
+                  <div className="duplicate-group-actions">
+                    <span>{copy.selected(activeSelected.length, activeGroup.tracks.length)}</span>
+                    <button
+                      type="button"
+                      title={activeGroup.recommendedTrackId ? copy.keepBestHint : copy.noLeader}
+                      disabled={busy || !activeGroup.recommendedTrackId}
+                      onClick={() => selectAllExceptRecommended(activeGroup)}
+                    >
+                      {copy.keepBest}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy || activeSelected.length === 0}
+                      onClick={() => clearGroupSelection(activeGroup)}
+                    >
+                      {copy.clear}
+                    </button>
+                    <button
+                      type="button"
+                      className="duplicate-verify-audio"
+                      title={canVerifyAudio ? copy.verifyAudioHint : copy.verifyAudioUnavailable}
+                      disabled={busy || !canVerifyAudio}
+                      onClick={() => void verifyGroupAudio(activeGroup)}
+                    >
+                      {copy.verifyAudio}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy || activeSelected.length === 0}
+                      onClick={() => void quarantineGroup(activeGroup)}
+                    >
+                      {copy.quarantine}
+                    </button>
+                    <button
+                      type="button"
+                      className="duplicate-action-danger"
+                      disabled={busy || activeSelected.length === 0}
+                      onClick={() => requestDelete(activeGroup)}
+                    >
+                      {copy.delete}
+                    </button>
+                  </div>
+
+                  {activeVerification && (
+                    <div className="duplicate-audio-summary" title={copy.verifyAudioHint}>
+                      <strong>{copy.audioSummary(
+                        activeVerification.sameCount,
+                        activeVerification.similarCount,
+                        activeVerification.differentCount,
+                        activeVerification.errorCount,
+                      )}</strong>
+                      <span>
+                        {copy.audioReference}: {activeGroup.tracks.find((track) => track.id === activeVerification.referenceTrackId)?.fileName || activeVerification.referenceTrackId}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="duplicate-reasons">
+                    {activeGroup.reasons.map((reason) => (
+                      <span key={reason}>{copy.reasons[reason] || reason}</span>
+                    ))}
+                  </div>
+
+                  <div className="duplicate-compare-table quality-enabled action-enabled">
+                    <div className="duplicate-compare-row head">
+                      <span aria-hidden="true" />
+                      <span>{copy.file}</span>
+                      <span>{copy.quality}</span>
+                      <span>{copy.codec}</span>
+                      <span>{copy.bitrate}</span>
+                      <span>{copy.sampleRate}</span>
+                      <span>{copy.size}</span>
+                      <span>{copy.duration}</span>
+                      <span>{copy.trackIsrc}</span>
+                      <span />
+                    </div>
+
+                    {activeSortedTracks.map((track) => {
+                      const quality = activeScores.get(track.id)
+                      const recommended = activeGroup.recommendedTrackId === track.id
+                      const selected = selectedIDs.has(track.id)
+                      const audioComparison = activeAudioByTrack.get(track.id)
+
+                      return (
+                        <div
+                          className={`duplicate-compare-row${recommended ? ' recommended' : ''}${selected ? ' action-selected' : ''}`}
+                          key={track.id}
+                        >
+                          <span className="duplicate-action-check">
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              disabled={busy}
+                              onChange={() => toggleTrackSelection(track.id)}
+                              aria-label={`${copy.selectTrack}: ${track.fileName}`}
+                            />
+                          </span>
+                          <span className="duplicate-file-cell" title={track.path}>
+                            <strong>{track.fileName}</strong>
+                            <small>{track.path}</small>
+                            {recommended && <em>{copy.best}</em>}
+                          </span>
+                          <span className="duplicate-quality-cell" title={qualityTitle(quality)}>
+                            <strong>{quality?.score ?? 0}</strong>
+                            <small>{copy.audio} {quality?.audioScore ?? 0} · {copy.metadataScore} {quality?.metadataScore ?? 0}</small>
+                            {audioComparison && (
+                              <em
+                                className={`duplicate-audio-badge ${audioComparison.status}`}
+                                title={audioComparisonTitle(activeVerification, track.id)}
+                              >
+                                {audioStatusLabel(audioComparison.status)}
+                                {audioComparison.status !== 'reference' && audioComparison.status !== 'error'
+                                  ? ` ${Math.round(audioComparison.similarity * 100)}%`
+                                  : ''}
+                              </em>
+                            )}
+                          </span>
+                          <span>{track.codec || track.extension.replace('.', '').toUpperCase() || '—'}</span>
+                          <span>{formatBitRate(track.bitRate)}</span>
+                          <span>{formatSampleRate(track.sampleRate)}</span>
+                          <span>{formatSize(track.size)}</span>
+                          <span>{formatDuration(track.durationMs)}</span>
+                          <span title={track.isrc || undefined}>{track.isrc || '—'}</span>
+                          <button type="button" onClick={() => onOpenTrack(track)}>{copy.open}</button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </main>
         </div>
       </section>
 

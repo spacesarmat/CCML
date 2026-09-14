@@ -110,6 +110,7 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           '«Удалить» является безвозвратным действием: перед запуском нужно ввести DELETE. Файлы сначала временно переименовываются, затем записи удаляются одной SQLite-транзакцией; если транзакция не проходит, исходные имена файлов восстанавливаются.',
           'Stage 16.4 добавляет «Проверить аудио». FFmpeg декодирует все файлы текущей группы в mono PCM 4 kHz и сравнивает нормализованные признаки энергии, roughness и zero-crossing с выравниванием до ±6 секунд. Результаты: «Совпадает», «Похоже», «Отличается» или «Ошибка».',
           'Статус «Совпадает» требует очень высокой похожести формы сигнала и близкой полной длительности. Проверка остаётся эвристикой: она помогает принять решение перед карантином/удалением, но сама не запускает действия и не заменяет прослушивание сомнительных Remix/Edit/Intro версий.',
+          'Stage 16.4.2 меняет сам способ отображения больших результатов: вместо сотен раскрывающихся карточек слева показывается прокручиваемый список групп, а справа — детали только выбранной группы. Это сохраняет читаемость даже при сотнях групп и освобождает ширину для таблицы сравнения и действий.',
         ],
       },
       {
@@ -298,6 +299,7 @@ const HELP: Record<AppLanguage, HelpCopy> = {
           'Delete is permanent and requires typing DELETE. Files are first renamed to temporary siblings, then index rows are removed in one SQLite transaction; if that transaction fails, original filenames are restored.',
           'Stage 16.4 adds Check audio. FFmpeg decodes every file in the current group to 4 kHz mono PCM and compares normalized energy, roughness and zero-crossing features with alignment up to ±6 seconds. Results are Same, Similar, Different or Error.',
           'Same requires very high decoded-waveform similarity plus close full duration. The check remains heuristic: it supports the quarantine/delete decision, never starts an action itself, and does not replace listening to questionable Remix/Edit/Intro versions.',
+          'Stage 16.4.2 changes how large result sets are displayed: instead of hundreds of expandable cards, a scrollable group list appears on the left and only the selected group details appear on the right. This stays readable with hundreds of groups and gives the comparison/actions table more room.',
         ],
       },
       {
